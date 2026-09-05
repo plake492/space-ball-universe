@@ -1230,11 +1230,16 @@
         flash.classList.add("is-on");
     }
 
+    function shipHitRadius() {
+        return state.shield ? SHIELD_SHIP_R : SHIP_RADIUS;
+    }
+
     function burstShield() {
         state.shield = false;
         state.shieldRings.push({ life: 1 });
         playHit();
         savePlay();
+        return true;
     }
 
     function applyHazardHit() {
@@ -1269,6 +1274,10 @@
             });
             state.balls.splice(index, 1);
         }
+        if (state.shield) {
+            burstShield();
+            return;
+        }
         applyHazardHit();
     }
 
@@ -1283,6 +1292,10 @@
                 life: 1,
             });
             state.meteors.splice(index, 1);
+        }
+        if (state.shield) {
+            burstShield();
+            return;
         }
         applyHazardHit();
     }
@@ -1336,7 +1349,7 @@
         if (!state.meteorOn) return;
         for (let i = state.meteors.length - 1; i >= 0; i -= 1) {
             const meteor = state.meteors[i];
-            if (Math.hypot(meteor.x - state.shipX, meteor.y - state.shipY) > meteorBody(meteor) + SHIP_RADIUS) continue;
+            if (Math.hypot(meteor.x - state.shipX, meteor.y - state.shipY) > meteorBody(meteor) + shipHitRadius()) continue;
             hitMeteor(i);
             return;
         }
@@ -1360,7 +1373,7 @@
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
             const body = ball.hasSpikes ? ball.r * SPIKE_REACH : ball.r;
-            const reach = body + SHIP_RADIUS;
+            const reach = body + (ball.hasSpikes ? shipHitRadius() : SHIP_RADIUS);
             if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
                 if (ball.hasSpikes) {
                     hitSpikes(i);

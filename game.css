@@ -168,6 +168,38 @@ body {
     background: rgba(10, 16, 36, 0.62);
 }
 
+.joystick-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border: 2px solid rgba(190, 210, 245, 0.22);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.joystick-ring[data-ring="slow"] {
+    width: 68px;
+    height: 68px;
+    margin: -34px 0 0 -34px;
+}
+
+.joystick-ring[data-ring="medium"] {
+    width: 110px;
+    height: 110px;
+    margin: -55px 0 0 -55px;
+}
+
+.joystick-ring[data-ring="fast"] {
+    width: 152px;
+    height: 152px;
+    margin: -76px 0 0 -76px;
+}
+
+.joystick-ring.is-on {
+    border-color: #9ec2ff;
+    box-shadow: 0 0 12px rgba(122, 168, 255, 0.7);
+}
+
 .joystick-knob {
     position: absolute;
     top: 50%;

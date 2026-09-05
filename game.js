@@ -34,7 +34,13 @@
     const winMessage = document.getElementById("win-message");
 
     const keys = new Set();
-    const stick = { vx: 0, vy: 0, dir: "" };
+    const stick = { vx: 0, vy: 0, dir: "", speed: 0, ring: "" };
+    const STICK_DEAD = 20;
+    const SPEED_RINGS = [
+        { name: "slow", radius: 34, scale: 1 / 3 },
+        { name: "medium", radius: 55, scale: 2 / 3 },
+        { name: "fast", radius: 76, scale: 1 },
+    ];
     const DIR_COUNT = 16;
     const DIRS = Array.from({ length: DIR_COUNT }, (_, i) => {
         const angle = (i * Math.PI * 2) / DIR_COUNT;
@@ -173,8 +179,10 @@
             vx /= length;
             vy /= length;
             state.heading = Math.atan2(vy, vx);
-            state.shipX += vx * SHIP_SPEED * dt;
-            state.shipY += vy * SHIP_SPEED * dt;
+            const usingStick = stick.vx !== 0 || stick.vy !== 0;
+            const speed = SHIP_SPEED * (usingStick ? stick.speed : 1);
+            state.shipX += vx * speed * dt;
+            state.shipY += vy * speed * dt;
         }
 
         const min = SHIP_RADIUS + 8;
@@ -436,10 +444,20 @@
         window.addEventListener("blur", () => keys.clear());
     }
 
+    function pickSpeedRing(dist) {
+        if (dist < (SPEED_RINGS[0].radius + SPEED_RINGS[1].radius) / 2) {
+            return SPEED_RINGS[0];
+        }
+        if (dist < (SPEED_RINGS[1].radius + SPEED_RINGS[2].radius) / 2) {
+            return SPEED_RINGS[1];
+        }
+        return SPEED_RINGS[2];
+    }
+
     function snapStick(dx, dy) {
         const dist = Math.hypot(dx, dy);
-        if (dist < 18) {
-            return { vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0 };
+        if (dist < STICK_DEAD) {
+            return { vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0, speed: 0, ring: "" };
         }
 
         let best = DIRS[0];
@@ -458,24 +476,39 @@
         const length = Math.hypot(best.vx, best.vy);
         const vx = best.vx / length;
         const vy = best.vy / length;
-        const travel = Math.min(dist, 68);
-        return { vx, vy, dir: best.name, knobX: vx * travel, knobY: vy * travel };
+        const ring = pickSpeedRing(dist);
+        return {
+            vx,
+            vy,
+            dir: best.name,
+            knobX: vx * ring.radius,
+            knobY: vy * ring.radius,
+            speed: ring.scale,
+            ring: ring.name,
+        };
     }
 
     function setStick(next) {
         stick.vx = next.vx;
         stick.vy = next.vy;
         stick.dir = next.dir;
+        stick.speed = next.speed;
+        stick.ring = next.ring;
         const knob = document.getElementById("joystick-knob");
         knob.style.transform = `translate(${next.knobX}px, ${next.knobY}px)`;
-        document.getElementById("joystick").classList.toggle("is-active", next.dir !== "");
+        const joystick = document.getElementById("joystick");
+        joystick.classList.toggle("is-active", next.dir !== "");
+        joystick.dataset.speed = next.ring;
         for (const pip of document.querySelectorAll(".joystick-pip")) {
             pip.classList.toggle("is-on", pip.dataset.dir === next.dir);
+        }
+        for (const ring of document.querySelectorAll(".joystick-ring")) {
+            ring.classList.toggle("is-on", ring.dataset.ring === next.ring);
         }
     }
 
     function resetStick() {
-        setStick({ vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0 });
+        setStick({ vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0, speed: 0, ring: "" });
     }
 
     function buildPips() {

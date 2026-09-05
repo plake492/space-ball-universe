@@ -37,6 +37,9 @@
     const ENGINE_FADE_IN = 0.15;
     const ENGINE_BOOST_RATE = 1.25;
     const HIT_SRC = "public/audio/balls/audio_319c456817.mp3";
+    const ATMO_SRC = "public/audio/atmosphere/drone-outerspace-hum-danijel-zambo-1-02-27.mp3";
+    const ATMO_GAIN = 0.14;
+    const ATMO_FADE = 1.4;
     const PALETTES = {
         rainbow: [
             "#ff3b30",
@@ -597,6 +600,9 @@
         loading: null,
         wanted: false,
         hit: null,
+        atmo: null,
+        atmoSource: null,
+        atmoGain: null,
     };
 
     function engineContext() {
@@ -611,6 +617,7 @@
         const ctx = engineContext();
         if (ctx.state === "suspended") ctx.resume();
         if (!engine.loading) engine.loading = loadEngine();
+        startAtmosphere();
     }
 
     async function loadEngine() {
@@ -623,9 +630,39 @@
             engine.buffer = await ctx.decodeAudioData(engineBytes.slice(0));
             engine.hit = await ctx.decodeAudioData(hitBytes.slice(0));
             if (engine.wanted) startEngine(true);
+            loadAtmosphere();
         } catch {
             engine.loading = null;
         }
+    }
+
+    async function loadAtmosphere() {
+        try {
+            const ctx = engineContext();
+            const bytes = await fetch(ATMO_SRC).then((res) => res.arrayBuffer());
+            engine.atmo = await ctx.decodeAudioData(bytes.slice(0));
+            startAtmosphere();
+        } catch {
+            // Atmosphere is optional; engine and hits still play.
+        }
+    }
+
+    function startAtmosphere() {
+        if (!engine.atmo || engine.atmoSource) return;
+        const ctx = engineContext();
+        if (ctx.state === "suspended") return;
+        const source = ctx.createBufferSource();
+        source.buffer = engine.atmo;
+        source.loop = true;
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(ATMO_GAIN, now + ATMO_FADE);
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(0);
+        engine.atmoSource = source;
+        engine.atmoGain = gain;
     }
 
     function playHit() {

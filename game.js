@@ -19,6 +19,7 @@
     const ENGINE_LOOP_START = 0.5;
     const ENGINE_LOOP_END = 15;
     const ENGINE_FADE = 0.3;
+    const ENGINE_FADE_IN = 0.15;
     const ENGINE_BOOST_RATE = 1.25;
     const HIT_SRC = "public/audio/balls/audio_319c456817.mp3";
     const PALETTES = {
@@ -421,7 +422,7 @@
         const now = ctx.currentTime;
         if (fadeIn) {
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(1, now + ENGINE_FADE);
+            gain.gain.linearRampToValueAtTime(1, now + ENGINE_FADE_IN);
         } else {
             gain.gain.setValueAtTime(0, now);
         }
@@ -440,7 +441,7 @@
         const now = ctx.currentTime;
         param.cancelScheduledValues(now);
         param.setValueAtTime(param.value, now);
-        param.linearRampToValueAtTime(target, now + ENGINE_FADE);
+        param.linearRampToValueAtTime(target, now + (target > 0 ? ENGINE_FADE_IN : ENGINE_FADE));
     }
 
     function fadeEngineRate() {

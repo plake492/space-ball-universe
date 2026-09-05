@@ -47,7 +47,7 @@
     const BOOST_DRAIN = 5;
     const BOOST_REFILL = 7.5;
     const SPAWN_CLEARANCE = 15;
-    const BALL_GAP = 5;
+    const BALL_GAP = 12;
     const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
     const ENGINE_LOOP_START = 0.5;
     const ENGINE_LOOP_END = 15;

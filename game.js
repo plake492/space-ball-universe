@@ -10,6 +10,9 @@
     const SETTINGS_KEY = "harlie-space-settings";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
+    const COMPACT_UI = "(max-width: 1024px)";
+    const COMPACT_STICK = 140 / 220;
+    const STICK_PIP = 96;
     const MIN_BALL = 25;
     const MAX_BALL = 150;
     const SHIP_RADIUS = 22;
@@ -161,6 +164,32 @@
         return n - Math.floor(n);
     }
 
+    function isCompactUi() {
+        return window.matchMedia(COMPACT_UI).matches;
+    }
+
+    function stickScale() {
+        return isCompactUi() ? COMPACT_STICK : 1;
+    }
+
+    function minimapSize() {
+        return isCompactUi() ? MINIMAP_SIZE * 0.5 : MINIMAP_SIZE;
+    }
+
+    function minimapWorldScale() {
+        return MINIMAP_SCALE * (minimapSize() / MINIMAP_SIZE);
+    }
+
+    function scaledRings() {
+        const scale = stickScale();
+        return SPEED_RINGS.map((ring) => ({
+            ...ring,
+            radius: ring.radius * scale,
+        }));
+    }
+
+    let uiCompact = isCompactUi();
+
     function resize() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         state.width = window.innerWidth;
@@ -172,11 +201,19 @@
         canvas.style.height = `${state.height}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        minimap.width = Math.floor(MINIMAP_SIZE * dpr);
-        minimap.height = Math.floor(MINIMAP_SIZE * dpr);
-        minimap.style.width = `${MINIMAP_SIZE}px`;
-        minimap.style.height = `${MINIMAP_SIZE}px`;
+        const size = minimapSize();
+        minimap.width = Math.floor(size * dpr);
+        minimap.height = Math.floor(size * dpr);
+        minimap.style.width = `${size}px`;
+        minimap.style.height = `${size}px`;
         miniCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const compact = isCompactUi();
+        if (compact !== uiCompact) {
+            uiCompact = compact;
+            buildPips();
+            resetStick();
+        }
     }
 
     function spawnBalls(count) {
@@ -685,36 +722,38 @@
         drawBorder(cam);
     }
 
-    function toMinimap(worldX, worldY) {
+    function toMinimap(worldX, worldY, size, scale) {
         return {
-            x: MINIMAP_SIZE / 2 + (worldX - state.shipX) * MINIMAP_SCALE,
-            y: MINIMAP_SIZE / 2 + (worldY - state.shipY) * MINIMAP_SCALE,
+            x: size / 2 + (worldX - state.shipX) * scale,
+            y: size / 2 + (worldY - state.shipY) * scale,
         };
     }
 
     function drawMinimap(now) {
-        const size = MINIMAP_SIZE;
+        const size = minimapSize();
+        const scale = minimapWorldScale();
+        const mark = size / MINIMAP_SIZE;
         miniCtx.clearRect(0, 0, size, size);
         miniCtx.save();
         miniCtx.beginPath();
-        miniCtx.roundRect(0, 0, size, size, 20);
+        miniCtx.roundRect(0, 0, size, size, 20 * mark);
         miniCtx.clip();
 
         miniCtx.fillStyle = "#000000";
         miniCtx.fillRect(0, 0, size, size);
 
-        const origin = toMinimap(0, 0);
-        const worldPx = state.world * MINIMAP_SCALE;
+        const origin = toMinimap(0, 0, size, scale);
+        const worldPx = state.world * scale;
         miniCtx.fillStyle = "#0a0830";
         miniCtx.fillRect(origin.x, origin.y, worldPx, worldPx);
 
         miniCtx.strokeStyle = "#000000";
-        miniCtx.lineWidth = 2;
+        miniCtx.lineWidth = Math.max(1, 2 * mark);
         miniCtx.strokeRect(origin.x, origin.y, worldPx, worldPx);
 
         for (const ball of state.balls) {
-            const p = toMinimap(ball.x, ball.y);
-            const r = Math.max(2.2, ball.r * MINIMAP_SCALE);
+            const p = toMinimap(ball.x, ball.y, size, scale);
+            const r = Math.max(2.2 * mark, ball.r * scale);
             if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
             miniCtx.globalAlpha = ballPulse(ball, now);
             miniCtx.fillStyle = ball.color;
@@ -731,10 +770,10 @@
         miniCtx.rotate(state.heading + Math.PI / 2);
         miniCtx.fillStyle = "#ffffff";
         miniCtx.beginPath();
-        miniCtx.moveTo(0, -8);
-        miniCtx.lineTo(5, 6);
-        miniCtx.lineTo(0, 3);
-        miniCtx.lineTo(-5, 6);
+        miniCtx.moveTo(0, -8 * mark);
+        miniCtx.lineTo(5 * mark, 6 * mark);
+        miniCtx.lineTo(0, 3 * mark);
+        miniCtx.lineTo(-5 * mark, 6 * mark);
         miniCtx.closePath();
         miniCtx.fill();
         miniCtx.restore();
@@ -742,7 +781,7 @@
         miniCtx.strokeStyle = "rgba(170, 200, 255, 0.4)";
         miniCtx.lineWidth = 1;
         miniCtx.beginPath();
-        miniCtx.arc(cx, cy, 11, 0, Math.PI * 2);
+        miniCtx.arc(cx, cy, 11 * mark, 0, Math.PI * 2);
         miniCtx.stroke();
 
         miniCtx.restore();
@@ -811,18 +850,19 @@
     }
 
     function pickSpeedRing(dist) {
-        if (dist < (SPEED_RINGS[0].radius + SPEED_RINGS[1].radius) / 2) {
-            return SPEED_RINGS[0];
+        const rings = scaledRings();
+        if (dist < (rings[0].radius + rings[1].radius) / 2) {
+            return rings[0];
         }
-        if (dist < (SPEED_RINGS[1].radius + SPEED_RINGS[2].radius) / 2) {
-            return SPEED_RINGS[1];
+        if (dist < (rings[1].radius + rings[2].radius) / 2) {
+            return rings[1];
         }
-        return SPEED_RINGS[2];
+        return rings[2];
     }
 
     function snapStick(dx, dy) {
         const dist = Math.hypot(dx, dy);
-        if (dist < STICK_DEAD) {
+        if (dist < STICK_DEAD * stickScale()) {
             return { vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0, speed: 0, ring: "" };
         }
 
@@ -880,11 +920,15 @@
     function buildPips() {
         const base = document.querySelector(".joystick-base");
         const knob = document.getElementById("joystick-knob");
+        for (const pip of base.querySelectorAll(".joystick-pip")) {
+            pip.remove();
+        }
+        const reach = STICK_PIP * stickScale();
         for (const dir of DIRS) {
             const pip = document.createElement("span");
             pip.className = "joystick-pip";
             pip.dataset.dir = dir.name;
-            pip.style.transform = `rotate(${dir.angle}rad) translateX(96px)`;
+            pip.style.transform = `rotate(${dir.angle}rad) translateX(${reach}px)`;
             base.insertBefore(pip, knob);
         }
     }

@@ -191,7 +191,7 @@
                 y,
                 r,
                 color: pick(PALETTES[state.palette] || PALETTES.rainbow),
-                pulseMs: rand(3000, 10000),
+                pulseMs: rand(1000, 5000),
                 pulseOffset: rand(0, Math.PI * 2),
             });
         }
@@ -390,12 +390,12 @@
     }
 
     function ballPulse(ball, now) {
-        if (!ball.pulseMs) {
-            ball.pulseMs = rand(3000, 10000);
+        if (!ball.pulseMs || ball.pulseMs < 1000 || ball.pulseMs > 5000) {
+            ball.pulseMs = rand(1000, 5000);
             ball.pulseOffset = rand(0, Math.PI * 2);
         }
         const wave = 0.5 + 0.5 * Math.sin((now / ball.pulseMs) * Math.PI * 2 + ball.pulseOffset);
-        return 0.45 + 0.55 * wave;
+        return 0.06 + 0.94 * wave;
     }
 
     function drawBall(ball, cam, now) {

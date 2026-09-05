@@ -1,0 +1,22 @@
+---
+description: Commit after every completed change
+alwaysApply: true
+---
+
+# Commit after each change
+
+After you finish a distinct change (feature, fix, or requested edit), create a git commit before stopping or starting the next change.
+
+- Do not wait to be asked. Treat each finished change as a commit request.
+- One commit per change. Do not batch unrelated work into a single commit.
+- Follow this repository's existing commit message style.
+- Never update git config, skip hooks, force-push, or amend unless the user explicitly asks.
+- Do not commit secrets such as `.env` or credential files.
+
+```text
+# ❌ BAD
+Finish a joystick change and a minimap change, then make one combined commit.
+
+# ✅ GOOD
+Commit the joystick change as soon as it works, then commit the minimap change separately.
+```

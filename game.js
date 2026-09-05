@@ -439,6 +439,7 @@
         boost: false,
         won: false,
         menuOpen: false,
+        settingsLite: false,
         resumeOpen: false,
         boardOpen: false,
         boardFrom: "settings",
@@ -2254,12 +2255,14 @@
         if (body) body.scrollTop = 0;
     }
 
-    function openMenu() {
+    function openMenu(lite) {
         if (state.menuOpen) return;
         state.menuOpen = true;
+        state.settingsLite = lite === true;
         pauseTimer(performance.now());
         keys.clear();
         resetStick();
+        settingsMenu.classList.toggle("settings-lite", state.settingsLite);
         settingsMenu.classList.remove("hidden");
         document.documentElement.classList.add("settings-open");
         document.body.classList.add("settings-open");
@@ -2271,6 +2274,8 @@
     function closeMenu() {
         if (!state.menuOpen) return;
         state.menuOpen = false;
+        state.settingsLite = false;
+        settingsMenu.classList.remove("settings-lite");
         settingsMenu.classList.add("hidden");
         document.documentElement.classList.remove("settings-open");
         document.body.classList.remove("settings-open");
@@ -2350,6 +2355,10 @@
             savePlay();
             saveSettings();
             location.href = "./index.html";
+        });
+        document.getElementById("play-settings").addEventListener("click", () => {
+            if (state.won || state.resumeOpen || state.boardOpen) return;
+            openMenu(true);
         });
 
         const commitName = () => {

@@ -182,6 +182,16 @@ body.board-open {
     overflow: visible;
 }
 
+.settings-btn.play-settings {
+    right: auto;
+    left: calc(100% + 12px);
+}
+
+.settings-lite .settings-cat[data-panel="user"],
+.settings-lite .settings-cat[data-panel="game"] {
+    display: none;
+}
+
 .settings-overlay {
     position: fixed;
     inset: 0;

@@ -27,6 +27,8 @@
     const MAX_BALL = BALL_TYPES[BALL_TYPES.length - 1].size;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
+    const SHIP_ACCEL = 2000;
+    const SHIP_DECEL = 1500;
     const SPAWN_CLEARANCE = 15;
     const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
     const ENGINE_LOOP_START = 0.5;
@@ -263,6 +265,7 @@
         palette: saved.palette,
         pulse: saved.pulse,
         ship: saved.ship,
+        speed: 0,
         boost: false,
         won: false,
         menuOpen: false,
@@ -554,23 +557,33 @@
             vy = stick.vy;
         }
 
-        const moving = vx !== 0 || vy !== 0;
-        if (moving) {
+        const steering = vx !== 0 || vy !== 0;
+        let target = 0;
+        if (steering) {
             const length = Math.hypot(vx, vy);
             vx /= length;
             vy /= length;
             state.heading = Math.atan2(vy, vx);
             const usingStick = stick.vx !== 0 || stick.vy !== 0;
-            const speed = SHIP_SPEED * (usingStick ? stick.speed : 1) * (state.boost ? 2 : 1);
-            state.shipX += vx * speed * dt;
-            state.shipY += vy * speed * dt;
+            target = SHIP_SPEED * (usingStick ? stick.speed : 1) * (state.boost ? 2 : 1);
+        }
+
+        if (target > state.speed) {
+            state.speed = Math.min(target, state.speed + SHIP_ACCEL * dt);
+        } else {
+            state.speed = Math.max(target, state.speed - SHIP_DECEL * dt);
+        }
+
+        if (state.speed > 0) {
+            state.shipX += Math.cos(state.heading) * state.speed * dt;
+            state.shipY += Math.sin(state.heading) * state.speed * dt;
         }
 
         const min = SHIP_RADIUS + 8;
         const max = state.world - SHIP_RADIUS - 8;
         state.shipX = Math.min(max, Math.max(min, state.shipX));
         state.shipY = Math.min(max, Math.max(min, state.shipY));
-        return moving;
+        return state.speed > 12;
     }
 
     const engine = {
@@ -1224,6 +1237,7 @@
         state.shipX = center;
         state.shipY = center;
         state.heading = -Math.PI / 2;
+        state.speed = 0;
         state.balls = [];
         state.pops = [];
         state.floaters = [];

@@ -618,32 +618,3 @@ button {
         font-size: 15px;
     }
 }
-
-@media (max-width: 700px) {
-    .hud-stats {
-        gap: 8px;
-        padding: 5px 8px;
-        border-radius: 12px;
-    }
-
-    .hud-timer {
-        padding-left: 8px;
-    }
-
-    .panel {
-        padding: 6px 8px;
-        border-radius: 12px;
-    }
-
-    .label {
-        font-size: 8px;
-    }
-
-    .value {
-        font-size: 16px;
-    }
-
-    .coords {
-        font-size: 10px;
-    }
-}

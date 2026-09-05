@@ -696,7 +696,31 @@
         return engine.ctx;
     }
 
+    function pageIsVisible() {
+        return document.visibilityState === "visible";
+    }
+
+    function pauseAudio() {
+        if (!engine.ctx || engine.ctx.state !== "running") return;
+        engine.ctx.suspend().catch(() => {});
+    }
+
+    function resumeAudio() {
+        if (!pageIsVisible() || !engine.ctx) return;
+        const start = () => {
+            if (!pageIsVisible()) return;
+            startAtmosphere();
+            if (engine.wanted && engine.buffer && !engine.source) startEngine(true);
+        };
+        if (engine.ctx.state === "suspended") {
+            engine.ctx.resume().then(start).catch(() => {});
+            return;
+        }
+        start();
+    }
+
     function unlockEngine() {
+        if (!pageIsVisible()) return;
         const ctx = engineContext();
         if (ctx.state === "suspended") ctx.resume();
         if (!engine.loading) engine.loading = loadEngine();
@@ -712,7 +736,7 @@
             ]);
             engine.buffer = await ctx.decodeAudioData(engineBytes.slice(0));
             engine.hit = await ctx.decodeAudioData(hitBytes.slice(0));
-            if (engine.wanted) startEngine(true);
+            if (engine.wanted && pageIsVisible()) startEngine(true);
             loadAtmosphere();
         } catch {
             engine.loading = null;
@@ -731,7 +755,7 @@
     }
 
     function startAtmosphere() {
-        if (!engine.atmo || engine.atmoSource) return;
+        if (!pageIsVisible() || !engine.atmo || engine.atmoSource) return;
         const ctx = engineContext();
         if (ctx.state === "suspended") return;
         const source = ctx.createBufferSource();
@@ -749,7 +773,7 @@
     }
 
     function playHit() {
-        if (!engine.hit) return;
+        if (!pageIsVisible() || !engine.hit) return;
         const ctx = engineContext();
         if (ctx.state === "suspended") ctx.resume();
         const source = ctx.createBufferSource();
@@ -763,7 +787,7 @@
     }
 
     function startEngine(fadeIn) {
-        if (!engine.buffer || engine.source) return;
+        if (!pageIsVisible() || !engine.buffer || engine.source) return;
         const ctx = engineContext();
         const source = ctx.createBufferSource();
         source.buffer = engine.buffer;
@@ -1700,9 +1724,18 @@
     bindHud();
     preventBrowserGestures();
     window.addEventListener("resize", resize);
-    window.addEventListener("pagehide", savePlay);
+    window.addEventListener("pagehide", () => {
+        savePlay();
+        pauseAudio();
+    });
+    window.addEventListener("pageshow", resumeAudio);
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") savePlay();
+        if (document.visibilityState === "hidden") {
+            savePlay();
+            pauseAudio();
+            return;
+        }
+        resumeAudio();
     });
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

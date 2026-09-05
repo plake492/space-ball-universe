@@ -1064,7 +1064,7 @@
 
     function drawFloaters(cam, dt) {
         ctx.save();
-        ctx.font = "600 15px 'Avenir Next', 'Segoe UI', sans-serif";
+        ctx.font = "600 15px 'Supreme Spike', sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         for (let i = state.floaters.length - 1; i >= 0; i -= 1) {

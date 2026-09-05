@@ -15,6 +15,11 @@
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SPAWN_CLEARANCE = 15;
+    const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
+    const ENGINE_LOOP_START = 0.5;
+    const ENGINE_LOOP_END = 15;
+    const ENGINE_FADE = 0.3;
+    const ENGINE_BOOST_RATE = 1.5;
     const PALETTES = {
         rainbow: [
             "#ff3b30",
@@ -348,6 +353,95 @@
         return moving;
     }
 
+    const engine = {
+        ctx: null,
+        buffer: null,
+        source: null,
+        gain: null,
+        loading: null,
+        wanted: false,
+    };
+
+    function engineContext() {
+        if (!engine.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            engine.ctx = new AudioCtx();
+        }
+        return engine.ctx;
+    }
+
+    function unlockEngine() {
+        const ctx = engineContext();
+        if (ctx.state === "suspended") ctx.resume();
+        if (!engine.loading) engine.loading = loadEngine();
+    }
+
+    async function loadEngine() {
+        try {
+            const ctx = engineContext();
+            const response = await fetch(ENGINE_SRC);
+            const bytes = await response.arrayBuffer();
+            engine.buffer = await ctx.decodeAudioData(bytes);
+            if (engine.wanted) startEngine(true);
+        } catch {
+            engine.loading = null;
+        }
+    }
+
+    function engineRate() {
+        return state.boost ? ENGINE_BOOST_RATE : 1;
+    }
+
+    function startEngine(fadeIn) {
+        if (!engine.buffer || engine.source) return;
+        const ctx = engineContext();
+        const source = ctx.createBufferSource();
+        source.buffer = engine.buffer;
+        source.loop = true;
+        source.loopStart = ENGINE_LOOP_START;
+        source.loopEnd = Math.min(ENGINE_LOOP_END, engine.buffer.duration);
+        source.playbackRate.value = engineRate();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        if (fadeIn) {
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(1, now + ENGINE_FADE);
+        } else {
+            gain.gain.setValueAtTime(0, now);
+        }
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(0, ENGINE_LOOP_START);
+        engine.source = source;
+        engine.gain = gain;
+    }
+
+    function fadeEngine(target) {
+        if (!engine.gain) return;
+        const ctx = engine.ctx;
+        const param = engine.gain.gain;
+        const now = ctx.currentTime;
+        param.cancelScheduledValues(now);
+        param.setValueAtTime(param.value, now);
+        param.linearRampToValueAtTime(target, now + ENGINE_FADE);
+    }
+
+    function updateEngine(moving) {
+        if (moving === engine.wanted && engine.source) {
+            engine.source.playbackRate.value = engineRate();
+            return;
+        }
+        engine.wanted = moving;
+        if (!engine.buffer) return;
+        if (moving) {
+            if (!engine.source) startEngine(true);
+            else fadeEngine(1);
+            engine.source.playbackRate.value = engineRate();
+        } else if (engine.source) {
+            fadeEngine(0);
+        }
+    }
+
     function camera() {
         return {
             x: state.shipX - state.width / 2,
@@ -645,6 +739,7 @@
 
         const moving = state.menuOpen || state.won ? false : moveShip(dt);
         if (!state.menuOpen && !state.won) collectIfHit();
+        updateEngine(moving);
         const cam = camera();
 
         drawSpace(cam);
@@ -666,10 +761,12 @@
         const button = document.getElementById("boost-btn");
         button.classList.toggle("is-on", on);
         button.setAttribute("aria-pressed", on ? "true" : "false");
+        if (engine.source) engine.source.playbackRate.value = engineRate();
     }
 
     function bindKeys() {
         window.addEventListener("keydown", (event) => {
+            unlockEngine();
             if (state.menuOpen || state.won) return;
             if (event.key === " " || event.code === "Space") {
                 event.preventDefault();
@@ -788,6 +885,7 @@
         };
 
         joystick.addEventListener("pointerdown", (event) => {
+            unlockEngine();
             if (state.menuOpen || state.won) return;
             event.preventDefault();
             pointerId = event.pointerId;
@@ -850,6 +948,7 @@
 
         const boostBtn = document.getElementById("boost-btn");
         boostBtn.addEventListener("pointerdown", (event) => {
+            unlockEngine();
             if (state.menuOpen || state.won) return;
             event.preventDefault();
             boostHold.pointer = true;

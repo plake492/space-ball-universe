@@ -1735,7 +1735,11 @@
     }
 
     function bindHud() {
-        document.getElementById("open-settings").addEventListener("click", openMenu);
+        document.getElementById("go-home").addEventListener("click", () => {
+            savePlay();
+            saveSettings();
+            location.href = "./index.html";
+        });
 
         const commitName = () => {
             const next = normalizeName(nameInput.value);

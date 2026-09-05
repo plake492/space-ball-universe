@@ -108,28 +108,59 @@
         return n - Math.floor(n);
     }
 
-    function paintHomeSky() {
-        const canvas = document.getElementById("home-sky");
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        const view = document.documentElement;
-        const width = view.clientWidth || window.innerWidth;
-        const height = view.clientHeight || window.innerHeight;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = Math.floor(width * dpr);
-        canvas.height = Math.floor(height * dpr);
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const homeSky = {
+        canvas: null,
+        ctx: null,
+        back: null,
+        stars: [],
+        width: 0,
+        height: 0,
+        last: 0,
+        frame: 0,
+        running: false,
+    };
 
+    function buildHomeStars(width, height) {
+        const stars = [];
+        const cell = 72;
+        const cols = Math.ceil(width / cell) + 1;
+        const rows = Math.ceil(height / cell) + 1;
+        const heading = -0.35;
+        for (let gy = 0; gy < rows; gy += 1) {
+            for (let gx = 0; gx < cols; gx += 1) {
+                const count = 1 + Math.floor(hash2(gx + 3.1, gy + 8.4) * 2);
+                for (let i = 0; i < count; i += 1) {
+                    const depth = hash2(gx * 2.7, gy + i * 5.1);
+                    const speed = 3.5 + depth * 18;
+                    const turn = heading + (hash2(i + gx, gy * 4.2) - 0.5) * 0.7;
+                    stars.push({
+                        x: gx * cell + hash2(gx + i * 19.1, gy + 7.3) * cell,
+                        y: gy * cell + hash2(gx + 4.8, gy + i * 13.7) * cell,
+                        vx: Math.cos(turn) * speed,
+                        vy: Math.sin(turn) * speed,
+                        size: 0.45 + depth * 2.1,
+                        alpha: 0.28 + depth * 0.62,
+                    });
+                }
+            }
+        }
+        return stars;
+    }
+
+    function paintHomeBackdrop(width, height) {
+        const back = document.createElement("canvas");
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        back.width = Math.floor(width * dpr);
+        back.height = Math.floor(height * dpr);
+        const ctx = back.getContext("2d");
+        if (!ctx) return null;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const sky = ctx.createLinearGradient(0, 0, 0, height);
         sky.addColorStop(0, "#050217");
         sky.addColorStop(0.55, "#0a0830");
         sky.addColorStop(1, "#07051c");
         ctx.fillStyle = sky;
         ctx.fillRect(0, 0, width, height);
-
         if (state.nebula) {
             const washes = [
                 { x: width * 0.18, y: height * 0.22, r: Math.max(width, height) * 0.55, color: "90, 40, 140", a: 0.22 },
@@ -150,24 +181,67 @@
             }
             ctx.restore();
         }
+        return back;
+    }
 
-        const cell = 72;
-        const cols = Math.ceil(width / cell) + 1;
-        const rows = Math.ceil(height / cell) + 1;
-        for (let gy = 0; gy < rows; gy += 1) {
-            for (let gx = 0; gx < cols; gx += 1) {
-                const count = 1 + Math.floor(hash2(gx + 3.1, gy + 8.4) * 2);
-                for (let i = 0; i < count; i += 1) {
-                    const x = gx * cell + hash2(gx + i * 19.1, gy + 7.3) * cell;
-                    const y = gy * cell + hash2(gx + 4.8, gy + i * 13.7) * cell;
-                    const twinkle = 0.35 + hash2(gx * 3.1, gy + i) * 0.65;
-                    const size = 0.55 + hash2(i + gx, gy * 2.2) * 1.7;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
-                    ctx.beginPath();
-                    ctx.arc(x, y, size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
+    function paintHomeSky() {
+        const canvas = document.getElementById("home-sky");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const view = document.documentElement;
+        const width = view.clientWidth || window.innerWidth;
+        const height = view.clientHeight || window.innerHeight;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        homeSky.canvas = canvas;
+        homeSky.ctx = ctx;
+        homeSky.width = width;
+        homeSky.height = height;
+        homeSky.back = paintHomeBackdrop(width, height);
+        homeSky.stars = buildHomeStars(width, height);
+        homeSky.last = 0;
+        if (!homeSky.running) {
+            homeSky.running = true;
+            homeSky.frame = requestAnimationFrame(tickHomeSky);
+        }
+    }
+
+    function tickHomeSky(now) {
+        const ctx = homeSky.ctx;
+        if (!ctx) {
+            homeSky.running = false;
+            return;
+        }
+        homeSky.frame = requestAnimationFrame(tickHomeSky);
+        if (document.hidden) {
+            homeSky.last = 0;
+            return;
+        }
+        const dt = homeSky.last ? Math.min(0.05, (now - homeSky.last) / 1000) : 0;
+        homeSky.last = now;
+        const width = homeSky.width;
+        const height = homeSky.height;
+        if (homeSky.back) ctx.drawImage(homeSky.back, 0, 0, width, height);
+        else {
+            ctx.fillStyle = "#050217";
+            ctx.fillRect(0, 0, width, height);
+        }
+        for (const star of homeSky.stars) {
+            star.x += star.vx * dt;
+            star.y += star.vy * dt;
+            if (star.x < -4) star.x = width + 4;
+            else if (star.x > width + 4) star.x = -4;
+            if (star.y < -4) star.y = height + 4;
+            else if (star.y > height + 4) star.y = -4;
+            ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 

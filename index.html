@@ -7,6 +7,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Harlie Space Hunt</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="game.css">
 </head>
 <body>
@@ -47,10 +50,18 @@
 
             <section class="settings-block">
                 <div class="settings-heading">
-                    <p class="label">Goal</p>
-                    <p class="value"><span id="goal-slider-value">75</span> balls</p>
+                    <p class="label">Balls</p>
+                    <p class="value"><span id="balls-slider-value">75</span></p>
                 </div>
-                <input type="range" id="goal-slider" min="25" max="250" step="5" value="75" aria-label="Goal balls">
+                <input type="range" id="balls-slider" min="25" max="250" step="5" value="75" aria-label="Balls in the game">
+            </section>
+
+            <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Goal</p>
+                    <p class="value"><span id="goal-slider-value">75</span></p>
+                </div>
+                <input type="range" id="goal-slider" min="5" max="75" step="5" value="75" aria-label="Balls to win">
             </section>
 
             <section class="settings-block">
@@ -72,9 +83,9 @@
 
     <div class="overlay hidden" id="win-overlay">
         <div class="win-card">
-            <h1>All found</h1>
-            <p id="win-message">You collected the goal.</p>
-            <button type="button" id="keep-flying">Keep flying</button>
+            <h1>YOU WON</h1>
+            <p id="win-message">You reached the goal.</p>
+            <button type="button" id="win-restart">Restart</button>
         </div>
     </div>
 

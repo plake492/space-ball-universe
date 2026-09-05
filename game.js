@@ -1,5 +1,8 @@
 (() => {
     const START_BALLS = 75;
+    const START_GOAL = 75;
+    const GOAL_MIN = 5;
+    const GOAL_STEP = 5;
     const START_WORLD = 20000;
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
@@ -26,6 +29,8 @@
     const ballsLeftEl = document.getElementById("balls-left");
     const coordsEl = document.getElementById("coords");
     const timerEl = document.getElementById("play-timer");
+    const ballsSlider = document.getElementById("balls-slider");
+    const ballsSliderValue = document.getElementById("balls-slider-value");
     const goalSlider = document.getElementById("goal-slider");
     const goalSliderValue = document.getElementById("goal-slider-value");
     const settingsMenu = document.getElementById("settings-menu");
@@ -61,7 +66,8 @@
         balls: [],
         pops: [],
         found: 0,
-        goal: START_BALLS,
+        ballCount: START_BALLS,
+        goal: START_GOAL,
         won: false,
         menuOpen: false,
         width: 0,
@@ -159,11 +165,26 @@
         timerEl.textContent = formatPlayTime(ms);
     }
 
+    function clampGoal(value) {
+        const max = Math.max(GOAL_MIN, state.ballCount);
+        const snapped = Math.round(value / GOAL_STEP) * GOAL_STEP;
+        return Math.min(max, Math.max(GOAL_MIN, snapped));
+    }
+
+    function syncGoalSlider() {
+        goalSlider.min = String(GOAL_MIN);
+        goalSlider.max = String(state.ballCount);
+        goalSlider.step = String(GOAL_STEP);
+        goalSlider.value = String(state.goal);
+        goalSliderValue.textContent = String(state.goal);
+    }
+
     function updateHud() {
         foundEl.textContent = String(state.found);
         goalEl.textContent = String(state.goal);
-        goalSlider.value = String(state.goal);
-        goalSliderValue.textContent = String(state.goal);
+        ballsSlider.value = String(state.ballCount);
+        ballsSliderValue.textContent = String(state.ballCount);
+        syncGoalSlider();
         const n = remaining();
         ballsLeftEl.textContent = `${n} ball${n === 1 ? "" : "s"} in space`;
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
@@ -175,7 +196,14 @@
     function maybeWin() {
         if (state.won || state.found < state.goal) return;
         state.won = true;
-        winMessage.textContent = `You found ${state.found} rainbow balls.`;
+        pauseTimer(performance.now());
+        keys.clear();
+        resetStick();
+        if (state.menuOpen) {
+            state.menuOpen = false;
+            settingsMenu.classList.add("hidden");
+        }
+        winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(playTime(performance.now()))}`;
         winOverlay.classList.remove("hidden");
     }
 
@@ -200,7 +228,7 @@
     }
 
     function moveShip(dt) {
-        if (state.menuOpen) return false;
+        if (state.menuOpen || state.won) return false;
         let vx = 0;
         let vy = 0;
         if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
@@ -456,8 +484,8 @@
         const dt = Math.min(0.033, (now - last) / 1000);
         last = now;
 
-        const moving = state.menuOpen ? false : moveShip(dt);
-        if (!state.menuOpen) collectIfHit();
+        const moving = state.menuOpen || state.won ? false : moveShip(dt);
+        if (!state.menuOpen && !state.won) collectIfHit();
         const cam = camera();
 
         drawSpace(cam);
@@ -473,7 +501,7 @@
 
     function bindKeys() {
         window.addEventListener("keydown", (event) => {
-            if (state.menuOpen) return;
+            if (state.menuOpen || state.won) return;
             keys.add(event.key.toLowerCase());
             if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(event.key.toLowerCase())) {
                 event.preventDefault();
@@ -576,7 +604,7 @@
         };
 
         joystick.addEventListener("pointerdown", (event) => {
-            if (state.menuOpen) return;
+            if (state.menuOpen || state.won) return;
             event.preventDefault();
             pointerId = event.pointerId;
             joystick.setPointerCapture(event.pointerId);
@@ -611,8 +639,8 @@
         keys.clear();
         resetStick();
         winOverlay.classList.add("hidden");
-        spawnBalls(state.goal);
-        resetTimer(performance.now(), !state.menuOpen);
+        spawnBalls(state.ballCount);
+        resetTimer(performance.now(), !state.menuOpen && !state.won);
         updateHud();
     }
 
@@ -629,21 +657,37 @@
         if (!state.menuOpen) return;
         state.menuOpen = false;
         settingsMenu.classList.add("hidden");
-        resumeTimer(performance.now());
+        if (!state.won) resumeTimer(performance.now());
     }
 
     function bindHud() {
         document.getElementById("open-settings").addEventListener("click", openMenu);
+
+        ballsSlider.addEventListener("input", () => {
+            ballsSliderValue.textContent = ballsSlider.value;
+        });
+
+        ballsSlider.addEventListener("change", () => {
+            const next = Number(ballsSlider.value);
+            if (next === state.ballCount) return;
+            state.ballCount = next;
+            state.goal = clampGoal(state.goal);
+            restartGame();
+        });
 
         goalSlider.addEventListener("input", () => {
             goalSliderValue.textContent = goalSlider.value;
         });
 
         goalSlider.addEventListener("change", () => {
-            const next = Number(goalSlider.value);
-            if (next === state.goal) return;
+            const next = clampGoal(Number(goalSlider.value));
+            if (next === state.goal) {
+                syncGoalSlider();
+                return;
+            }
             state.goal = next;
-            restartGame();
+            updateHud();
+            maybeWin();
         });
 
         for (const button of document.querySelectorAll(".world-btn")) {
@@ -662,8 +706,8 @@
 
         document.getElementById("settings-continue").addEventListener("click", closeMenu);
 
-        document.getElementById("keep-flying").addEventListener("click", () => {
-            winOverlay.classList.add("hidden");
+        document.getElementById("win-restart").addEventListener("click", () => {
+            restartGame();
         });
     }
 
@@ -677,7 +721,7 @@
     }
 
     resize();
-    spawnBalls(state.goal);
+    spawnBalls(state.ballCount);
     updateHud();
     bindKeys();
     buildPips();

@@ -363,10 +363,33 @@
                     const y = gy * cell + hy * cell - cam.y;
                     const twinkle = 0.45 + hash2(gx * 3.1, gy + i) * 0.55;
                     const size = 0.6 + hash2(i + gx, gy * 2.2) * 1.8;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
-                    ctx.beginPath();
-                    ctx.arc(x, y, size, 0, Math.PI * 2);
-                    ctx.fill();
+                    const hasRings = hash2(gx * 8.4, gy + i * 21) > 0.88;
+
+                    if (hasRings) {
+                        const body = 1.6 + hash2(i, gx) * 2.4;
+                        const tilt = hash2(gx, i * 3.3) * Math.PI;
+                        const rx = body * (2.3 + hash2(gy, i) * 1.6);
+                        const ry = rx * (0.2 + hash2(i * 2.1, gx) * 0.14);
+                        ctx.strokeStyle = `rgba(220, 186, 120, ${0.28 + twinkle * 0.4})`;
+                        ctx.lineWidth = 1.1 + hash2(gx + i, gy) * 1.3;
+                        ctx.beginPath();
+                        ctx.ellipse(x, y, rx, ry, tilt, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.strokeStyle = `rgba(170, 140, 80, ${0.18 + twinkle * 0.22})`;
+                        ctx.lineWidth = 0.7;
+                        ctx.beginPath();
+                        ctx.ellipse(x, y, rx * 0.7, ry * 0.7, tilt, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.fillStyle = `rgba(255, 228, 186, ${twinkle})`;
+                        ctx.beginPath();
+                        ctx.arc(x, y, body, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+                        ctx.beginPath();
+                        ctx.arc(x, y, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             }
         }

@@ -87,10 +87,10 @@ body.settings-open {
 
 .hud-score {
     margin: 0;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.06em;
-    color: rgba(190, 210, 245, 0.48);
+    color: rgba(190, 210, 245, 0.78);
     font-variant-numeric: tabular-nums;
 }
 
@@ -543,7 +543,7 @@ button {
     }
 
     .hud-score {
-        font-size: 11px;
+        font-size: 12px;
     }
 
     .panel {

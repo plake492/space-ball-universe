@@ -100,9 +100,10 @@
             const ballCount = snapStep(Number(data.ballCount) || START_BALLS, BALLS_MIN, BALLS_MAX, GOAL_STEP);
             const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
-            return { world, ballCount, goal, palette };
+            const pulse = data.pulse !== false;
+            return { world, ballCount, goal, palette, pulse };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow" };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true };
         }
     }
 
@@ -113,6 +114,7 @@
                 ballCount: state.ballCount,
                 goal: state.goal,
                 palette: state.palette,
+                pulse: state.pulse,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -131,6 +133,7 @@
         ballCount: saved.ballCount,
         goal: saved.goal,
         palette: saved.palette,
+        pulse: saved.pulse,
         won: false,
         menuOpen: false,
         width: 0,
@@ -273,6 +276,9 @@
         for (const button of document.querySelectorAll(".palette-btn")) {
             button.classList.toggle("is-on", button.dataset.palette === state.palette);
         }
+        for (const button of document.querySelectorAll(".pulse-btn")) {
+            button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
+        }
     }
 
     function maybeWin() {
@@ -392,6 +398,7 @@
     }
 
     function ballPulse(ball, now) {
+        if (!state.pulse) return 1;
         if (!ball.pulseMs || ball.pulseMs < 1000 || ball.pulseMs > 5000) {
             ball.pulseMs = rand(1000, 5000);
             ball.pulseOffset = rand(0, Math.PI * 2);
@@ -850,6 +857,16 @@
                 state.world = next;
                 saveSettings();
                 restartGame();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".pulse-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.pulse === "on";
+                if (next === state.pulse) return;
+                state.pulse = next;
+                saveSettings();
+                updateHud();
             });
         }
 

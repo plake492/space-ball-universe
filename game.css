@@ -24,6 +24,9 @@ body {
     color: #f4f7ff;
     font-family: "Supreme Spike", sans-serif;
     touch-action: none;
+    overscroll-behavior: none;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
     user-select: none;
     -webkit-user-select: none;
 }
@@ -828,6 +831,7 @@ body.board-open {
 button {
     font-family: inherit;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 body.home {

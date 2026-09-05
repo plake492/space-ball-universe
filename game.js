@@ -1749,13 +1749,34 @@
         if (resume && !state.won && !state.menuOpen) resumeTimer(performance.now());
     }
 
+    function pageZoomed() {
+        return Boolean(window.visualViewport && window.visualViewport.scale > 1.01);
+    }
+
     function preventBrowserGestures() {
+        const block = (event) => event.preventDefault();
+        for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
+            document.addEventListener(type, block, { passive: false });
+        }
+
         document.addEventListener("touchmove", (event) => {
-            if (state.menuOpen || state.boardOpen || event.target.closest("#settings-menu") || event.target.closest("#board-overlay")) return;
+            if (pageZoomed() && event.touches.length > 1) return;
+            if (state.menuOpen || state.boardOpen || event.target.closest("#settings-menu") || event.target.closest("#board-overlay")) {
+                if (event.touches.length > 1) event.preventDefault();
+                return;
+            }
             event.preventDefault();
         }, { passive: false });
-        document.addEventListener("gesturestart", (event) => event.preventDefault());
-        document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+        let lastTap = 0;
+        document.addEventListener("touchend", (event) => {
+            if (event.target.closest("input, textarea")) return;
+            const now = event.timeStamp;
+            if (now - lastTap <= 350) event.preventDefault();
+            lastTap = now;
+        }, { passive: false });
+
+        document.addEventListener("contextmenu", block);
     }
 
     function restorePlay() {

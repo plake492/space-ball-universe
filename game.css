@@ -22,8 +22,8 @@ body {
 
 html {
     --control-grow: clamp(1, calc(1 + 0.6 * (100vmin - 320px) / 448px), 1.6);
-    --control-inset-x: clamp(0px, calc(100vw / 6 * (100vmin - 320px) / 448px), calc(100vw / 6));
-    --control-inset-y: clamp(0px, calc(100vh / 6 * (100vmin - 320px) / 448px), calc(100vh / 6));
+    --control-inset-x: clamp(0px, calc(100vw / 6 * (100vmin - 320px) / 448px - 100px), calc(100vw / 6 - 100px));
+    --control-inset-y: clamp(0px, calc(100vh / 6 * (100vmin - 320px) / 448px - 50px), calc(100vh / 6 - 50px));
 }
 
 html.settings-open,

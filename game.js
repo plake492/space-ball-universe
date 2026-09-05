@@ -181,8 +181,8 @@
         const grow = 1 + CONTROL_GROW * t;
         const root = document.documentElement;
         root.style.setProperty("--control-grow", String(grow));
-        root.style.setProperty("--control-inset-x", `${(window.innerWidth / 6) * t}px`);
-        root.style.setProperty("--control-inset-y", `${(window.innerHeight / 6) * t}px`);
+        root.style.setProperty("--control-inset-x", `${Math.max(0, (window.innerWidth / 6) * t - 100)}px`);
+        root.style.setProperty("--control-inset-y", `${Math.max(0, (window.innerHeight / 6) * t - 50)}px`);
     }
 
     function stickScale() {

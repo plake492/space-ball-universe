@@ -24,9 +24,9 @@
     <section class="panel hud-stats" aria-live="polite" aria-label="Score and time">
         <div class="hud-stats-row">
             <p class="value" aria-label="Found"><span id="found-count">0</span> / <span id="goal-count">75</span></p>
+            <p class="value hud-score" id="play-score" aria-label="Score">0</p>
             <p class="value hud-timer" id="play-timer" aria-label="Play time">0:00</p>
         </div>
-        <p class="hud-score" id="play-score" aria-label="Score">0</p>
     </section>
 
     <button type="button" class="settings-btn" id="open-settings" aria-label="Settings">
@@ -136,6 +136,7 @@
     <div class="overlay hidden" id="win-overlay">
         <div class="win-card">
             <h1>YOU WON</h1>
+            <p class="win-score" id="win-score">0</p>
             <p id="win-message">You reached the goal.</p>
             <button type="button" id="win-restart">Restart</button>
         </div>

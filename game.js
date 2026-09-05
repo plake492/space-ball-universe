@@ -91,6 +91,7 @@
     const settingsMenu = document.getElementById("settings-menu");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
+    const winScoreEl = document.getElementById("win-score");
     const timer = { elapsed: 0, runningSince: performance.now() };
     let shownSecond = -1;
 
@@ -149,9 +150,20 @@
     }
 
     function ballTypeFor(ball) {
-        return BALL_TYPES.find((type) => Math.abs(type.size / 2 - Number(ball.r)) < 0.6)
-            || BALL_TYPES.find((type) => type.points === Number(ball.points))
-            || null;
+        const byPoints = BALL_TYPES.find((type) => type.points === Number(ball.points));
+        if (byPoints) return byPoints;
+        const r = Number(ball.r);
+        if (!Number.isFinite(r)) return BALL_TYPES[2];
+        let best = BALL_TYPES[0];
+        let bestDist = Infinity;
+        for (const type of BALL_TYPES) {
+            const dist = Math.abs(type.size / 2 - r);
+            if (dist < bestDist) {
+                best = type;
+                bestDist = dist;
+            }
+        }
+        return best;
     }
 
     function normalizeBall(ball) {
@@ -243,6 +255,7 @@
         heading: -Math.PI / 2,
         balls: [],
         pops: [],
+        floaters: [],
         found: 0,
         score: 0,
         ballCount: saved.ballCount,
@@ -431,7 +444,7 @@
 
     function updateHud() {
         foundEl.textContent = String(state.found);
-        scoreEl.textContent = state.score.toLocaleString();
+        if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
         goalEl.textContent = String(state.goal);
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
@@ -492,7 +505,8 @@
         keys.clear();
         resetStick();
         if (state.menuOpen) closeMenu();
-        winMessage.textContent = `Goal ${state.goal} · ${state.score.toLocaleString()} · ${formatPlayTime(playTime(performance.now()))}`;
+        if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
+        winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(playTime(performance.now()))}`;
         winOverlay.classList.remove("hidden");
         savePlay();
     }
@@ -504,12 +518,19 @@
             if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
                 state.balls.splice(i, 1);
                 state.found += 1;
-                state.score += ball.points || 0;
+                const points = ball.points || ballTypeFor(ball).points;
+                state.score += points;
                 state.pops.push({
                     x: ball.x,
                     y: ball.y,
                     r: ball.r,
                     color: ball.color,
+                    life: 1,
+                });
+                state.floaters.push({
+                    x: ball.x,
+                    y: ball.y,
+                    points,
                     life: 1,
                 });
                 playHit();
@@ -830,6 +851,29 @@
         }
     }
 
+    function drawFloaters(cam, dt) {
+        ctx.save();
+        ctx.font = "700 22px 'Avenir Next', 'Segoe UI', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (let i = state.floaters.length - 1; i >= 0; i -= 1) {
+            const floater = state.floaters[i];
+            floater.life -= dt * 0.9;
+            if (floater.life <= 0) {
+                state.floaters.splice(i, 1);
+                continue;
+            }
+            ctx.globalAlpha = Math.max(0, floater.life);
+            ctx.fillStyle = "#e8f6ff";
+            ctx.fillText(
+                `+${floater.points}`,
+                floater.x - cam.x,
+                floater.y - cam.y - (1 - floater.life) * 48
+            );
+        }
+        ctx.restore();
+    }
+
     function loadShipImage(id) {
         const src = SHIP_SRC[id];
         if (!src) return null;
@@ -999,6 +1043,7 @@
         drawSpace(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
         drawPops(cam, dt);
+        drawFloaters(cam, dt);
         drawShip(moving);
         drawMinimap(now);
         updateTimer(now);
@@ -1179,6 +1224,7 @@
         state.heading = -Math.PI / 2;
         state.balls = [];
         state.pops = [];
+        state.floaters = [];
         state.found = 0;
         state.score = 0;
         state.won = false;
@@ -1364,7 +1410,8 @@
         timer.runningSince = play.won ? null : performance.now();
         shownSecond = -1;
         if (play.won) {
-            winMessage.textContent = `Goal ${state.goal} · ${state.score.toLocaleString()} · ${formatPlayTime(play.elapsed)}`;
+            if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
+            winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(play.elapsed)}`;
             winOverlay.classList.remove("hidden");
         }
     }

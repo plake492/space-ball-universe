@@ -45,7 +45,7 @@ body.settings-open {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 0;
     pointer-events: none;
     z-index: 4;
     min-width: 0;
@@ -80,18 +80,10 @@ body.settings-open {
     font-variant-numeric: tabular-nums;
 }
 
+.hud-score,
 .hud-timer {
     padding-left: 14px;
     border-left: 1px solid rgba(170, 200, 255, 0.28);
-}
-
-.hud-score {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: rgba(190, 210, 245, 0.78);
-    font-variant-numeric: tabular-nums;
 }
 
 .label {
@@ -508,6 +500,15 @@ body.settings-open {
     color: #c9d6f5;
 }
 
+.win-score {
+    margin: 0 0 8px !important;
+    font-size: clamp(28px, 6vw, 44px) !important;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #e8f6ff !important;
+    text-shadow: 0 0 16px rgba(90, 210, 255, 0.7);
+}
+
 .win-card button {
     min-width: 180px;
     min-height: 56px;
@@ -529,7 +530,6 @@ button {
 @media (max-width: 1440px) {
     .hud-stats {
         top: max(12px, env(safe-area-inset-top));
-        gap: 2px;
         padding: 6px 10px;
         border-radius: 14px;
     }
@@ -538,12 +538,9 @@ button {
         gap: 10px;
     }
 
+    .hud-score,
     .hud-timer {
         padding-left: 10px;
-    }
-
-    .hud-score {
-        font-size: 12px;
     }
 
     .panel {

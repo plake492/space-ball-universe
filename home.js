@@ -38,6 +38,9 @@
     const continueBtn = document.getElementById("home-continue");
     const homeSub = document.getElementById("home-sub");
     const homeUser = document.getElementById("home-user");
+    const homeDiffBalls = document.getElementById("home-diff-balls");
+    const homeDiffGoal = document.getElementById("home-diff-goal");
+    const homeDiffWorld = document.getElementById("home-diff-world");
 
     const state = {
         world: START_WORLD,
@@ -88,6 +91,24 @@
             }
         }
         return "";
+    }
+
+    function worldLabel(world) {
+        if (world >= 20000) return "xl";
+        if (world >= 15000) return "lg";
+        if (world >= 10000) return "md";
+        return "sm";
+    }
+
+    function updateDiffRules() {
+        const preset = DIFFICULTIES[state.difficulty] || {
+            world: state.world,
+            ballCount: state.ballCount,
+            goal: state.goal,
+        };
+        if (homeDiffBalls) homeDiffBalls.textContent = String(preset.ballCount);
+        if (homeDiffGoal) homeDiffGoal.textContent = String(preset.goal);
+        if (homeDiffWorld) homeDiffWorld.textContent = worldLabel(preset.world);
     }
 
     function applyDifficulty(id) {
@@ -259,6 +280,7 @@
         for (const button of document.querySelectorAll(".diff-btn")) {
             button.classList.toggle("is-on", button.dataset.diff === state.difficulty);
         }
+        updateDiffRules();
         for (const button of document.querySelectorAll(".palette-btn")) {
             button.classList.toggle("is-on", button.dataset.palette === state.palette);
         }

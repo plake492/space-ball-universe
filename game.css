@@ -1073,6 +1073,23 @@ body.home {
     flex: 1 1 calc(33.333% - 8px);
 }
 
+.home-diff-rules {
+    display: flex;
+    justify-content: space-between;
+    width: min(420px, 100%);
+    margin-top: 8px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(220, 235, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+    text-align: center;
+}
+
+.home-diff-rules .value {
+    margin-top: 4px;
+    font-size: 22px;
+}
+
 .home-btn {
     min-height: 64px;
     border-radius: 16px;
@@ -1364,6 +1381,14 @@ body.home {
     .home-diffs {
         margin-top: 16px;
         gap: 8px;
+    }
+
+    .home-diff-rules {
+        padding: 10px 12px;
+    }
+
+    .home-diff-rules .value {
+        font-size: 18px;
     }
 
     .home-btn {

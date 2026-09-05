@@ -371,7 +371,7 @@ body.settings-open {
     margin-bottom: 8px;
     border-radius: 50%;
     border: 1px solid rgba(220, 235, 255, 0.35);
-    background: rgba(10, 16, 36, 0.72);
+    background: rgba(10, 16, 36, 0.82);
     color: #eef3ff;
     font-size: calc(22px * var(--control-grow));
     font-weight: 800;
@@ -380,7 +380,7 @@ body.settings-open {
 }
 
 .boost-btn.is-on {
-    background: rgba(79, 124, 255, 0.72);
+    background: rgba(79, 124, 255, 0.82);
     border-color: rgba(190, 230, 255, 0.7);
     box-shadow: 0 0 18px rgba(90, 160, 255, 0.7);
 }
@@ -390,7 +390,7 @@ body.settings-open {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: rgba(10, 16, 36, 0.62);
+    background: rgba(10, 16, 36, 0.72);
 }
 
 .joystick-ring {
@@ -433,14 +433,14 @@ body.settings-open {
     height: var(--knob-size);
     margin: calc(var(--knob-size) / -2) 0 0 calc(var(--knob-size) / -2);
     border-radius: 50%;
-    background: rgba(90, 140, 255, 0.42);
+    background: rgba(90, 140, 255, 0.52);
     border: 1px solid rgba(190, 215, 255, 0.55);
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
     pointer-events: none;
 }
 
 .joystick.is-active .joystick-knob {
-    background: rgba(90, 140, 255, 0.72);
+    background: rgba(90, 140, 255, 0.82);
 }
 
 .joystick-pip {

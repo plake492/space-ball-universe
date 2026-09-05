@@ -41,7 +41,8 @@ body {
 .panel,
 .add-btn,
 .win-card,
-.pad-btn {
+.joystick-base,
+.joystick-knob {
     background: rgba(10, 16, 36, 0.72);
     border: 1px solid rgba(170, 200, 255, 0.28);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -124,10 +125,24 @@ body {
     pointer-events: none;
 }
 
+.minimap {
+    position: fixed;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 240px;
+    height: 240px;
+    z-index: 3;
+    pointer-events: none;
+    border-radius: 20px;
+    border: 1px solid rgba(170, 200, 255, 0.28);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    background: rgba(10, 16, 36, 0.72);
+}
+
 .hint {
     position: fixed;
     right: max(20px, env(safe-area-inset-right));
-    bottom: max(20px, env(safe-area-inset-bottom));
+    bottom: max(276px, calc(env(safe-area-inset-bottom) + 272px));
     margin: 0;
     z-index: 2;
     font-size: 14px;
@@ -135,34 +150,65 @@ body {
     pointer-events: none;
 }
 
-.dpad {
+.joystick {
     position: fixed;
     left: max(20px, env(safe-area-inset-left));
     bottom: max(24px, env(safe-area-inset-bottom));
-    width: 228px;
-    height: 228px;
+    width: 220px;
+    height: 220px;
     z-index: 3;
+    touch-action: none;
 }
 
-.pad-btn {
+.joystick-base {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(10, 16, 36, 0.62);
+}
+
+.joystick-knob {
     position: absolute;
-    width: 74px;
-    height: 74px;
-    border-radius: 20px;
-    color: #eef3ff;
-    font-size: 24px;
+    top: 50%;
+    left: 50%;
+    width: 86px;
+    height: 86px;
+    margin: -43px 0 0 -43px;
+    border-radius: 50%;
+    background: rgba(90, 140, 255, 0.42);
+    border: 1px solid rgba(190, 215, 255, 0.55);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
 }
 
-.pad-btn:active,
-.pad-btn.is-held {
-    background: rgba(90, 140, 255, 0.55);
-    transform: scale(0.96);
+.joystick.is-active .joystick-knob {
+    background: rgba(90, 140, 255, 0.72);
 }
 
-.pad-up { top: 0; left: 77px; }
-.pad-down { bottom: 0; left: 77px; }
-.pad-left { top: 77px; left: 0; }
-.pad-right { top: 77px; right: 0; }
+.joystick-pip {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 50%;
+    background: rgba(190, 210, 245, 0.38);
+    pointer-events: none;
+}
+
+.joystick-pip.is-on {
+    background: #9ec2ff;
+    box-shadow: 0 0 10px #7aa8ff;
+}
+
+.joystick-pip[data-dir="up"] { top: 14px; left: 50%; }
+.joystick-pip[data-dir="up-right"] { top: 27%; left: 73%; }
+.joystick-pip[data-dir="right"] { top: 50%; left: calc(100% - 14px); }
+.joystick-pip[data-dir="down-right"] { top: 73%; left: 73%; }
+.joystick-pip[data-dir="down"] { top: calc(100% - 14px); left: 50%; }
+.joystick-pip[data-dir="down-left"] { top: 73%; left: 27%; }
+.joystick-pip[data-dir="left"] { top: 50%; left: 14px; }
+.joystick-pip[data-dir="up-left"] { top: 27%; left: 27%; }
 
 .overlay {
     position: fixed;

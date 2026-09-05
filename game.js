@@ -2,12 +2,14 @@
     const WORLD = 20000;
     const START_X = WORLD / 2;
     const START_Y = WORLD / 2;
-    const START_BALLS = 25;
+    const START_BALLS = 75;
+    const MINIMAP_SIZE = 240;
+    const MINIMAP_SCALE = 0.1;
     const ADD_BALLS = 5;
     const MIN_BALL = 50;
     const MAX_BALL = 250;
     const SHIP_RADIUS = 22;
-    const SHIP_SPEED = 420;
+    const SHIP_SPEED = 840;
     const OFFSCREEN_PAD = 1400;
     const RAINBOW = [
         "#ff3b30",
@@ -21,6 +23,8 @@
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+    const minimap = document.getElementById("minimap");
+    const miniCtx = minimap.getContext("2d");
     const foundEl = document.getElementById("found-count");
     const goalEl = document.getElementById("goal-count");
     const goalStepperEl = document.getElementById("goal-stepper");
@@ -30,7 +34,17 @@
     const winMessage = document.getElementById("win-message");
 
     const keys = new Set();
-    const pad = { up: false, down: false, left: false, right: false };
+    const stick = { vx: 0, vy: 0, dir: "" };
+    const DIRS = [
+        { name: "right", vx: 1, vy: 0 },
+        { name: "down-right", vx: 1, vy: 1 },
+        { name: "down", vx: 0, vy: 1 },
+        { name: "down-left", vx: -1, vy: 1 },
+        { name: "left", vx: -1, vy: 0 },
+        { name: "up-left", vx: -1, vy: -1 },
+        { name: "up", vx: 0, vy: -1 },
+        { name: "up-right", vx: 1, vy: -1 },
+    ];
 
     const state = {
         shipX: START_X,
@@ -69,6 +83,12 @@
         canvas.style.width = `${state.width}px`;
         canvas.style.height = `${state.height}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        minimap.width = Math.floor(MINIMAP_SIZE * dpr);
+        minimap.height = Math.floor(MINIMAP_SIZE * dpr);
+        minimap.style.width = `${MINIMAP_SIZE}px`;
+        minimap.style.height = `${MINIMAP_SIZE}px`;
+        miniCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     function spawnBalls(count, awayFromX, awayFromY) {
@@ -138,10 +158,14 @@
     function moveShip(dt) {
         let vx = 0;
         let vy = 0;
-        if (keys.has("arrowleft") || keys.has("a") || pad.left) vx -= 1;
-        if (keys.has("arrowright") || keys.has("d") || pad.right) vx += 1;
-        if (keys.has("arrowup") || keys.has("w") || pad.up) vy -= 1;
-        if (keys.has("arrowdown") || keys.has("s") || pad.down) vy += 1;
+        if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
+        if (keys.has("arrowright") || keys.has("d")) vx += 1;
+        if (keys.has("arrowup") || keys.has("w")) vy -= 1;
+        if (keys.has("arrowdown") || keys.has("s")) vy += 1;
+        if (stick.vx !== 0 || stick.vy !== 0) {
+            vx = stick.vx;
+            vy = stick.vy;
+        }
 
         const moving = vx !== 0 || vy !== 0;
         if (moving) {
@@ -316,6 +340,70 @@
         drawBorder(cam);
     }
 
+    function toMinimap(worldX, worldY) {
+        return {
+            x: MINIMAP_SIZE / 2 + (worldX - state.shipX) * MINIMAP_SCALE,
+            y: MINIMAP_SIZE / 2 + (worldY - state.shipY) * MINIMAP_SCALE,
+        };
+    }
+
+    function drawMinimap() {
+        const size = MINIMAP_SIZE;
+        miniCtx.clearRect(0, 0, size, size);
+        miniCtx.save();
+        miniCtx.beginPath();
+        miniCtx.roundRect(0, 0, size, size, 20);
+        miniCtx.clip();
+
+        miniCtx.fillStyle = "#02010a";
+        miniCtx.fillRect(0, 0, size, size);
+
+        const origin = toMinimap(0, 0);
+        const worldPx = WORLD * MINIMAP_SCALE;
+        miniCtx.fillStyle = "#0a0830";
+        miniCtx.fillRect(origin.x, origin.y, worldPx, worldPx);
+
+        miniCtx.strokeStyle = "rgba(120, 170, 255, 0.85)";
+        miniCtx.lineWidth = 2;
+        miniCtx.shadowColor = "rgba(90, 160, 255, 0.7)";
+        miniCtx.shadowBlur = 8;
+        miniCtx.strokeRect(origin.x, origin.y, worldPx, worldPx);
+        miniCtx.shadowBlur = 0;
+
+        for (const ball of state.balls) {
+            const p = toMinimap(ball.x, ball.y);
+            const r = Math.max(2.2, ball.r * MINIMAP_SCALE);
+            if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
+            miniCtx.fillStyle = ball.color;
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            miniCtx.fill();
+        }
+
+        const cx = size / 2;
+        const cy = size / 2;
+        miniCtx.save();
+        miniCtx.translate(cx, cy);
+        miniCtx.rotate(state.heading + Math.PI / 2);
+        miniCtx.fillStyle = "#ffffff";
+        miniCtx.beginPath();
+        miniCtx.moveTo(0, -8);
+        miniCtx.lineTo(5, 6);
+        miniCtx.lineTo(0, 3);
+        miniCtx.lineTo(-5, 6);
+        miniCtx.closePath();
+        miniCtx.fill();
+        miniCtx.restore();
+
+        miniCtx.strokeStyle = "rgba(170, 200, 255, 0.4)";
+        miniCtx.lineWidth = 1;
+        miniCtx.beginPath();
+        miniCtx.arc(cx, cy, 11, 0, Math.PI * 2);
+        miniCtx.stroke();
+
+        miniCtx.restore();
+    }
+
     let last = performance.now();
     function frame(now) {
         const dt = Math.min(0.033, (now - last) / 1000);
@@ -329,6 +417,7 @@
         for (const ball of state.balls) drawBall(ball, cam);
         drawPops(cam, dt);
         drawShip(moving);
+        drawMinimap();
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
 
         requestAnimationFrame(frame);
@@ -347,29 +436,80 @@
         window.addEventListener("blur", () => keys.clear());
     }
 
+    function snapStick(dx, dy) {
+        const dist = Math.hypot(dx, dy);
+        if (dist < 18) {
+            return { vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0 };
+        }
+
+        let best = DIRS[0];
+        let bestDot = -Infinity;
+        for (const dir of DIRS) {
+            const length = Math.hypot(dir.vx, dir.vy);
+            const nx = dir.vx / length;
+            const ny = dir.vy / length;
+            const dot = (dx / dist) * nx + (dy / dist) * ny;
+            if (dot > bestDot) {
+                bestDot = dot;
+                best = dir;
+            }
+        }
+
+        const length = Math.hypot(best.vx, best.vy);
+        const vx = best.vx / length;
+        const vy = best.vy / length;
+        const travel = Math.min(dist, 68);
+        return { vx, vy, dir: best.name, knobX: vx * travel, knobY: vy * travel };
+    }
+
+    function setStick(next) {
+        stick.vx = next.vx;
+        stick.vy = next.vy;
+        stick.dir = next.dir;
+        const knob = document.getElementById("joystick-knob");
+        knob.style.transform = `translate(${next.knobX}px, ${next.knobY}px)`;
+        document.getElementById("joystick").classList.toggle("is-active", next.dir !== "");
+        for (const pip of document.querySelectorAll(".joystick-pip")) {
+            pip.classList.toggle("is-on", pip.dataset.dir === next.dir);
+        }
+    }
+
+    function resetStick() {
+        setStick({ vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0 });
+    }
+
     function bindPad() {
-        const buttons = document.querySelectorAll(".pad-btn");
-        const setHeld = (dir, held) => {
-            pad[dir] = held;
-            const btn = document.querySelector(`.pad-btn[data-dir="${dir}"]`);
-            if (btn) btn.classList.toggle("is-held", held);
+        const joystick = document.getElementById("joystick");
+        let pointerId = null;
+
+        const aimFromEvent = (event) => {
+            const rect = joystick.getBoundingClientRect();
+            const dx = event.clientX - (rect.left + rect.width / 2);
+            const dy = event.clientY - (rect.top + rect.height / 2);
+            setStick(snapStick(dx, dy));
         };
 
-        for (const button of buttons) {
-            const dir = button.dataset.dir;
-            const start = (event) => {
-                event.preventDefault();
-                setHeld(dir, true);
-            };
-            const end = (event) => {
-                event.preventDefault();
-                setHeld(dir, false);
-            };
-            button.addEventListener("pointerdown", start);
-            button.addEventListener("pointerup", end);
-            button.addEventListener("pointerleave", end);
-            button.addEventListener("pointercancel", end);
-        }
+        joystick.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            pointerId = event.pointerId;
+            joystick.setPointerCapture(event.pointerId);
+            aimFromEvent(event);
+        });
+
+        joystick.addEventListener("pointermove", (event) => {
+            if (pointerId !== event.pointerId) return;
+            event.preventDefault();
+            aimFromEvent(event);
+        });
+
+        const release = (event) => {
+            if (pointerId !== event.pointerId) return;
+            pointerId = null;
+            resetStick();
+        };
+
+        joystick.addEventListener("pointerup", release);
+        joystick.addEventListener("pointercancel", release);
     }
 
     function bindHud() {

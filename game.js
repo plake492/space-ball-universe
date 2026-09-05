@@ -2060,33 +2060,63 @@
         ctx.restore();
     }
 
-    function drawShieldBubble(x, y, r, now) {
+    function shieldDropPath(target, x, y, r) {
+        const w = r * 0.78;
+        const top = y - r * 0.88;
+        const mid = y - r * 0.02;
+        const tip = y + r * 1.08;
+        target.beginPath();
+        target.moveTo(x, top);
+        target.bezierCurveTo(x + w * 0.18, top + r * 0.02, x + w, top + r * 0.12, x + w, mid);
+        target.quadraticCurveTo(x + w * 0.9, y + r * 0.48, x, tip);
+        target.quadraticCurveTo(x - w * 0.9, y + r * 0.48, x - w, mid);
+        target.bezierCurveTo(x - w, top + r * 0.12, x - w * 0.18, top + r * 0.02, x, top);
+        target.closePath();
+    }
+
+    function drawShieldDrop(x, y, r, now) {
         const glow = 0.88 + 0.12 * Math.sin((now || 0) / 520);
         ctx.save();
-        const halo = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 2.15);
-        halo.addColorStop(0, `rgba(255, 255, 255, ${0.22 * glow})`);
-        halo.addColorStop(0.38, `rgba(236, 246, 255, ${0.16 * glow})`);
-        halo.addColorStop(0.72, `rgba(210, 230, 255, ${0.07 * glow})`);
+        const halo = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.2);
+        halo.addColorStop(0, `rgba(255, 255, 255, ${0.2 * glow})`);
+        halo.addColorStop(0.4, `rgba(236, 246, 255, ${0.14 * glow})`);
+        halo.addColorStop(0.74, `rgba(210, 230, 255, ${0.06 * glow})`);
         halo.addColorStop(1, "rgba(255, 255, 255, 0)");
         ctx.fillStyle = halo;
         ctx.beginPath();
-        ctx.arc(x, y, r * 2.15, 0, Math.PI * 2);
+        ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
         ctx.fill();
 
-        const disk = ctx.createRadialGradient(x - r * 0.28, y - r * 0.32, r * 0.08, x, y, r);
-        disk.addColorStop(0, `rgba(255, 255, 255, ${0.95 * glow})`);
-        disk.addColorStop(0.42, `rgba(236, 244, 255, ${0.42 * glow})`);
-        disk.addColorStop(0.78, `rgba(210, 228, 255, ${0.16 * glow})`);
-        disk.addColorStop(1, `rgba(255, 255, 255, ${0.04 * glow})`);
-        ctx.fillStyle = disk;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+        const fill = ctx.createLinearGradient(x, y - r, x, y + r);
+        fill.addColorStop(0, `rgba(255, 255, 255, ${0.98 * glow})`);
+        fill.addColorStop(0.38, `rgba(236, 244, 255, ${0.72 * glow})`);
+        fill.addColorStop(0.78, `rgba(198, 220, 255, ${0.38 * glow})`);
+        fill.addColorStop(1, `rgba(170, 200, 255, ${0.18 * glow})`);
+        ctx.fillStyle = fill;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+        ctx.shadowBlur = r * 0.55;
+        shieldDropPath(ctx, x, y, r);
         ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.88 * glow})`;
+        ctx.lineWidth = Math.max(2, r * 0.1);
+        shieldDropPath(ctx, x, y, r);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.45 * glow})`;
+        ctx.lineWidth = Math.max(1.2, r * 0.05);
+        shieldDropPath(ctx, x, y, r * 0.72);
+        ctx.stroke();
 
         ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * glow})`;
-        ctx.lineWidth = Math.max(1.6, r * 0.08);
+        ctx.lineWidth = Math.max(1.6, r * 0.07);
+        ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.arc(x, y, r * 0.92, 0, Math.PI * 2);
+        ctx.moveTo(x, y - r * 0.42);
+        ctx.lineTo(x, y + r * 0.38);
+        ctx.moveTo(x - r * 0.32, y - r * 0.08);
+        ctx.lineTo(x + r * 0.32, y - r * 0.08);
         ctx.stroke();
         ctx.restore();
     }
@@ -2097,7 +2127,7 @@
             const y = drop.y - cam.y;
             const reach = drop.r * 2.3;
             if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
-            drawShieldBubble(x, y, drop.r, now);
+            drawShieldDrop(x, y, drop.r, now);
         }
     }
 
@@ -2458,11 +2488,10 @@
             const p = toMinimap(drop.x, drop.y, size, scale);
             const r = Math.max(3.2 * mark, drop.r * scale);
             if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
-            miniCtx.fillStyle = "rgba(255, 255, 255, 0.92)";
+            miniCtx.fillStyle = "rgba(255, 255, 255, 0.95)";
             miniCtx.shadowColor = "#ffffff";
             miniCtx.shadowBlur = 6 * mark;
-            miniCtx.beginPath();
-            miniCtx.arc(p.x, p.y, r * 0.55, 0, Math.PI * 2);
+            shieldDropPath(miniCtx, p.x, p.y, r * 0.85);
             miniCtx.fill();
             miniCtx.shadowBlur = 0;
         }

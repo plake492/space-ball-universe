@@ -751,7 +751,7 @@
         const { x, y, angle } = spawnFromEdge(90);
         const near = 0.28 + 0.72 * Math.random();
         const size = rand(0.55, 2.35);
-        const r = 38 * size;
+        const r = 76 * size;
         const speed = rand(COMET_SPEED_MIN * 0.2, COMET_SPEED_MAX * 1.4);
         const lumps = [];
         const count = 6 + Math.floor(Math.random() * 3);

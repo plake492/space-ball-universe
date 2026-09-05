@@ -8,6 +8,7 @@
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
     const SETTINGS_KEY = "harlie-space-settings";
+    const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
@@ -92,6 +93,7 @@
     const scoreEl = document.getElementById("play-score");
     const coordsEl = document.getElementById("coords");
     const timerEl = document.getElementById("play-timer");
+    const nameInput = document.getElementById("username-input");
     const ballsSlider = document.getElementById("balls-slider");
     const ballsSliderValue = document.getElementById("balls-slider-value");
     const goalSlider = document.getElementById("goal-slider");
@@ -129,6 +131,10 @@
         return Math.min(max, Math.max(min, snapped));
     }
 
+    function normalizeName(value) {
+        return String(value || "").replace(/\s+/g, " ").trim().slice(0, NAME_MAX);
+    }
+
     function loadSettings() {
         try {
             const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "");
@@ -138,9 +144,10 @@
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
             const pulse = data.pulse !== false;
             const ship = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
-            return { world, ballCount, goal, palette, pulse, ship };
+            const name = normalizeName(data.name);
+            return { world, ballCount, goal, palette, pulse, ship, name };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic" };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "" };
         }
     }
 
@@ -153,6 +160,7 @@
                 palette: state.palette,
                 pulse: state.pulse,
                 ship: state.ship,
+                name: state.name,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -273,6 +281,7 @@
         palette: saved.palette,
         pulse: saved.pulse,
         ship: saved.ship,
+        name: saved.name,
         speed: 0,
         boost: false,
         won: false,
@@ -467,6 +476,7 @@
     }
 
     function updateHud() {
+        if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         foundEl.textContent = String(state.found);
         if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
         goalEl.textContent = String(state.goal);
@@ -1336,6 +1346,23 @@
 
     function bindHud() {
         document.getElementById("open-settings").addEventListener("click", openMenu);
+
+        const commitName = () => {
+            const next = normalizeName(nameInput.value);
+            nameInput.value = next;
+            if (next === state.name) return;
+            state.name = next;
+            saveSettings();
+        };
+        nameInput.value = state.name;
+        nameInput.addEventListener("change", commitName);
+        nameInput.addEventListener("blur", commitName);
+        nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                nameInput.blur();
+            }
+        });
 
         minimap.addEventListener("click", () => {
             state.minimapLarge = !state.minimapLarge;

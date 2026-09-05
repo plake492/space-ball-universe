@@ -207,6 +207,32 @@ body.settings-open {
     margin: 0;
 }
 
+.username-input {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    min-height: 56px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    user-select: text;
+    -webkit-user-select: text;
+    touch-action: manipulation;
+}
+
+.username-input::placeholder {
+    color: rgba(190, 210, 245, 0.45);
+    font-weight: 500;
+}
+
 #balls-slider,
 #goal-slider {
     width: 100%;
@@ -652,6 +678,14 @@ button {
     .settings-heading {
         margin-bottom: 6px;
         gap: 8px;
+    }
+
+    .username-input {
+        margin-top: 8px;
+        min-height: 40px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 16px;
     }
 
     #balls-slider,

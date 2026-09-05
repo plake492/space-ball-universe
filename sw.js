@@ -1,4 +1,4 @@
-const CACHE = "harlie-space-v35";
+const CACHE = "harlie-space-v36";
 const ASSETS = [
     "./",
     "./index.html",
@@ -8,10 +8,12 @@ const ASSETS = [
     "./public/fonts/SupremeSpike-KVO8D.otf",
     "./game.js",
     "./manifest.webmanifest",
-    "./public/icons/icon-192.png",
-    "./public/icons/icon-512.png",
-    "./public/icons/icon-512-maskable.png",
-    "./public/icons/apple-touch-icon.png",
+    "./public/favicon_io/favicon.ico",
+    "./public/favicon_io/favicon-16x16.png",
+    "./public/favicon_io/favicon-32x32.png",
+    "./public/favicon_io/apple-touch-icon.png",
+    "./public/favicon_io/android-chrome-192x192.png",
+    "./public/favicon_io/android-chrome-512x512.png",
     "./public/images/ships/ship-1.png",
     "./public/images/ships/cat.png",
     "./public/images/ships/wolf.png",

@@ -158,7 +158,8 @@
         return Math.ceil(raw / 10) * 10;
     }
 
-    function shipUnlocked(id, lifetime) {
+    function shipUnlocked(id, lifetime, reqShips) {
+        if ((reqShips ?? state.reqShips) === false) return true;
         return (lifetime ?? state.lifetime) >= shipUnlockAt(id);
     }
 
@@ -171,12 +172,13 @@
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
             const pulse = data.pulse !== false;
             const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
+            const reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
-            const ship = shipUnlocked(wanted, lifetime) ? wanted : "classic";
+            const ship = shipUnlocked(wanted, lifetime, reqShips) ? wanted : "classic";
             const name = normalizeName(data.name);
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime };
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true };
         }
     }
 
@@ -191,6 +193,7 @@
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
+                reqShips: state.reqShips,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -361,6 +364,7 @@
         ship: saved.ship,
         name: saved.name,
         lifetime: saved.lifetime,
+        reqShips: saved.reqShips,
         speed: 0,
         boost: false,
         won: false,
@@ -581,6 +585,9 @@
         }
         for (const button of document.querySelectorAll(".pulse-btn")) {
             button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
+        }
+        for (const button of document.querySelectorAll(".req-btn")) {
+            button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
         }
         for (const button of document.querySelectorAll(".ship-btn")) {
             const id = button.dataset.ship;
@@ -1628,6 +1635,17 @@
                 const next = button.dataset.pulse === "on";
                 if (next === state.pulse) return;
                 state.pulse = next;
+                saveSettings();
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".req-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.req === "on";
+                if (next === state.reqShips) return;
+                state.reqShips = next;
+                if (state.reqShips && !shipUnlocked(state.ship)) state.ship = "classic";
                 saveSettings();
                 updateHud();
             });

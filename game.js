@@ -393,6 +393,7 @@
         balls: [],
         holes: [],
         nebulae: [],
+        comets: [],
         pops: [],
         floaters: [],
         found: 0,
@@ -655,9 +656,57 @@
         }
     }
 
+    function cometCount() {
+        if (state.world >= 20000) return 10;
+        if (state.world >= 15000) return 7;
+        if (state.world >= 10000) return 5;
+        return 3;
+    }
+
+    const COMET_TINTS = [
+        { r: 220, g: 236, b: 255 },
+        { r: 170, g: 214, b: 255 },
+        { r: 255, g: 224, b: 176 },
+        { r: 196, g: 255, b: 236 },
+    ];
+
+    function spawnComets() {
+        state.comets = [];
+        const pad = 80;
+        for (let i = 0; i < cometCount(); i += 1) {
+            const angle = rand(0, Math.PI * 2);
+            const near = 0.28 + 0.72 * Math.random();
+            const speed = rand(90, 240) * (0.7 + 0.5 * near);
+            state.comets.push({
+                x: rand(pad, state.world - pad),
+                y: rand(pad, state.world - pad),
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                angle,
+                r: 3.5 + 9 * near,
+                tail: 120 + 260 * near,
+                near,
+                tint: pick(COMET_TINTS),
+            });
+        }
+    }
+
+    function moveComets(dt) {
+        const wrap = state.world + 480;
+        for (const comet of state.comets) {
+            comet.x += comet.vx * dt;
+            comet.y += comet.vy * dt;
+            if (comet.x < -240) comet.x += wrap;
+            else if (comet.x > state.world + 240) comet.x -= wrap;
+            if (comet.y < -240) comet.y += wrap;
+            else if (comet.y > state.world + 240) comet.y -= wrap;
+        }
+    }
+
     function spawnDecor() {
         spawnHoles();
         spawnNebulae();
+        spawnComets();
     }
 
     function placeBall(spiked) {
@@ -1623,6 +1672,44 @@
         for (const hole of holes) drawHole(hole, cam, now);
     }
 
+    function drawComets(cam) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const comet of state.comets) {
+            const x = comet.x - cam.x;
+            const y = comet.y - cam.y;
+            const reach = comet.tail + comet.r * 6;
+            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            const { r, g, b } = comet.tint;
+            const a = 0.35 + 0.65 * comet.near;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(comet.angle);
+            const streak = ctx.createLinearGradient(-comet.tail, 0, comet.r * 2, 0);
+            streak.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+            streak.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${0.08 * a})`);
+            streak.addColorStop(0.86, `rgba(${r}, ${g}, ${b}, ${0.28 * a})`);
+            streak.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.55 * a})`);
+            ctx.fillStyle = streak;
+            ctx.beginPath();
+            ctx.moveTo(-comet.tail, 0);
+            ctx.lineTo(comet.r * 0.4, comet.r * 1.15);
+            ctx.lineTo(comet.r * 0.4, -comet.r * 1.15);
+            ctx.closePath();
+            ctx.fill();
+            const coma = ctx.createRadialGradient(0, 0, 0, 0, 0, comet.r * 4.2);
+            coma.addColorStop(0, `rgba(255, 255, 255, ${0.95 * a})`);
+            coma.addColorStop(0.22, `rgba(${r}, ${g}, ${b}, ${0.7 * a})`);
+            coma.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            ctx.fillStyle = coma;
+            ctx.beginPath();
+            ctx.arc(0, 0, comet.r * 4.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
     function toMinimap(worldX, worldY, size, scale) {
         return {
             x: size / 2 + (worldX - state.shipX) * scale,
@@ -1719,8 +1806,10 @@
         updateEngine(moving);
         const cam = camera();
 
+        moveComets(dt);
         drawSpace(cam);
         drawHoles(cam, now);
+        drawComets(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
@@ -1906,6 +1995,7 @@
         state.balls = [];
         state.holes = [];
         state.nebulae = [];
+        state.comets = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;

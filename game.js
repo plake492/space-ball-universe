@@ -35,6 +35,7 @@
     const ENGINE_LOOP_END = 15;
     const ENGINE_FADE = 0.3;
     const ENGINE_FADE_IN = 0.15;
+    const ENGINE_GAIN = 0.38;
     const ENGINE_BOOST_RATE = 1.25;
     const HIT_SRC = "public/audio/balls/audio_319c456817.mp3";
     const ATMO_SRC = "public/audio/atmosphere/drone-outerspace-hum-danijel-zambo-1-02-27.mp3";
@@ -692,7 +693,7 @@
         const now = ctx.currentTime;
         if (fadeIn) {
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(1, now + ENGINE_FADE_IN);
+            gain.gain.linearRampToValueAtTime(ENGINE_GAIN, now + ENGINE_FADE_IN);
         } else {
             gain.gain.setValueAtTime(0, now);
         }
@@ -729,7 +730,7 @@
         if (!engine.buffer) return;
         if (moving) {
             if (!engine.source) startEngine(true);
-            else fadeEngine(1);
+            else fadeEngine(ENGINE_GAIN);
         } else if (engine.source) {
             fadeEngine(0);
         }

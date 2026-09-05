@@ -15,6 +15,7 @@
         extra: { world: 20000, ballCount: 120, goal: 110 },
         extreme: { world: 20000, ballCount: 150, goal: 150 },
     };
+    const DIFF_ORDER = ["easy", "medium", "hard", "extra", "extreme"];
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
@@ -721,6 +722,34 @@
         return rand(min, max);
     }
 
+    function difficultyRank() {
+        const named = state.difficulty === "custom" ? matchingDifficulty() : state.difficulty;
+        const index = DIFF_ORDER.indexOf(named);
+        if (index >= 0) return index;
+        if (state.world >= 20000 && state.ballCount >= 150) return 4;
+        if (state.world >= 20000) return 3;
+        if (state.world >= 15000) return 2;
+        if (state.world >= 10000) return 1;
+        return 0;
+    }
+
+    function difficultyT() {
+        return difficultyRank() / (DIFF_ORDER.length - 1);
+    }
+
+    function cometSpeedMul() {
+        return 1 + 0.5 * difficultyT();
+    }
+
+    function meteorSpeedMul() {
+        return 1 + 0.5 * difficultyT();
+    }
+
+    function meteorWait() {
+        const scale = 1 / (1 + 2 * difficultyT());
+        return flyerWait(METEOR_MIN * scale, METEOR_MAX * scale);
+    }
+
     function spawnFromEdge(margin) {
         const side = Math.floor(Math.random() * 4);
         if (side === 0) {
@@ -738,7 +767,7 @@
     function makeComet() {
         const { x, y, angle } = spawnFromEdge(90);
         const near = 0.28 + 0.72 * Math.random();
-        const speed = rand(COMET_SPEED_MIN, COMET_SPEED_MAX) * (0.7 + 0.5 * near);
+        const speed = rand(COMET_SPEED_MIN, COMET_SPEED_MAX) * (0.7 + 0.5 * near) * cometSpeedMul();
         return {
             x,
             y,
@@ -757,7 +786,7 @@
         const near = 0.28 + 0.72 * Math.random();
         const size = rand(0.55, 2.35);
         const r = 76 * size;
-        const speed = rand(COMET_SPEED_MIN * 0.2, COMET_SPEED_MAX * 1.4);
+        const speed = rand(COMET_SPEED_MIN * 0.2, COMET_SPEED_MAX * 1.4) * meteorSpeedMul();
         const lumps = [];
         const count = 6 + Math.floor(Math.random() * 3);
         for (let i = 0; i < count; i += 1) lumps.push(0.86 + Math.random() * 0.28);
@@ -784,7 +813,7 @@
 
     function spawnMeteors() {
         state.meteors = [];
-        nextMeteorAt = performance.now() + flyerWait(METEOR_MIN, METEOR_MAX);
+        nextMeteorAt = performance.now() + meteorWait();
         state.meteors.push(makeMeteor());
     }
 
@@ -798,14 +827,6 @@
             if (flyer.x < -pad || flyer.y < -pad || flyer.x > state.world + pad || flyer.y > state.world + pad) {
                 list.splice(i, 1);
             }
-        }
-    }
-
-    function updateFlyers(list, dt, makeNext, nextAt, setNextAt, waitMin, waitMax, now) {
-        moveFlyers(list, dt);
-        if (now >= nextAt) {
-            setNextAt(now + flyerWait(waitMin, waitMax));
-            list.push(makeNext());
         }
     }
 
@@ -824,7 +845,11 @@
 
     function updateMeteors(dt, now, paused) {
         if (paused) return;
-        updateFlyers(state.meteors, dt, makeMeteor, nextMeteorAt, (at) => { nextMeteorAt = at; }, METEOR_MIN, METEOR_MAX, now);
+        moveFlyers(state.meteors, dt);
+        if (now >= nextMeteorAt) {
+            nextMeteorAt = now + meteorWait();
+            state.meteors.push(makeMeteor());
+        }
     }
 
     function spawnDecor() {

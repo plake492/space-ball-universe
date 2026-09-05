@@ -7,7 +7,6 @@
     const MAX_BALL = 250;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
-    const OFFSCREEN_PAD = 1400;
     const RAINBOW = [
         "#ff3b30",
         "#ff9500",
@@ -101,24 +100,12 @@
         miniCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    function spawnBalls(count, awayFromX, awayFromY) {
+    function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) {
-            let x = 0;
-            let y = 0;
-            let attempts = 0;
-            do {
-                x = rand(MAX_BALL, state.world - MAX_BALL);
-                y = rand(MAX_BALL, state.world - MAX_BALL);
-                attempts += 1;
-            } while (
-                Math.hypot(x - awayFromX, y - awayFromY) < OFFSCREEN_PAD &&
-                attempts < 40
-            );
-
             const size = rand(MIN_BALL, MAX_BALL);
             state.balls.push({
-                x,
-                y,
+                x: rand(MAX_BALL, state.world - MAX_BALL),
+                y: rand(MAX_BALL, state.world - MAX_BALL),
                 r: size / 2,
                 color: pick(RAINBOW),
             });
@@ -624,7 +611,7 @@
         keys.clear();
         resetStick();
         winOverlay.classList.add("hidden");
-        spawnBalls(state.goal, center, center);
+        spawnBalls(state.goal);
         resetTimer(performance.now(), !state.menuOpen);
         updateHud();
     }
@@ -690,7 +677,7 @@
     }
 
     resize();
-    spawnBalls(state.goal, state.shipX, state.shipY);
+    spawnBalls(state.goal);
     updateHud();
     bindKeys();
     buildPips();

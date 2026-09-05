@@ -1,4 +1,4 @@
-const CACHE = "harlie-space-v15";
+const CACHE = "harlie-space-v16";
 const ASSETS = [
     "./",
     "./index.html",
@@ -12,6 +12,9 @@ const ASSETS = [
     "./public/images/ships/ship-1.png",
     "./public/images/ships/cat.png",
     "./public/images/ships/wolf.png",
+    "./public/images/ships/cube.png",
+    "./public/images/ships/hello-kitty.png",
+    "./public/images/ships/ufo.png",
     "./public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3",
     "./public/audio/balls/audio_319c456817.mp3",
     "./public/audio/atmosphere/drone-outerspace-hum-danijel-zambo-1-02-27.mp3",

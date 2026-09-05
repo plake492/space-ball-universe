@@ -80,13 +80,16 @@
         ],
     };
     const PALETTE_NAMES = Object.keys(PALETTES);
-    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf"];
+    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.png",
         cat: "public/images/ships/cat.png",
         wolf: "public/images/ships/wolf.png",
+        cube: "public/images/ships/cube.png",
+        "hello-kitty": "public/images/ships/hello-kitty.png",
+        ufo: "public/images/ships/ufo.png",
     };
-    const SHIP_PIXEL = new Set(["cat", "wolf"]);
+    const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
     const SHIP_COST = 1000;
     const shipImages = {};
 
@@ -1112,7 +1115,7 @@
         const width = pixel ? 64 : 88;
         const height = width * (img.naturalHeight / img.naturalWidth);
         ctx.imageSmoothingEnabled = !pixel;
-        if (moving && !pixel) {
+        if (moving && state.ship === "ship-1") {
             const flicker = 0.7 + Math.random() * 0.3;
             ctx.fillStyle = `rgba(120, 200, 255, ${flicker})`;
             ctx.beginPath();

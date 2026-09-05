@@ -7,6 +7,7 @@
     const BALLS_MAX = 250;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
+    const TRIAL_MS = [60000, 300000, 600000];
     const DIFFICULTIES = {
         easy: { world: 5000, ballCount: 40, goal: 25 },
         medium: { world: 10000, ballCount: 60, goal: 45 },
@@ -57,6 +58,8 @@
         boardFrom: "home",
         settingsPanel: "",
         difficulty: "",
+        trial: false,
+        trialMs: 300000,
     };
 
     function snapStep(value, min, max, step) {
@@ -170,6 +173,8 @@
             } else {
                 state.difficulty = matchingDifficulty();
             }
+            state.trial = data.trial === true;
+            state.trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
         } catch {
             // Keep defaults.
         }
@@ -188,6 +193,8 @@
                 lifetime: state.lifetime,
                 reqShips: state.reqShips,
                 difficulty: state.difficulty || "",
+                trial: state.trial,
+                trialMs: state.trialMs,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -205,6 +212,8 @@
                 score: Math.max(0, Math.round(Number(data.score) || 0)),
                 elapsed: Math.max(0, Number(data.elapsed) || 0),
                 won: Boolean(data.won),
+                trial: Boolean(data.trial),
+                trialMs: Number(data.trialMs) || 0,
             };
         } catch {
             return null;
@@ -217,7 +226,14 @@
 
     function canContinue() {
         const play = loadPlayPreview();
-        return Boolean(play && play.world === state.world && play.ballCount === state.ballCount && playIsActive(play));
+        return Boolean(
+            play
+            && play.world === state.world
+            && play.ballCount === state.ballCount
+            && play.trial === state.trial
+            && (!state.trial || play.trialMs === state.trialMs)
+            && playIsActive(play)
+        );
     }
 
     function loadBoard() {
@@ -271,7 +287,10 @@
         continueBtn.disabled = !play;
         continueBtn.setAttribute("aria-disabled", play ? "false" : "true");
         if (play) {
-            homeSub.textContent = `${play.found} / ${state.goal} · ${play.score.toLocaleString()} · ${formatPlayTime(play.elapsed)}`;
+            const clock = state.trial
+                ? formatPlayTime(Math.max(0, state.trialMs - play.elapsed))
+                : formatPlayTime(play.elapsed);
+            homeSub.textContent = `${play.found} / ${state.goal} · ${play.score.toLocaleString()} · ${clock}`;
         } else {
             homeSub.textContent = "Ready to fly.";
         }
@@ -293,6 +312,16 @@
         }
         for (const button of document.querySelectorAll(".diff-btn")) {
             button.classList.toggle("is-on", button.dataset.diff === state.difficulty);
+        }
+        const trialToggle = document.getElementById("trial-toggle");
+        const trialTimes = document.getElementById("trial-times");
+        if (trialToggle) {
+            trialToggle.classList.toggle("is-on", state.trial);
+            trialToggle.setAttribute("aria-pressed", state.trial ? "true" : "false");
+        }
+        if (trialTimes) trialTimes.classList.toggle("hidden", !state.trial);
+        for (const button of document.querySelectorAll(".trial-btn")) {
+            button.classList.toggle("is-on", Number(button.dataset.trial) === state.trialMs);
         }
         updateDiffRules();
         for (const button of document.querySelectorAll(".palette-btn")) {
@@ -456,6 +485,21 @@
 
     for (const button of document.querySelectorAll(".diff-btn")) {
         button.addEventListener("click", () => applyDifficulty(button.dataset.diff));
+    }
+    document.getElementById("trial-toggle").addEventListener("click", () => {
+        state.trial = !state.trial;
+        saveSettings();
+        updateHud();
+    });
+    for (const button of document.querySelectorAll(".trial-btn")) {
+        button.addEventListener("click", () => {
+            const next = Number(button.dataset.trial);
+            if (!TRIAL_MS.includes(next)) return;
+            state.trial = true;
+            state.trialMs = next;
+            saveSettings();
+            updateHud();
+        });
     }
     for (const button of document.querySelectorAll(".world-btn")) {
         button.addEventListener("click", () => {

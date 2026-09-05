@@ -192,6 +192,8 @@
             const ship = shipUnlocked(wanted, lifetime, reqShips) ? wanted : "classic";
             const name = normalizeName(data.name);
             const difficulty = data.difficulty === "custom" || DIFFICULTIES[data.difficulty] ? data.difficulty : "";
+            const trial = data.trial === true;
+            const trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
             if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
@@ -205,11 +207,13 @@
                     lifetime,
                     reqShips,
                     difficulty,
+                    trial,
+                    trialMs,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty };
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "" };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000 };
         }
     }
 
@@ -226,6 +230,8 @@
                 lifetime: state.lifetime,
                 reqShips: state.reqShips,
                 difficulty: state.difficulty || "",
+                trial: state.trial,
+                trialMs: state.trialMs,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -812,15 +818,34 @@
         timer.runningSince = now;
     }
 
+    function remainingTime(now) {
+        return Math.max(0, state.trialMs - playTime(now));
+    }
+
+    function timerDisplayMs(now) {
+        if (!state.trial) return playTime(now);
+        return Math.ceil(remainingTime(now) / 1000) * 1000;
+    }
+
+    function trialLabel() {
+        if (state.trialMs === 60000) return "1 min";
+        if (state.trialMs === 600000) return "10 min";
+        return "5 min";
+    }
+
     function resetTimer(now, running) {
         timer.elapsed = 0;
         timer.runningSince = running ? now : null;
         shownSecond = -1;
-        timerEl.textContent = formatPlayTime(0);
+        timerEl.textContent = formatPlayTime(state.trial ? state.trialMs : 0);
     }
 
     function updateTimer(now) {
-        const ms = playTime(now);
+        if (state.trial && !state.won && remainingTime(now) <= 0) {
+            finishTrial();
+            return;
+        }
+        const ms = timerDisplayMs(now);
         const sec = Math.floor(ms / 1000);
         if (sec === shownSecond) return;
         shownSecond = sec;
@@ -939,8 +964,19 @@
         Promise.resolve(action).catch(() => {}).finally(updateHud);
     }
 
-    function maybeWin() {
-        if (state.won || state.found < state.goal) return;
+    function showWinOverlay(kind, elapsed) {
+        const title = document.getElementById("win-title");
+        if (title) title.textContent = kind === "trial" ? "TIME'S UP" : "YOU WON";
+        if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
+        const time = elapsed != null ? elapsed : playTime(performance.now());
+        winMessage.textContent = kind === "trial"
+            ? `Time trial · ${trialLabel()}`
+            : `Goal ${state.goal} · ${formatPlayTime(time)}`;
+        winOverlay.classList.remove("hidden");
+    }
+
+    function finishTrial() {
+        if (state.won || !state.trial) return;
         state.won = true;
         pauseTimer(performance.now());
         keys.clear();
@@ -948,9 +984,22 @@
         if (state.menuOpen) closeMenu();
         if (state.boardOpen) closeBoard();
         recordWinScore();
-        if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
-        winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(playTime(performance.now()))}`;
-        winOverlay.classList.remove("hidden");
+        shownSecond = 0;
+        timerEl.textContent = formatPlayTime(0);
+        showWinOverlay("trial");
+        savePlay();
+    }
+
+    function maybeWin() {
+        if (state.trial || state.won || state.found < state.goal) return;
+        state.won = true;
+        pauseTimer(performance.now());
+        keys.clear();
+        resetStick();
+        if (state.menuOpen) closeMenu();
+        if (state.boardOpen) closeBoard();
+        recordWinScore();
+        showWinOverlay("hunt");
         savePlay();
     }
 
@@ -976,7 +1025,9 @@
         }
         state.found = 0;
         state.score = 0;
-        resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
+        if (!state.trial) {
+            resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
+        }
         flashSpikeBorder();
         playHit();
         updateHud();
@@ -2047,6 +2098,8 @@
         state.boardLogged = false;
         keys.clear();
         resetStick();
+        const winTitle = document.getElementById("win-title");
+        if (winTitle) winTitle.textContent = "YOU WON";
         winOverlay.classList.add("hidden");
         closeBoard();
         closeResume(false);
@@ -2446,6 +2499,7 @@
         if (!play) {
             spawnDecor();
             spawnBalls(state.ballCount);
+            resetTimer(performance.now(), true);
             return;
         }
         const min = SHIP_RADIUS + 8;
@@ -2464,12 +2518,17 @@
         spawnDecor();
         if (play.won) {
             recordWinScore();
-            if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
-            winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(play.elapsed)}`;
-            winOverlay.classList.remove("hidden");
+            if (state.trial) timerEl.textContent = formatPlayTime(0);
+            showWinOverlay(state.trial ? "trial" : "hunt", play.elapsed);
             return;
         }
-        timer.runningSince = play.won ? null : performance.now();
+        if (state.trial && play.elapsed >= state.trialMs) {
+            finishTrial();
+            return;
+        }
+        timer.runningSince = performance.now();
+        shownSecond = -1;
+        timerEl.textContent = formatPlayTime(timerDisplayMs(performance.now()));
     }
 
     loadShipImage(state.ship);

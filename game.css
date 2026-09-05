@@ -1086,6 +1086,45 @@ body.home {
     flex: 1 1 100%;
 }
 
+.home-trial {
+    display: flex;
+    flex-direction: column;
+    width: min(420px, 100%);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.trial-toggle,
+.trial-btn {
+    min-height: 52px;
+    border-radius: 14px;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.trial-toggle.is-on,
+.trial-btn.is-on {
+    background: rgba(79, 124, 255, 0.42);
+}
+
+.trial-times {
+    display: flex;
+    gap: 10px;
+}
+
+.trial-times.hidden {
+    display: none;
+}
+
+.trial-btn {
+    flex: 1;
+}
+
 .home-diff-rules {
     display: flex;
     justify-content: space-between;
@@ -1405,6 +1444,18 @@ body.home {
     .home-diffs {
         margin-top: 16px;
         gap: 8px;
+    }
+
+    .home-trial {
+        margin-top: 10px;
+        gap: 8px;
+    }
+
+    .trial-toggle,
+    .trial-btn {
+        min-height: 40px;
+        border-radius: 10px;
+        font-size: 14px;
     }
 
     .home-diff-rules {

@@ -102,7 +102,6 @@
     const minimap = document.getElementById("minimap");
     const miniCtx = minimap.getContext("2d");
     const minimapStage = document.getElementById("minimap-stage");
-    const minimapBackdrop = document.getElementById("minimap-backdrop");
     const minimapClose = document.getElementById("minimap-close");
     const foundEl = document.getElementById("found-count");
     const goalEl = document.getElementById("goal-count");
@@ -451,7 +450,6 @@
         state.minimapLarge = open;
         document.documentElement.classList.toggle("minimap-open", open);
         document.body.classList.toggle("minimap-open", open);
-        if (minimapBackdrop) minimapBackdrop.classList.toggle("hidden", !open);
         if (minimapClose) minimapClose.classList.toggle("hidden", !open);
         minimap.setAttribute("aria-pressed", open ? "true" : "false");
         minimap.setAttribute("aria-label", open ? "Minimap" : "Minimap, tap to expand");
@@ -1781,7 +1779,6 @@
             if (!state.minimapLarge) setMinimapOpen(true);
         });
         if (minimapClose) minimapClose.addEventListener("click", () => setMinimapOpen(false));
-        if (minimapBackdrop) minimapBackdrop.addEventListener("click", () => setMinimapOpen(false));
 
         const boostBtn = document.getElementById("boost-btn");
         boostBtn.addEventListener("pointerdown", (event) => {

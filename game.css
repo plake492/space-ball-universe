@@ -456,17 +456,6 @@ body.board-open {
     pointer-events: none;
 }
 
-.minimap-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 5;
-    background: #02010a;
-}
-
-.minimap-backdrop.hidden {
-    display: none;
-}
-
 .minimap-stage {
     position: fixed;
     top: max(20px, env(safe-area-inset-top));
@@ -476,6 +465,9 @@ body.board-open {
     width: 240px;
     height: 240px;
     z-index: 3;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #02010a;
 }
 
 .minimap {
@@ -489,7 +481,7 @@ body.board-open {
     border-radius: 20px;
     border: 1px solid rgba(170, 200, 255, 0.28);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    background: rgba(10, 16, 36, 0.72);
+    background: #0a0830;
 }
 
 .minimap-close {
@@ -1027,6 +1019,7 @@ body.home {
         bottom: max(16px, env(safe-area-inset-bottom));
         width: 108px;
         height: 108px;
+        border-radius: 10px;
     }
 
     .minimap {

@@ -185,14 +185,16 @@
                 <button type="button" class="board-close" id="board-close" aria-label="Close leaderboard">×</button>
             </div>
             <h1 id="board-title">SCORES</h1>
-            <div class="board-cols" aria-hidden="true">
-                <span>#</span>
-                <span>Name</span>
-                <span>Score</span>
-                <span>Time</span>
-                <span>Date</span>
+            <div class="board-table" id="board-table" role="table" aria-label="Leaderboard">
+                <div class="board-cols" role="row">
+                    <span class="board-rank">#</span>
+                    <span class="board-name">Name</span>
+                    <span class="board-score">Score</span>
+                    <span class="board-time">Time</span>
+                    <span class="board-date">Date</span>
+                </div>
+                <div class="board-list" id="board-list"></div>
             </div>
-            <div class="board-list" id="board-list"></div>
             <p class="board-empty hidden" id="board-empty">No wins yet.</p>
         </div>
     </div>

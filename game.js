@@ -115,6 +115,7 @@
     const resumeOverlay = document.getElementById("resume-overlay");
     const resumeMessage = document.getElementById("resume-message");
     const boardOverlay = document.getElementById("board-overlay");
+    const boardTable = document.getElementById("board-table");
     const boardList = document.getElementById("board-list");
     const boardEmpty = document.getElementById("board-empty");
     const timer = { elapsed: 0, runningSince: performance.now() };
@@ -1470,11 +1471,13 @@
         const rows = loadBoard();
         boardList.replaceChildren();
         const hasRows = rows.length > 0;
-        document.querySelector(".board-cols").classList.toggle("hidden", !hasRows);
+        boardTable.classList.toggle("hidden", !hasRows);
         boardEmpty.classList.toggle("hidden", hasRows);
+        const kinds = ["rank", "name", "score", "time", "date"];
         for (const [index, row] of rows.entries()) {
             const el = document.createElement("div");
             el.className = "board-row";
+            el.setAttribute("role", "row");
             if (state.won && row.name === (state.name || "Pilot") && row.score === state.score && Math.abs(row.elapsed - timer.elapsed) < 1) {
                 el.classList.add("is-you");
             }
@@ -1485,8 +1488,9 @@
                 formatPlayTime(row.elapsed),
                 formatBoardDate(row.at),
             ];
-            for (const text of cells) {
+            for (const [i, text] of cells.entries()) {
                 const span = document.createElement("span");
+                span.className = `board-${kinds[i]}`;
                 span.textContent = text;
                 el.append(span);
             }

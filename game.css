@@ -685,22 +685,36 @@ body.board-open {
     line-height: 1;
 }
 
+.board-table {
+    --board-cols: 2.2rem minmax(0, 1fr) 5.5rem 4.25rem 5.75rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    border: 1px solid rgba(170, 200, 255, 0.22);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(4, 8, 22, 0.28);
+}
+
 .board-cols,
 .board-row {
     display: grid;
-    grid-template-columns: 2em minmax(5.5em, 8.5em) 4.6em 3.8em 5.4em;
-    justify-content: start;
-    gap: 12px;
+    grid-template-columns: var(--board-cols);
+    column-gap: 12px;
     align-items: center;
-    width: max-content;
-    max-width: 100%;
+    width: 100%;
+    padding: 10px 12px;
 }
 
 .board-cols {
-    margin: 0 0 8px;
-    padding: 0 6px;
+    flex: 0 0 auto;
+    border-bottom: 1px solid rgba(170, 200, 255, 0.22);
+    background: rgba(10, 16, 36, 0.72);
     font-family: "Orbitron", sans-serif;
     font-size: 10px;
+    font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: #9eb0d6;
@@ -716,29 +730,45 @@ body.board-open {
 }
 
 .board-row {
-    margin: 0 0 6px;
-    padding: 10px 6px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.06);
+    margin: 0;
+    border-bottom: 1px solid rgba(170, 200, 255, 0.1);
+    border-radius: 0;
+    background: transparent;
     font-family: "Orbitron", sans-serif;
     font-size: 13px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     color: #e8f6ff;
+}
+
+.board-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .board-row.is-you {
     background: rgba(79, 124, 255, 0.28);
-    border: 1px solid rgba(190, 230, 255, 0.35);
+    border-bottom-color: rgba(190, 230, 255, 0.28);
 }
 
-.board-row span:nth-child(3),
-.board-row span:nth-child(4),
-.board-row span:nth-child(5) {
-    text-align: left;
+.board-rank,
+.board-score,
+.board-time,
+.board-date {
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
-.board-row span:nth-child(2) {
+.board-rank {
+    text-align: center;
+}
+
+.board-score,
+.board-time,
+.board-date {
+    text-align: right;
+}
+
+.board-name {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -749,7 +779,7 @@ body.board-open {
     text-align: center;
 }
 
-.board-cols.hidden,
+.board-table.hidden,
 .board-empty.hidden {
     display: none;
 }
@@ -939,9 +969,19 @@ button {
         border-radius: 20px;
     }
 
+    .board-table {
+        --board-cols: 1.8rem minmax(0, 1fr) 4.6rem 3.6rem 4.8rem;
+        border-radius: 12px;
+    }
+
     .board-cols,
     .board-row {
-        grid-template-columns: 1.8em minmax(4.5em, 7em) 4.2em 3.4em 4.8em;
-        gap: 8px;
+        column-gap: 8px;
+        padding: 8px 10px;
     }
+
+    .board-row {
+        font-size: 12px;
+    }
+}
 }

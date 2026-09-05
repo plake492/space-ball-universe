@@ -215,8 +215,9 @@ body {
 
 .coords {
     position: fixed;
-    top: max(100px, calc(env(safe-area-inset-top) + 88px));
-    left: max(20px, env(safe-area-inset-left));
+    left: 50%;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
     margin: 0;
     z-index: 2;
     font-size: 13px;

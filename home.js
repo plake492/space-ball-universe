@@ -22,19 +22,19 @@
     const NAME_MAX = 20;
     const PALETTE_NAMES = ["rainbow", "space", "dark"];
     const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie"];
-    const SHIP_NAMES = {
-        classic: "Classic",
-        "ship-1": "Crew",
-        cat: "Cat",
-        wolf: "Wolf",
-        cube: "Cube",
-        "hello-kitty": "Hello Kitty",
-        ufo: "UFO",
-        harlie: "Harlie",
-        selah: "Selah",
-        guitar: "Guitar",
-        "selah-harlie": "Selah Harlie",
+    const SHIP_SRC = {
+        "ship-1": "public/images/ships/ship-1.png",
+        cat: "public/images/ships/cat.png",
+        wolf: "public/images/ships/wolf.png",
+        cube: "public/images/ships/cube.png",
+        "hello-kitty": "public/images/ships/hello-kitty.png",
+        ufo: "public/images/ships/ufo.png",
+        harlie: "public/images/ships/harlie.png",
+        selah: "public/images/ships/selah.png",
+        guitar: "public/images/ships/guitar.png",
+        "selah-harlie": "public/images/ships/selah-harlie.png",
     };
+    const CLASSIC_SHIP_SVG = `<svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>`;
     const SHIP_COST_START = 5000;
     const SHIP_COST_GROW = 1.5;
 
@@ -56,6 +56,7 @@
     const homeUser = document.getElementById("home-user");
     const homeLifetime = document.getElementById("home-lifetime");
     const homeShips = document.getElementById("home-ships");
+    const homeShipsIcon = document.getElementById("home-ships-icon");
     const shipsOverlay = document.getElementById("ships-overlay");
     const homeDiffBalls = document.getElementById("home-diff-balls");
     const homeDiffGoal = document.getElementById("home-diff-goal");
@@ -330,7 +331,21 @@
         if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         if (homeUser) homeUser.textContent = state.name || "Pilot";
         if (homeLifetime) homeLifetime.textContent = state.lifetime.toLocaleString();
-        if (homeShips) homeShips.textContent = `Ships ${SHIP_NAMES[state.ship] || "Classic"}`;
+        if (homeShipsIcon) {
+            const src = SHIP_SRC[state.ship];
+            if (src) {
+                let img = homeShipsIcon.querySelector("img");
+                if (!img) {
+                    homeShipsIcon.replaceChildren();
+                    img = document.createElement("img");
+                    img.alt = "";
+                    homeShipsIcon.append(img);
+                }
+                if (img.getAttribute("src") !== src) img.src = src;
+            } else if (!homeShipsIcon.querySelector("svg")) {
+                homeShipsIcon.innerHTML = CLASSIC_SHIP_SVG;
+            }
+        }
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
         goalSlider.min = String(GOAL_MIN);
@@ -476,7 +491,6 @@
     document.getElementById("settings-board").addEventListener("click", () => openBoard("settings"));
     const resetOverlay = document.getElementById("reset-overlay");
     const openReset = () => resetOverlay.classList.remove("hidden");
-    document.getElementById("home-reset").addEventListener("click", openReset);
     if (homeShips) homeShips.addEventListener("click", () => setShipsOpen(true));
     const shipsClose = document.getElementById("ships-close");
     if (shipsClose) shipsClose.addEventListener("click", () => setShipsOpen(false));

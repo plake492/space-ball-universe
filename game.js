@@ -1,11 +1,8 @@
 (() => {
-    const WORLD = 20000;
-    const START_X = WORLD / 2;
-    const START_Y = WORLD / 2;
     const START_BALLS = 75;
+    const START_WORLD = 20000;
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
-    const ADD_BALLS = 5;
     const MIN_BALL = 50;
     const MAX_BALL = 250;
     const SHIP_RADIUS = 22;
@@ -27,13 +24,15 @@
     const miniCtx = minimap.getContext("2d");
     const foundEl = document.getElementById("found-count");
     const goalEl = document.getElementById("goal-count");
-    const goalStepperEl = document.getElementById("goal-stepper");
     const ballsLeftEl = document.getElementById("balls-left");
     const coordsEl = document.getElementById("coords");
     const timerEl = document.getElementById("play-timer");
+    const goalSlider = document.getElementById("goal-slider");
+    const goalSliderValue = document.getElementById("goal-slider-value");
+    const settingsMenu = document.getElementById("settings-menu");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
-    const playStartedAt = performance.now();
+    const timer = { elapsed: 0, runningSince: performance.now() };
     let shownSecond = -1;
 
     const keys = new Set();
@@ -56,14 +55,16 @@
     });
 
     const state = {
-        shipX: START_X,
-        shipY: START_Y,
+        world: START_WORLD,
+        shipX: START_WORLD / 2,
+        shipY: START_WORLD / 2,
         heading: -Math.PI / 2,
         balls: [],
         pops: [],
         found: 0,
         goal: START_BALLS,
         won: false,
+        menuOpen: false,
         width: 0,
         height: 0,
         dpr: 1,
@@ -106,8 +107,8 @@
             let y = 0;
             let attempts = 0;
             do {
-                x = rand(MAX_BALL, WORLD - MAX_BALL);
-                y = rand(MAX_BALL, WORLD - MAX_BALL);
+                x = rand(MAX_BALL, state.world - MAX_BALL);
+                y = rand(MAX_BALL, state.world - MAX_BALL);
                 attempts += 1;
             } while (
                 Math.hypot(x - awayFromX, y - awayFromY) < OFFSCREEN_PAD &&
@@ -140,20 +141,48 @@
         return `${minutes}:${sec}`;
     }
 
+    function playTime(now) {
+        if (timer.runningSince == null) return timer.elapsed;
+        return timer.elapsed + (now - timer.runningSince);
+    }
+
+    function pauseTimer(now) {
+        if (timer.runningSince == null) return;
+        timer.elapsed += now - timer.runningSince;
+        timer.runningSince = null;
+    }
+
+    function resumeTimer(now) {
+        if (timer.runningSince != null) return;
+        timer.runningSince = now;
+    }
+
+    function resetTimer(now, running) {
+        timer.elapsed = 0;
+        timer.runningSince = running ? now : null;
+        shownSecond = -1;
+        timerEl.textContent = formatPlayTime(0);
+    }
+
     function updateTimer(now) {
-        const sec = Math.floor((now - playStartedAt) / 1000);
+        const ms = playTime(now);
+        const sec = Math.floor(ms / 1000);
         if (sec === shownSecond) return;
         shownSecond = sec;
-        timerEl.textContent = formatPlayTime(now - playStartedAt);
+        timerEl.textContent = formatPlayTime(ms);
     }
 
     function updateHud() {
         foundEl.textContent = String(state.found);
         goalEl.textContent = String(state.goal);
-        goalStepperEl.textContent = String(state.goal);
+        goalSlider.value = String(state.goal);
+        goalSliderValue.textContent = String(state.goal);
         const n = remaining();
         ballsLeftEl.textContent = `${n} ball${n === 1 ? "" : "s"} in space`;
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
+        for (const button of document.querySelectorAll(".world-btn")) {
+            button.classList.toggle("is-on", Number(button.dataset.world) === state.world);
+        }
     }
 
     function maybeWin() {
@@ -184,6 +213,7 @@
     }
 
     function moveShip(dt) {
+        if (state.menuOpen) return false;
         let vx = 0;
         let vy = 0;
         if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
@@ -208,7 +238,7 @@
         }
 
         const min = SHIP_RADIUS + 8;
-        const max = WORLD - SHIP_RADIUS - 8;
+        const max = state.world - SHIP_RADIUS - 8;
         state.shipX = Math.min(max, Math.max(min, state.shipX));
         state.shipY = Math.min(max, Math.max(min, state.shipY));
         return moving;
@@ -254,7 +284,7 @@
         ctx.lineWidth = thickness;
         ctx.shadowColor = "rgba(90, 160, 255, 0.8)";
         ctx.shadowBlur = 24;
-        ctx.strokeRect(-cam.x, -cam.y, WORLD, WORLD);
+        ctx.strokeRect(-cam.x, -cam.y, state.world, state.world);
         ctx.restore();
     }
 
@@ -389,7 +419,7 @@
         miniCtx.fillRect(0, 0, size, size);
 
         const origin = toMinimap(0, 0);
-        const worldPx = WORLD * MINIMAP_SCALE;
+        const worldPx = state.world * MINIMAP_SCALE;
         miniCtx.fillStyle = "#0a0830";
         miniCtx.fillRect(origin.x, origin.y, worldPx, worldPx);
 
@@ -439,8 +469,8 @@
         const dt = Math.min(0.033, (now - last) / 1000);
         last = now;
 
-        const moving = moveShip(dt);
-        collectIfHit();
+        const moving = state.menuOpen ? false : moveShip(dt);
+        if (!state.menuOpen) collectIfHit();
         const cam = camera();
 
         drawSpace(cam);
@@ -456,6 +486,7 @@
 
     function bindKeys() {
         window.addEventListener("keydown", (event) => {
+            if (state.menuOpen) return;
             keys.add(event.key.toLowerCase());
             if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(event.key.toLowerCase())) {
                 event.preventDefault();
@@ -558,6 +589,7 @@
         };
 
         joystick.addEventListener("pointerdown", (event) => {
+            if (state.menuOpen) return;
             event.preventDefault();
             pointerId = event.pointerId;
             joystick.setPointerCapture(event.pointerId);
@@ -580,27 +612,68 @@
         joystick.addEventListener("pointercancel", release);
     }
 
+    function restartGame() {
+        const center = state.world / 2;
+        state.shipX = center;
+        state.shipY = center;
+        state.heading = -Math.PI / 2;
+        state.balls = [];
+        state.pops = [];
+        state.found = 0;
+        state.won = false;
+        keys.clear();
+        resetStick();
+        winOverlay.classList.add("hidden");
+        spawnBalls(state.goal, center, center);
+        resetTimer(performance.now(), !state.menuOpen);
+        updateHud();
+    }
+
+    function openMenu() {
+        if (state.menuOpen) return;
+        state.menuOpen = true;
+        pauseTimer(performance.now());
+        keys.clear();
+        resetStick();
+        settingsMenu.classList.remove("hidden");
+    }
+
+    function closeMenu() {
+        if (!state.menuOpen) return;
+        state.menuOpen = false;
+        settingsMenu.classList.add("hidden");
+        resumeTimer(performance.now());
+    }
+
     function bindHud() {
-        document.getElementById("add-balls").addEventListener("click", () => {
-            spawnBalls(ADD_BALLS, state.shipX, state.shipY);
-            updateHud();
+        document.getElementById("open-settings").addEventListener("click", openMenu);
+
+        goalSlider.addEventListener("input", () => {
+            goalSliderValue.textContent = goalSlider.value;
         });
 
-        document.getElementById("goal-minus").addEventListener("click", () => {
-            state.goal = Math.max(1, state.goal - 1);
-            state.won = state.found >= state.goal;
-            updateHud();
-            maybeWin();
+        goalSlider.addEventListener("change", () => {
+            const next = Number(goalSlider.value);
+            if (next === state.goal) return;
+            state.goal = next;
+            restartGame();
         });
 
-        document.getElementById("goal-plus").addEventListener("click", () => {
-            state.goal += 1;
-            if (state.found < state.goal) {
-                state.won = false;
-                winOverlay.classList.add("hidden");
-            }
-            updateHud();
+        for (const button of document.querySelectorAll(".world-btn")) {
+            button.addEventListener("click", () => {
+                const next = Number(button.dataset.world);
+                if (next === state.world) return;
+                state.world = next;
+                restartGame();
+            });
+        }
+
+        document.getElementById("settings-restart").addEventListener("click", () => {
+            restartGame();
+            closeMenu();
         });
+
+        document.getElementById("settings-continue").addEventListener("click", closeMenu);
 
         document.getElementById("keep-flying").addEventListener("click", () => {
             winOverlay.classList.add("hidden");
@@ -608,13 +681,16 @@
     }
 
     function preventBrowserGestures() {
-        document.addEventListener("touchmove", (event) => event.preventDefault(), { passive: false });
+        document.addEventListener("touchmove", (event) => {
+            if (state.menuOpen) return;
+            event.preventDefault();
+        }, { passive: false });
         document.addEventListener("gesturestart", (event) => event.preventDefault());
         document.addEventListener("contextmenu", (event) => event.preventDefault());
     }
 
     resize();
-    spawnBalls(START_BALLS, START_X, START_Y);
+    spawnBalls(state.goal, state.shipX, state.shipY);
     updateHud();
     bindKeys();
     buildPips();

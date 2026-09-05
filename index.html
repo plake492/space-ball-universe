@@ -24,16 +24,7 @@
             <p class="sub" id="balls-left">75 balls in space</p>
         </section>
 
-        <section class="panel goal-panel">
-            <p class="label">Goal</p>
-            <div class="stepper">
-                <button type="button" id="goal-minus" aria-label="Lower goal">−</button>
-                <span id="goal-stepper">75</span>
-                <button type="button" id="goal-plus" aria-label="Raise goal">+</button>
-            </div>
-        </section>
-
-        <button type="button" class="add-btn" id="add-balls">+ Add 5 balls</button>
+        <button type="button" class="settings-btn" id="open-settings">Settings</button>
     </div>
 
     <p class="coords" id="coords">0, 0</p>
@@ -49,6 +40,35 @@
 
     <canvas id="minimap" class="minimap" aria-label="Minimap"></canvas>
     <p class="hint">W A S D or the joystick to fly</p>
+
+    <div class="settings-overlay hidden" id="settings-menu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="settings-sheet">
+            <h1 id="settings-title">Settings</h1>
+
+            <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Goal</p>
+                    <p class="value"><span id="goal-slider-value">75</span> balls</p>
+                </div>
+                <input type="range" id="goal-slider" min="25" max="250" step="5" value="75" aria-label="Goal balls">
+            </section>
+
+            <section class="settings-block">
+                <p class="label">World size</p>
+                <div class="world-sizes" role="group" aria-label="World size">
+                    <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
+                    <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
+                    <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
+                    <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
+                </div>
+            </section>
+
+            <div class="settings-actions">
+                <button type="button" class="settings-restart" id="settings-restart">Restart</button>
+                <button type="button" class="settings-continue" id="settings-continue">Continue</button>
+            </div>
+        </div>
+    </div>
 
     <div class="overlay hidden" id="win-overlay">
         <div class="win-card">

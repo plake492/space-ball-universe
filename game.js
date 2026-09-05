@@ -8,6 +8,7 @@
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
     const SETTINGS_KEY = "harlie-space-settings";
+    const PLAY_KEY = "harlie-space-play";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
     const COMPACT_UI = "(max-width: 1440px)";
@@ -144,6 +145,93 @@
             }));
         } catch {
             // Ignore quota or private-mode failures.
+        }
+    }
+
+    function ballTypeFor(ball) {
+        return BALL_TYPES.find((type) => Math.abs(type.size / 2 - Number(ball.r)) < 0.6)
+            || BALL_TYPES.find((type) => type.points === Number(ball.points))
+            || null;
+    }
+
+    function normalizeBall(ball) {
+        if (!ball || !Number.isFinite(Number(ball.x)) || !Number.isFinite(Number(ball.y))) return null;
+        const type = ballTypeFor(ball);
+        const r = type ? type.size / 2 : Number(ball.r);
+        if (!Number.isFinite(r) || r <= 0) return null;
+        return {
+            x: Number(ball.x),
+            y: Number(ball.y),
+            r,
+            points: type ? type.points : Math.max(100, Number(ball.points) || 100),
+            color: typeof ball.color === "string" ? ball.color : "#007aff",
+            pulseMs: Number(ball.pulseMs) || rand(1000, 5000),
+            pulseOffset: Number(ball.pulseOffset) || rand(0, Math.PI * 2),
+            hasRings: Boolean(ball.hasRings),
+            ringTilt: Number.isFinite(Number(ball.ringTilt)) ? Number(ball.ringTilt) : 0,
+        };
+    }
+
+    function savePlay() {
+        try {
+            localStorage.setItem(PLAY_KEY, JSON.stringify({
+                world: state.world,
+                ballCount: state.ballCount,
+                shipX: state.shipX,
+                shipY: state.shipY,
+                heading: state.heading,
+                balls: state.balls.map((ball) => ({
+                    x: ball.x,
+                    y: ball.y,
+                    r: ball.r,
+                    points: ball.points,
+                    color: ball.color,
+                    pulseMs: ball.pulseMs,
+                    pulseOffset: ball.pulseOffset,
+                    hasRings: ball.hasRings,
+                    ringTilt: ball.ringTilt,
+                })),
+                found: state.found,
+                score: state.score,
+                elapsed: playTime(performance.now()),
+                won: state.won,
+            }));
+        } catch {
+            // Ignore quota or private-mode failures.
+        }
+    }
+
+    function loadPlay() {
+        try {
+            const data = JSON.parse(localStorage.getItem(PLAY_KEY) || "");
+            if (!data || Number(data.world) !== state.world || Number(data.ballCount) !== state.ballCount) {
+                return null;
+            }
+            if (!Array.isArray(data.balls)) return null;
+            const balls = [];
+            for (const ball of data.balls) {
+                const next = normalizeBall(ball);
+                if (!next) return null;
+                balls.push(next);
+            }
+            const found = Math.max(0, Math.round(Number(data.found) || 0));
+            const score = Math.max(0, Math.round(Number(data.score) || 0));
+            const shipX = Number(data.shipX);
+            const shipY = Number(data.shipY);
+            const heading = Number(data.heading);
+            if (!Number.isFinite(shipX) || !Number.isFinite(shipY) || !Number.isFinite(heading)) return null;
+            return {
+                shipX,
+                shipY,
+                heading,
+                balls,
+                found,
+                score,
+                elapsed: Math.max(0, Number(data.elapsed) || 0),
+                won: Boolean(data.won),
+            };
+        } catch {
+            return null;
         }
     }
 
@@ -406,6 +494,7 @@
         if (state.menuOpen) closeMenu();
         winMessage.textContent = `Goal ${state.goal} · ${state.score.toLocaleString()} · ${formatPlayTime(playTime(performance.now()))}`;
         winOverlay.classList.remove("hidden");
+        savePlay();
     }
 
     function collectIfHit() {
@@ -425,6 +514,7 @@
                 });
                 playHit();
                 updateHud();
+                savePlay();
                 maybeWin();
             }
         }
@@ -896,6 +986,7 @@
     }
 
     let last = performance.now();
+    let lastPlaySave = 0;
     function frame(now) {
         const dt = Math.min(0.033, (now - last) / 1000);
         last = now;
@@ -912,6 +1003,10 @@
         drawMinimap(now);
         updateTimer(now);
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
+        if (!state.menuOpen && now - lastPlaySave > 1000) {
+            lastPlaySave = now;
+            savePlay();
+        }
 
         requestAnimationFrame(frame);
     }
@@ -1093,6 +1188,7 @@
         spawnBalls(state.ballCount);
         resetTimer(performance.now(), !state.menuOpen && !state.won);
         updateHud();
+        savePlay();
     }
 
     function openMenu() {
@@ -1106,6 +1202,7 @@
         document.body.classList.add("settings-open");
         settingsMenu.scrollTop = 0;
         syncBoost();
+        savePlay();
     }
 
     function closeMenu() {
@@ -1115,6 +1212,7 @@
         document.documentElement.classList.remove("settings-open");
         document.body.classList.remove("settings-open");
         if (!state.won) resumeTimer(performance.now());
+        savePlay();
     }
 
     function bindHud() {
@@ -1209,6 +1307,7 @@
                 const colors = PALETTES[next];
                 for (const ball of state.balls) ball.color = pick(colors);
                 saveSettings();
+                savePlay();
                 updateHud();
             });
         }
@@ -1246,9 +1345,33 @@
         document.addEventListener("contextmenu", (event) => event.preventDefault());
     }
 
+    function restorePlay() {
+        const play = loadPlay();
+        if (!play) {
+            spawnBalls(state.ballCount);
+            return;
+        }
+        const min = SHIP_RADIUS + 8;
+        const max = state.world - SHIP_RADIUS - 8;
+        state.shipX = Math.min(max, Math.max(min, play.shipX));
+        state.shipY = Math.min(max, Math.max(min, play.shipY));
+        state.heading = play.heading;
+        state.balls = play.balls;
+        state.found = play.found;
+        state.score = play.score;
+        state.won = play.won;
+        timer.elapsed = play.elapsed;
+        timer.runningSince = play.won ? null : performance.now();
+        shownSecond = -1;
+        if (play.won) {
+            winMessage.textContent = `Goal ${state.goal} · ${state.score.toLocaleString()} · ${formatPlayTime(play.elapsed)}`;
+            winOverlay.classList.remove("hidden");
+        }
+    }
+
     loadShipImage(state.ship);
     resize();
-    spawnBalls(state.ballCount);
+    restorePlay();
     updateHud();
     bindKeys();
     buildPips();
@@ -1256,6 +1379,10 @@
     bindHud();
     preventBrowserGestures();
     window.addEventListener("resize", resize);
+    window.addEventListener("pagehide", savePlay);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") savePlay();
+    });
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
             navigator.serviceWorker.register("./sw.js").catch(() => {});

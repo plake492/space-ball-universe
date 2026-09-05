@@ -685,6 +685,7 @@
     }
 
     const COMET_EVERY = 30000;
+    const COMET_POINTS = 1000;
     const COMET_TINTS = [
         { r: 220, g: 236, b: 255 },
         { r: 170, g: 214, b: 255 },
@@ -1054,6 +1055,42 @@
         savePlay();
     }
 
+    function cometBody(comet) {
+        return comet.r * 1.35;
+    }
+
+    function cometColor(comet) {
+        const { r, g, b } = comet.tint;
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function collectComets() {
+        for (let i = state.comets.length - 1; i >= 0; i -= 1) {
+            const comet = state.comets[i];
+            if (Math.hypot(comet.x - state.shipX, comet.y - state.shipY) > cometBody(comet) + SHIP_RADIUS) continue;
+            state.comets.splice(i, 1);
+            state.score += COMET_POINTS;
+            state.lifetime += COMET_POINTS;
+            saveSettings();
+            state.pops.push({
+                x: comet.x,
+                y: comet.y,
+                r: cometBody(comet),
+                color: cometColor(comet),
+                life: 1,
+            });
+            state.floaters.push({
+                x: comet.x,
+                y: comet.y,
+                points: COMET_POINTS,
+                life: 1,
+            });
+            playHit();
+            updateHud();
+            savePlay();
+        }
+    }
+
     function collectIfHit() {
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
@@ -1062,6 +1099,7 @@
             if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
                 if (ball.hasSpikes) {
                     hitSpikes(i);
+                    collectComets();
                     return;
                 }
                 state.balls.splice(i, 1);
@@ -1089,6 +1127,7 @@
                 maybeWin();
             }
         }
+        collectComets();
     }
 
     function moveShip(dt) {

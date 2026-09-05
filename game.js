@@ -119,7 +119,9 @@
     const shipImages = {};
 
     const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+    // The sky gradient repaints every pixel each frame, so the canvas never needs
+    // an alpha channel. Opaque canvases skip per-pixel blending when compositing.
+    const ctx = canvas.getContext("2d", { alpha: false });
     const minimap = document.getElementById("minimap");
     const miniCtx = minimap.getContext("2d");
     const minimapStage = document.getElementById("minimap-stage");
@@ -258,7 +260,7 @@
         }
     }
 
-    function saveSettings() {
+    function writeSettings() {
         try {
             localStorage.setItem(SETTINGS_KEY, JSON.stringify({
                 world: state.world,
@@ -328,7 +330,39 @@
         });
     }
 
+    // localStorage writes are synchronous, and the play snapshot serialises every
+    // ball in the world (~37KB at default settings, ~124KB at 250 balls). Collecting
+    // a ball used to trigger one mid-frame, so writes are coalesced onto the tick
+    // the loop already runs and flushed wherever losing a second would matter.
+    let playDirty = false;
+    let settingsDirty = false;
+
     function savePlay() {
+        playDirty = true;
+    }
+
+    function saveSettings() {
+        settingsDirty = true;
+    }
+
+    function flushSettings() {
+        if (!settingsDirty) return;
+        settingsDirty = false;
+        writeSettings();
+    }
+
+    function flushPlay() {
+        if (!playDirty) return;
+        playDirty = false;
+        writePlay();
+    }
+
+    function flushSaves() {
+        flushSettings();
+        flushPlay();
+    }
+
+    function writePlay() {
         if (state.wiped) return;
         try {
             localStorage.setItem(PLAY_KEY, JSON.stringify({
@@ -570,8 +604,13 @@
         return n - Math.floor(n);
     }
 
+    // Held rather than re-queried: window.matchMedia() builds a new MediaQueryList
+    // on every call, and this sits in the per-frame minimap path. `.matches` is
+    // live, so the cached list still tracks resizes.
+    const compactQuery = window.matchMedia(COMPACT_UI);
+
     function isCompactUi() {
-        return window.matchMedia(COMPACT_UI).matches;
+        return compactQuery.matches;
     }
 
     function viewportSize() {
@@ -749,6 +788,9 @@
                 near: 0.22 + 0.78 * (Math.random() ** 0.85),
             });
         }
+        // Draw order depends only on `near`, which is fixed here, so sort once
+        // rather than copying and re-sorting the list on every frame.
+        state.holes.sort((a, b) => holeNear(a) - holeNear(b));
     }
 
     const NEBULA_TINTS = [
@@ -1155,16 +1197,37 @@
         goalSliderValue.textContent = String(state.goal);
     }
 
-    function updateHud() {
+    let lastCoordX = NaN;
+    let lastCoordY = NaN;
+
+    // Writing textContent dirties layout, so only touch the node when the
+    // rounded position actually changes.
+    function setCoords() {
+        const cx = Math.round(state.shipX);
+        const cy = Math.round(state.shipY);
+        if (cx === lastCoordX && cy === lastCoordY) return;
+        lastCoordX = cx;
+        lastCoordY = cy;
+        coordsEl.textContent = `${cx}, ${cy}`;
+    }
+
+    // The live counters are the only part of the HUD that moves while flying.
+    // updateHud() below also sweeps the whole settings UI with a dozen
+    // querySelectorAll calls, which is wasted work on a ball pickup.
+    function updateScoreHud() {
         if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
-        if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         foundEl.textContent = String(state.found);
         if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
         goalEl.textContent = String(state.goal);
+    }
+
+    function updateHud() {
+        updateScoreHud();
+        if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
         syncGoalSlider();
-        coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
+        setCoords();
         for (const button of document.querySelectorAll(".world-btn")) {
             button.classList.toggle("is-on", Number(button.dataset.world) === state.world);
         }
@@ -1404,7 +1467,7 @@
                 life: 1,
             });
             playHit();
-            updateHud();
+            updateScoreHud();
             savePlay();
         }
     }
@@ -1443,11 +1506,16 @@
 
     function collectIfHit() {
         collectDrops();
+        // Runs against every ball in the world each frame, so compare squared
+        // distances and hoist the ship radius out of the loop.
+        const spikeReach = shipHitRadius();
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
             const body = ball.hasSpikes ? ball.r * SPIKE_REACH : ball.r;
-            const reach = body + (ball.hasSpikes ? shipHitRadius() : SHIP_RADIUS);
-            if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
+            const reach = body + (ball.hasSpikes ? spikeReach : SHIP_RADIUS);
+            const dx = ball.x - state.shipX;
+            const dy = ball.y - state.shipY;
+            if (dx * dx + dy * dy <= reach * reach) {
                 if (ball.hasSpikes) {
                     hitSpikes(i);
                     collectComets();
@@ -1490,7 +1558,7 @@
                     life: 1,
                 });
                 playHit();
-                updateHud();
+                updateScoreHud();
                 savePlay();
                 maybeWin();
             }
@@ -1766,8 +1834,41 @@
         return x < -reach || y < -reach || x > cam.w + reach || y > cam.h + reach;
     }
 
+    // A cell's stars are fixed the moment it first scrolls into view: only their
+    // drift offset moves with time. Caching the cell spares six sin-based hashes,
+    // two trig calls and a template-string allocation per star per frame, which at
+    // high zoom runs to a couple of thousand stars.
+    const STAR_CELL = 160;
+    const STAR_CELL_CACHE_MAX = 12000;
+    const starCells = new Map();
+
+    function starCell(gx, gy) {
+        const key = (gx + 1e6) * 4e6 + (gy + 1e6);
+        const cached = starCells.get(key);
+        if (cached) return cached;
+        if (starCells.size >= STAR_CELL_CACHE_MAX) starCells.clear();
+        const count = 1 + Math.floor(hash2(gx, gy) * 3);
+        const stars = [];
+        for (let i = 0; i < count; i += 1) {
+            const depth = hash2(gx * 2.7, gy + i * 5.1);
+            const speed = 4 + depth * 16;
+            const turn = -0.35 + (hash2(i + gx, gy * 4.2) - 0.5) * 0.65;
+            const twinkle = 0.45 + hash2(gx * 3.1, gy + i) * 0.55;
+            stars.push({
+                bx: hash2(gx + i * 19.1, gy + 7.3) * STAR_CELL,
+                by: hash2(gx + 4.8, gy + i * 13.7) * STAR_CELL,
+                vx: Math.cos(turn) * speed,
+                vy: Math.sin(turn) * speed,
+                size: 0.6 + hash2(i + gx, gy * 2.2) * 1.8,
+                fill: `rgba(255, 255, 255, ${twinkle})`,
+            });
+        }
+        starCells.set(key, stars);
+        return stars;
+    }
+
     function drawStars(cam, now) {
-        const cell = 160;
+        const cell = STAR_CELL;
         const left = Math.floor((cam.x - 40) / cell);
         const right = Math.ceil((cam.x + cam.w + 40) / cell);
         const top = Math.floor((cam.y - 40) / cell);
@@ -1777,28 +1878,21 @@
 
         for (let gy = top; gy <= bottom; gy += 1) {
             for (let gx = left; gx <= right; gx += 1) {
-                const starsInCell = 1 + Math.floor(hash2(gx, gy) * 3);
-                for (let i = 0; i < starsInCell; i += 1) {
-                    const hx = hash2(gx + i * 19.1, gy + 7.3);
-                    const hy = hash2(gx + 4.8, gy + i * 13.7);
-                    let x = gx * cell + hx * cell;
-                    let y = gy * cell + hy * cell;
+                const stars = starCell(gx, gy);
+                for (let i = 0; i < stars.length; i += 1) {
+                    const star = stars[i];
+                    let x;
+                    let y;
                     if (driftOn) {
-                        const depth = hash2(gx * 2.7, gy + i * 5.1);
-                        const speed = 4 + depth * 16;
-                        const turn = -0.35 + (hash2(i + gx, gy * 4.2) - 0.5) * 0.65;
-                        const dx = Math.cos(turn) * speed * t;
-                        const dy = Math.sin(turn) * speed * t;
-                        x = gx * cell + (((hx * cell + dx) % cell) + cell) % cell;
-                        y = gy * cell + (((hy * cell + dy) % cell) + cell) % cell;
+                        x = gx * cell + (((star.bx + star.vx * t) % cell) + cell) % cell;
+                        y = gy * cell + (((star.by + star.vy * t) % cell) + cell) % cell;
+                    } else {
+                        x = gx * cell + star.bx;
+                        y = gy * cell + star.by;
                     }
-                    x -= cam.x;
-                    y -= cam.y;
-                    const twinkle = 0.45 + hash2(gx * 3.1, gy + i) * 0.55;
-                    const size = 0.6 + hash2(i + gx, gy * 2.2) * 1.8;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+                    ctx.fillStyle = star.fill;
                     ctx.beginPath();
-                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.arc(x - cam.x, y - cam.y, star.size, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
@@ -1857,11 +1951,14 @@
         ctx.rotate(hole.angle);
         ctx.globalAlpha = 0.16 + 0.84 * near;
 
-        const warp = ctx.createRadialGradient(0, 0, r * 0.35, 0, 0, r * 3.2);
-        warp.addColorStop(0, "rgba(0, 0, 0, 0.62)");
-        warp.addColorStop(0.42, "rgba(10, 4, 18, 0.22)");
-        warp.addColorStop(1, "rgba(0, 0, 0, 0)");
-        ctx.fillStyle = warp;
+        if (!hole.warpFill) {
+            const warp = ctx.createRadialGradient(0, 0, r * 0.35, 0, 0, r * 3.2);
+            warp.addColorStop(0, "rgba(0, 0, 0, 0.62)");
+            warp.addColorStop(0.42, "rgba(10, 4, 18, 0.22)");
+            warp.addColorStop(1, "rgba(0, 0, 0, 0)");
+            hole.warpFill = warp;
+        }
+        ctx.fillStyle = hole.warpFill;
         ctx.beginPath();
         ctx.arc(0, 0, r * 3.2, 0, Math.PI * 2);
         ctx.fill();
@@ -1893,12 +1990,15 @@
         ctx.ellipse(0, 0, r * 1.22, r * 1.14, 0, Math.PI * 1.12, Math.PI * 1.88);
         ctx.stroke();
 
-        const photon = ctx.createRadialGradient(0, 0, r * 0.9, 0, 0, r * 1.2);
-        photon.addColorStop(0, "#000000");
-        photon.addColorStop(0.74, "#000000");
-        photon.addColorStop(0.88, "rgba(255, 206, 140, 0.95)");
-        photon.addColorStop(1, "rgba(255, 130, 40, 0)");
-        ctx.fillStyle = photon;
+        if (!hole.photonFill) {
+            const photon = ctx.createRadialGradient(0, 0, r * 0.9, 0, 0, r * 1.2);
+            photon.addColorStop(0, "#000000");
+            photon.addColorStop(0.74, "#000000");
+            photon.addColorStop(0.88, "rgba(255, 206, 140, 0.95)");
+            photon.addColorStop(1, "rgba(255, 130, 40, 0)");
+            hole.photonFill = photon;
+        }
+        ctx.fillStyle = hole.photonFill;
         ctx.beginPath();
         ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
         ctx.fill();
@@ -2056,6 +2156,9 @@
             paints,
             litX: rand(-0.42, 0.14),
             litY: rand(-0.46, 0.1),
+            // Cleared so a repaint (palette switch) discards cached gradients.
+            bodyFill: null,
+            spikeFills: null,
         };
     }
 
@@ -2113,11 +2216,17 @@
             const root = ball.r * 0.42;
             ctx.save();
             ctx.rotate(a);
-            const g = ctx.createLinearGradient(root, 0, tip, 0);
-            const paints = ball.paints || [ball.color];
-            g.addColorStop(0, paints[0] || shadeColor(ball.color, 0.7));
-            g.addColorStop(0.62, paints[1] || shadeColor(ball.color, 0.92));
-            g.addColorStop(1, paints[2] || paints[1] || shadeColor(ball.color, 0.82));
+            const slot = i % 2;
+            if (!ball.spikeFills) ball.spikeFills = [];
+            let g = ball.spikeFills[slot];
+            if (!g) {
+                g = ctx.createLinearGradient(root, 0, tip, 0);
+                const paints = ball.paints || [ball.color];
+                g.addColorStop(0, paints[0] || shadeColor(ball.color, 0.7));
+                g.addColorStop(0.62, paints[1] || shadeColor(ball.color, 0.92));
+                g.addColorStop(1, paints[2] || paints[1] || shadeColor(ball.color, 0.82));
+                ball.spikeFills[slot] = g;
+            }
             ctx.fillStyle = g;
             ctx.beginPath();
             ctx.moveTo(root, -half);
@@ -2163,7 +2272,9 @@
             return;
         }
 
-        ensurePlanetLook(ball);
+        // A cached body gradient means the look was already validated, and paints
+        // only change through planetLook(), which clears that cache.
+        if (!ball.bodyFill) ensurePlanetLook(ball);
         const paints = ball.paints;
         const pulse = ball.hasSpikes ? 1 : ballPulse(ball, now);
         ctx.save();
@@ -2176,27 +2287,35 @@
         if (ball.hasRings) drawBallRings(x, y, ball, pulse);
         if (ball.hasSpikes) drawBallSpikes(x, y, ball);
 
-        const ox = ball.r * (Number.isFinite(ball.litX) ? ball.litX : -0.28);
-        const oy = ball.r * (Number.isFinite(ball.litY) ? ball.litY : -0.32);
-        const fill = ctx.createRadialGradient(x + ox, y + oy, ball.r * 0.06, x, y, ball.r);
-        if (ball.hasSpikes) {
-            fill.addColorStop(0, paints[0]);
-            fill.addColorStop(0.48, paints[1] || ball.color);
-            fill.addColorStop(1, paints[2] || nudgeLight(paints[1] || ball.color, -12));
-        } else {
-            fill.addColorStop(0, paints[0]);
-            if (paints.length > 2) {
-                fill.addColorStop(0.36, paints[1]);
-                fill.addColorStop(0.74, paints[2]);
+        // Built once around the origin and reused; drawing translates to the ball
+        // instead of rebuilding the gradient at new screen coordinates each frame.
+        if (!ball.bodyFill) {
+            const ox = ball.r * (Number.isFinite(ball.litX) ? ball.litX : -0.28);
+            const oy = ball.r * (Number.isFinite(ball.litY) ? ball.litY : -0.32);
+            const fill = ctx.createRadialGradient(ox, oy, ball.r * 0.06, 0, 0, ball.r);
+            if (ball.hasSpikes) {
+                fill.addColorStop(0, paints[0]);
+                fill.addColorStop(0.48, paints[1] || ball.color);
+                fill.addColorStop(1, paints[2] || nudgeLight(paints[1] || ball.color, -12));
             } else {
-                fill.addColorStop(0.46, paints[1]);
+                fill.addColorStop(0, paints[0]);
+                if (paints.length > 2) {
+                    fill.addColorStop(0.36, paints[1]);
+                    fill.addColorStop(0.74, paints[2]);
+                } else {
+                    fill.addColorStop(0.46, paints[1]);
+                }
+                fill.addColorStop(1, nudgeLight(paints[paints.length - 1], -18));
             }
-            fill.addColorStop(1, nudgeLight(paints[paints.length - 1], -18));
+            ball.bodyFill = fill;
         }
-        ctx.fillStyle = fill;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.fillStyle = ball.bodyFill;
         ctx.beginPath();
-        ctx.arc(x, y, ball.r, 0, Math.PI * 2);
+        ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
 
         if (ball.hasRings) drawBallRingsFront(x, y, ball, pulse);
         ctx.restore();
@@ -2425,26 +2544,40 @@
         }
     }
 
-    function drawSpace(cam, now) {
+    // The sky and wash gradients depend only on the viewport, so they are rebuilt
+    // on resize rather than on every one of the ~60 frames drawn each second.
+    const skyPaint = { w: 0, h: 0, sky: null, wash: null };
+
+    function ensureSkyPaint() {
+        if (skyPaint.w === state.width && skyPaint.h === state.height) return skyPaint;
         const sky = ctx.createLinearGradient(0, 0, 0, state.height);
         sky.addColorStop(0, "#050217");
         sky.addColorStop(0.55, "#0a0830");
         sky.addColorStop(1, "#07051c");
-        ctx.fillStyle = sky;
+        const wash = ctx.createRadialGradient(
+            state.width * 0.7,
+            state.height * 0.25,
+            20,
+            state.width * 0.7,
+            state.height * 0.25,
+            Math.max(state.width, state.height) * 0.7
+        );
+        wash.addColorStop(0, "rgba(90, 40, 140, 0.18)");
+        wash.addColorStop(1, "rgba(0, 0, 0, 0)");
+        skyPaint.w = state.width;
+        skyPaint.h = state.height;
+        skyPaint.sky = sky;
+        skyPaint.wash = wash;
+        return skyPaint;
+    }
+
+    function drawSpace(cam, now) {
+        const paint = ensureSkyPaint();
+        ctx.fillStyle = paint.sky;
         ctx.fillRect(0, 0, cam.w, cam.h);
 
         if (state.nebula) {
-            const wash = ctx.createRadialGradient(
-                state.width * 0.7,
-                state.height * 0.25,
-                20,
-                state.width * 0.7,
-                state.height * 0.25,
-                Math.max(state.width, state.height) * 0.7
-            );
-            wash.addColorStop(0, "rgba(90, 40, 140, 0.18)");
-            wash.addColorStop(1, "rgba(0, 0, 0, 0)");
-            ctx.fillStyle = wash;
+            ctx.fillStyle = paint.wash;
             ctx.fillRect(0, 0, cam.w, cam.h);
             drawNebulae(cam);
         }
@@ -2470,11 +2603,16 @@
                 const cx = lobe.dx * cloud.r;
                 const cy = lobe.dy * cloud.r;
                 const lr = cloud.r * lobe.scale;
-                const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, lr);
-                glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${lobe.alpha})`);
-                glow.addColorStop(0.42, `rgba(${r}, ${g}, ${b}, ${lobe.alpha * 0.42})`);
-                glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-                ctx.fillStyle = glow;
+                // Lobes are drawn in the cloud's local space, so the gradient never
+                // changes once built. Keep it on the lobe instead of rebuilding it.
+                if (!lobe.glow) {
+                    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, lr);
+                    glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${lobe.alpha})`);
+                    glow.addColorStop(0.42, `rgba(${r}, ${g}, ${b}, ${lobe.alpha * 0.42})`);
+                    glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+                    lobe.glow = glow;
+                }
+                ctx.fillStyle = lobe.glow;
                 ctx.beginPath();
                 ctx.arc(cx, cy, lr, 0, Math.PI * 2);
                 ctx.fill();
@@ -2485,8 +2623,7 @@
     }
 
     function drawHoles(cam, now) {
-        const holes = state.holes.slice().sort((a, b) => holeNear(a) - holeNear(b));
-        for (const hole of holes) drawHole(hole, cam, now);
+        for (const hole of state.holes) drawHole(hole, cam, now);
     }
 
     function drawComets(cam) {
@@ -2597,11 +2734,14 @@
         ctx.restore();
     }
 
+    // Called once per ball, comet, meteor and drop every frame. Returning a shared
+    // point keeps that off the allocator; callers must read x/y before the next call.
+    const minimapPoint = { x: 0, y: 0 };
+
     function toMinimap(worldX, worldY, size, scale) {
-        return {
-            x: size / 2 + (worldX - state.shipX) * scale,
-            y: size / 2 + (worldY - state.shipY) * scale,
-        };
+        minimapPoint.x = size / 2 + (worldX - state.shipX) * scale;
+        minimapPoint.y = size / 2 + (worldY - state.shipY) * scale;
+        return minimapPoint;
     }
 
     function drawMinimap(now) {
@@ -2618,13 +2758,15 @@
         miniCtx.fillRect(0, 0, size, size);
 
         const origin = toMinimap(0, 0, size, scale);
+        const originX = origin.x;
+        const originY = origin.y;
         const worldPx = state.world * scale;
         miniCtx.fillStyle = "#0a0830";
-        miniCtx.fillRect(origin.x, origin.y, worldPx, worldPx);
+        miniCtx.fillRect(originX, originY, worldPx, worldPx);
 
         miniCtx.strokeStyle = "#000000";
         miniCtx.lineWidth = Math.max(1, 2 * mark);
-        miniCtx.strokeRect(origin.x, origin.y, worldPx, worldPx);
+        miniCtx.strokeRect(originX, originY, worldPx, worldPx);
 
         for (const ball of state.balls) {
             const p = toMinimap(ball.x, ball.y, size, scale);
@@ -2777,10 +2919,11 @@
         endWorld();
         drawMinimap(now);
         updateTimer(now);
-        coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
-        if (!state.menuOpen && !state.resumeOpen && now - lastPlaySave > 1000) {
+        setCoords();
+        if (now - lastPlaySave > 1000) {
             lastPlaySave = now;
-            savePlay();
+            flushSettings();
+            if (!state.menuOpen && !state.resumeOpen) flushPlay();
         }
 
         requestAnimationFrame(frame);
@@ -3038,6 +3181,9 @@
 
     function openMenu(lite) {
         if (state.menuOpen) return;
+        // The per-second flush skips play writes while a menu is open, so settle
+        // any pending write before pausing.
+        flushSaves();
         state.menuOpen = true;
         state.settingsLite = lite === true;
         pauseTimer(performance.now());
@@ -3153,6 +3299,7 @@
         bindHudTap(document.getElementById("go-home"), () => {
             savePlay();
             saveSettings();
+            flushSaves();
             location.href = "./index.html";
         });
         bindHudTap(document.getElementById("play-settings"), () => {
@@ -3423,6 +3570,7 @@
                     // Ignore private-mode failures.
                 }
                 saveSettings();
+                flushSaves();
                 location.href = "./index.html";
             });
         }
@@ -3432,6 +3580,7 @@
             homeBtn.addEventListener("click", () => {
                 savePlay();
                 saveSettings();
+                flushSaves();
                 location.href = "./index.html";
             });
         }
@@ -3450,6 +3599,7 @@
         document.getElementById("win-home").addEventListener("click", () => {
             savePlay();
             saveSettings();
+            flushSaves();
             location.href = "./index.html";
         });
 
@@ -3588,6 +3738,7 @@
     }
     window.addEventListener("pagehide", () => {
         savePlay();
+        flushSaves();
         pauseAudio();
     });
     window.addEventListener("pageshow", () => {
@@ -3597,6 +3748,7 @@
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
             savePlay();
+            flushSaves();
             pauseAudio();
             return;
         }

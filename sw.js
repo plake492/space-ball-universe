@@ -1,4 +1,4 @@
-const CACHE = "harlie-space-v109";
+const CACHE = "harlie-space-v110";
 const ASSETS = [
     "./",
     "./index.html",
@@ -24,10 +24,11 @@ const ASSETS = [
     "./public/images/ships/selah.png",
     "./public/images/ships/guitar.png",
     "./public/images/ships/selah-harlie.png",
-    "./public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3",
-    "./public/audio/balls/audio_319c456817.mp3",
-    "./public/audio/atmosphere/drone-outerspace-hum-danijel-zambo-1-02-27.mp3",
 ];
+
+// Audio is ~9MB and cache.addAll() is all-or-nothing, so precaching it stalled
+// install (and failed the whole batch on one flaky request). The fetch handler
+// below caches these on first play instead, which is before they are audible.
 
 self.addEventListener("install", (event) => {
     event.waitUntil(

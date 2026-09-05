@@ -41,6 +41,9 @@
     const SPIKE_RATE = 0.15;
     const SPIKE_REACH = 1.4;
     const SPIKE_TRIAL_MS = 10000;
+    const DROP_RATE = 0.05;
+    const SHIELD_DROP_R = 36;
+    const SHIELD_SHIP_R = 38;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SHIP_ACCEL = 2000;
@@ -331,6 +334,13 @@
                 won: state.won,
                 boardLogged: state.boardLogged,
                 cometSpawns: state.cometSpawns,
+                drops: state.drops.map((drop) => ({
+                    type: drop.type,
+                    x: drop.x,
+                    y: drop.y,
+                    r: drop.r,
+                })),
+                shield: state.shield,
                 trial: state.trial,
                 trialMs: state.trialMs,
                 spikes: state.spikes,
@@ -360,6 +370,13 @@
                 if (!next) return null;
                 balls.push(next);
             }
+            const drops = [];
+            if (Array.isArray(data.drops)) {
+                for (const drop of data.drops) {
+                    const next = normalizeDrop(drop);
+                    if (next) drops.push(next);
+                }
+            }
             const found = Math.max(0, Math.round(Number(data.found) || 0));
             const score = Math.max(0, Math.round(Number(data.score) || 0));
             const shipX = Number(data.shipX);
@@ -377,6 +394,9 @@
                 won: Boolean(data.won),
                 boardLogged: Boolean(data.boardLogged),
                 cometSpawns: Math.max(0, Math.min(COMET_LIMIT, Math.round(Number(data.cometSpawns) || 0))),
+                drops,
+                hasDrops: Array.isArray(data.drops),
+                shield: data.shield === true,
             };
         } catch {
             return null;
@@ -441,6 +461,9 @@
         comets: [],
         cometSpawns: 0,
         meteors: [],
+        drops: [],
+        shield: false,
+        shieldRings: [],
         pops: [],
         floaters: [],
         found: 0,
@@ -624,6 +647,14 @@
     function tooCloseToHoles(x, y, r) {
         for (const hole of state.holes) {
             if (Math.hypot(x - hole.x, y - hole.y) < r + hole.r + 80) return true;
+        }
+        return false;
+    }
+
+    function tooCloseToDrops(x, y, r, gap) {
+        const pad = gap == null ? state.world * 0.22 : gap;
+        for (const drop of state.drops) {
+            if (Math.hypot(x - drop.x, y - drop.y) < r + drop.r + pad) return true;
         }
         return false;
     }
@@ -913,9 +944,49 @@
 
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) placeBall(false);
-        if (!state.spikes) return;
-        const spikes = Math.round(count * SPIKE_RATE);
-        for (let i = 0; i < spikes; i += 1) placeBall(true);
+        if (state.spikes) {
+            const spikes = Math.round(count * SPIKE_RATE);
+            for (let i = 0; i < spikes; i += 1) placeBall(true);
+        }
+        spawnDrops();
+    }
+
+    function placeShieldDrop() {
+        const r = SHIELD_DROP_R;
+        const minShip = SHIP_RADIUS + r + SPAWN_CLEARANCE + 80;
+        const far = state.world * 0.22;
+        const near = state.world * 0.12;
+        let x = 0;
+        let y = 0;
+        let attempts = 0;
+        do {
+            x = rand(r + 80, state.world - r - 80);
+            y = rand(r + 80, state.world - r - 80);
+            attempts += 1;
+        } while (
+            (
+                Math.hypot(x - state.shipX, y - state.shipY) < minShip
+                || tooCloseToBalls(x, y, r)
+                || tooCloseToHoles(x, y, r)
+                || tooCloseToDrops(x, y, r, attempts < 160 ? far : near)
+            ) && attempts < 280
+        );
+        state.drops.push({ type: "shield", x, y, r });
+    }
+
+    function spawnDrops() {
+        state.drops = [];
+        const count = Math.max(1, Math.round(state.ballCount * DROP_RATE));
+        for (let i = 0; i < count; i += 1) placeShieldDrop();
+    }
+
+    function normalizeDrop(drop) {
+        if (!drop || drop.type !== "shield") return null;
+        const x = Number(drop.x);
+        const y = Number(drop.y);
+        const r = Number(drop.r) || SHIELD_DROP_R;
+        if (!Number.isFinite(x) || !Number.isFinite(y) || r <= 0) return null;
+        return { type: "shield", x, y, r };
     }
 
     function formatBoardDate(at) {
@@ -1159,6 +1230,13 @@
         flash.classList.add("is-on");
     }
 
+    function burstShield() {
+        state.shield = false;
+        state.shieldRings.push({ life: 1 });
+        playHit();
+        savePlay();
+    }
+
     function applyHazardHit() {
         state.found = 0;
         state.score = 0;
@@ -1264,7 +1342,21 @@
         }
     }
 
+    function collectDrops() {
+        for (let i = state.drops.length - 1; i >= 0; i -= 1) {
+            const drop = state.drops[i];
+            if (Math.hypot(drop.x - state.shipX, drop.y - state.shipY) > drop.r + SHIP_RADIUS) continue;
+            state.drops.splice(i, 1);
+            if (drop.type === "shield" && !state.shield) {
+                state.shield = true;
+                playHit();
+            }
+            savePlay();
+        }
+    }
+
     function collectIfHit() {
+        collectDrops();
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
             const body = ball.hasSpikes ? ball.r * SPIKE_REACH : ball.r;
@@ -1955,6 +2047,100 @@
         ctx.restore();
     }
 
+    function drawShieldBubble(x, y, r, now) {
+        const glow = 0.88 + 0.12 * Math.sin((now || 0) / 520);
+        ctx.save();
+        const halo = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 2.15);
+        halo.addColorStop(0, `rgba(255, 255, 255, ${0.22 * glow})`);
+        halo.addColorStop(0.38, `rgba(236, 246, 255, ${0.16 * glow})`);
+        halo.addColorStop(0.72, `rgba(210, 230, 255, ${0.07 * glow})`);
+        halo.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(x, y, r * 2.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        const disk = ctx.createRadialGradient(x - r * 0.28, y - r * 0.32, r * 0.08, x, y, r);
+        disk.addColorStop(0, `rgba(255, 255, 255, ${0.95 * glow})`);
+        disk.addColorStop(0.42, `rgba(236, 244, 255, ${0.42 * glow})`);
+        disk.addColorStop(0.78, `rgba(210, 228, 255, ${0.16 * glow})`);
+        disk.addColorStop(1, `rgba(255, 255, 255, ${0.04 * glow})`);
+        ctx.fillStyle = disk;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * glow})`;
+        ctx.lineWidth = Math.max(1.6, r * 0.08);
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.92, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawDrops(cam, now) {
+        for (const drop of state.drops) {
+            const x = drop.x - cam.x;
+            const y = drop.y - cam.y;
+            const reach = drop.r * 2.3;
+            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            drawShieldBubble(x, y, drop.r, now);
+        }
+    }
+
+    function drawShipShield(now) {
+        if (!state.shield) return;
+        const x = state.width / 2;
+        const y = state.height / 2;
+        const r = SHIELD_SHIP_R;
+        const glow = 0.88 + 0.12 * Math.sin(now / 520);
+        ctx.save();
+        const halo = ctx.createRadialGradient(x, y, r * 0.55, x, y, r * 1.85);
+        halo.addColorStop(0, "rgba(255, 255, 255, 0)");
+        halo.addColorStop(0.42, `rgba(255, 255, 255, ${0.08 * glow})`);
+        halo.addColorStop(0.72, `rgba(236, 246, 255, ${0.2 * glow})`);
+        halo.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(x, y, r * 1.85, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.78 * glow})`;
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawShieldRings(dt) {
+        for (let i = state.shieldRings.length - 1; i >= 0; i -= 1) {
+            const ring = state.shieldRings[i];
+            ring.life -= dt * 1.35;
+            if (ring.life <= 0) {
+                state.shieldRings.splice(i, 1);
+                continue;
+            }
+            const t = 1 - ring.life;
+            const r = SHIELD_SHIP_R + t * 170;
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${ring.life})`;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.9)";
+            ctx.shadowBlur = 22;
+            ctx.lineWidth = 3.5 + t * 5;
+            ctx.beginPath();
+            ctx.arc(state.width / 2, state.height / 2, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = ring.life * 0.35;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.arc(state.width / 2, state.height / 2, r * 0.78, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     function drawSpace(cam) {
         const sky = ctx.createLinearGradient(0, 0, 0, state.height);
         sky.addColorStop(0, "#050217");
@@ -2255,10 +2441,23 @@
         miniCtx.fill();
         miniCtx.restore();
 
-        miniCtx.strokeStyle = "rgba(170, 200, 255, 0.4)";
-        miniCtx.lineWidth = 1;
+        for (const drop of state.drops) {
+            const p = toMinimap(drop.x, drop.y, size, scale);
+            const r = Math.max(3.2 * mark, drop.r * scale);
+            if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
+            miniCtx.fillStyle = "rgba(255, 255, 255, 0.92)";
+            miniCtx.shadowColor = "#ffffff";
+            miniCtx.shadowBlur = 6 * mark;
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r * 0.55, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.shadowBlur = 0;
+        }
+
+        miniCtx.strokeStyle = state.shield ? "rgba(255, 255, 255, 0.85)" : "rgba(170, 200, 255, 0.4)";
+        miniCtx.lineWidth = state.shield ? Math.max(1.4, 1.8 * mark) : 1;
         miniCtx.beginPath();
-        miniCtx.arc(cx, cy, 11 * mark, 0, Math.PI * 2);
+        miniCtx.arc(cx, cy, (state.shield ? 14 : 11) * mark, 0, Math.PI * 2);
         miniCtx.stroke();
 
         miniCtx.restore();
@@ -2284,9 +2483,12 @@
         drawComets(cam);
         drawMeteors(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
+        drawDrops(cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
         drawShip(moving);
+        drawShipShield(now);
+        drawShieldRings(dt);
         drawMinimap(now);
         updateTimer(now);
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
@@ -2508,6 +2710,9 @@
         state.comets = [];
         state.cometSpawns = 0;
         state.meteors = [];
+        state.drops = [];
+        state.shield = false;
+        state.shieldRings = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;
@@ -3020,6 +3225,9 @@
         state.won = play.won;
         state.boardLogged = play.boardLogged;
         state.cometSpawns = play.cometSpawns;
+        state.shield = play.shield;
+        if (play.hasDrops) state.drops = play.drops;
+        else spawnDrops();
         timer.elapsed = play.elapsed;
         timer.runningSince = null;
         shownSecond = -1;

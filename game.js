@@ -1746,8 +1746,10 @@
         document.getElementById("win-board").addEventListener("click", () => {
             openBoard("win");
         });
-        document.getElementById("win-restart").addEventListener("click", () => {
-            restartGame();
+        document.getElementById("win-home").addEventListener("click", () => {
+            savePlay();
+            saveSettings();
+            location.href = "./index.html";
         });
 
         const leaveBoard = () => closeBoard();

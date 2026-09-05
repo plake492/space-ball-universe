@@ -3,7 +3,11 @@
     const START_GOAL = 75;
     const GOAL_MIN = 5;
     const GOAL_STEP = 5;
+    const BALLS_MIN = 25;
+    const BALLS_MAX = 250;
     const START_WORLD = 20000;
+    const WORLD_SIZES = [5000, 10000, 15000, 20000];
+    const SETTINGS_KEY = "harlie-space-settings";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
     const MIN_BALL = 50;
@@ -58,16 +62,46 @@
         };
     });
 
+    function snapStep(value, min, max, step) {
+        const snapped = Math.round(value / step) * step;
+        return Math.min(max, Math.max(min, snapped));
+    }
+
+    function loadSettings() {
+        try {
+            const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "");
+            const world = WORLD_SIZES.includes(Number(data.world)) ? Number(data.world) : START_WORLD;
+            const ballCount = snapStep(Number(data.ballCount) || START_BALLS, BALLS_MIN, BALLS_MAX, GOAL_STEP);
+            const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
+            return { world, ballCount, goal };
+        } catch {
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL };
+        }
+    }
+
+    function saveSettings() {
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                world: state.world,
+                ballCount: state.ballCount,
+                goal: state.goal,
+            }));
+        } catch {
+            // Ignore quota or private-mode failures.
+        }
+    }
+
+    const saved = loadSettings();
     const state = {
-        world: START_WORLD,
-        shipX: START_WORLD / 2,
-        shipY: START_WORLD / 2,
+        world: saved.world,
+        shipX: saved.world / 2,
+        shipY: saved.world / 2,
         heading: -Math.PI / 2,
         balls: [],
         pops: [],
         found: 0,
-        ballCount: START_BALLS,
-        goal: START_GOAL,
+        ballCount: saved.ballCount,
+        goal: saved.goal,
         won: false,
         menuOpen: false,
         width: 0,
@@ -166,9 +200,7 @@
     }
 
     function clampGoal(value) {
-        const max = Math.max(GOAL_MIN, state.ballCount);
-        const snapped = Math.round(value / GOAL_STEP) * GOAL_STEP;
-        return Math.min(max, Math.max(GOAL_MIN, snapped));
+        return snapStep(value, GOAL_MIN, Math.max(GOAL_MIN, state.ballCount), GOAL_STEP);
     }
 
     function syncGoalSlider() {
@@ -293,13 +325,19 @@
     }
 
     function drawBorder(cam) {
-        const thickness = 18;
+        const x = -cam.x;
+        const y = -cam.y;
+        const w = state.world;
+        const h = state.world;
         ctx.save();
-        ctx.strokeStyle = "rgba(120, 170, 255, 0.55)";
-        ctx.lineWidth = thickness;
-        ctx.shadowColor = "rgba(90, 160, 255, 0.8)";
-        ctx.shadowBlur = 24;
-        ctx.strokeRect(-cam.x, -cam.y, state.world, state.world);
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, state.width, Math.max(0, y));
+        ctx.fillRect(0, y + h, state.width, Math.max(0, state.height - (y + h)));
+        ctx.fillRect(0, y, Math.max(0, x), h);
+        ctx.fillRect(x + w, y, Math.max(0, state.width - (x + w)), h);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 18;
+        ctx.strokeRect(x, y, w, h);
         ctx.restore();
     }
 
@@ -430,7 +468,7 @@
         miniCtx.roundRect(0, 0, size, size, 20);
         miniCtx.clip();
 
-        miniCtx.fillStyle = "#02010a";
+        miniCtx.fillStyle = "#000000";
         miniCtx.fillRect(0, 0, size, size);
 
         const origin = toMinimap(0, 0);
@@ -438,12 +476,9 @@
         miniCtx.fillStyle = "#0a0830";
         miniCtx.fillRect(origin.x, origin.y, worldPx, worldPx);
 
-        miniCtx.strokeStyle = "rgba(120, 170, 255, 0.85)";
+        miniCtx.strokeStyle = "#000000";
         miniCtx.lineWidth = 2;
-        miniCtx.shadowColor = "rgba(90, 160, 255, 0.7)";
-        miniCtx.shadowBlur = 8;
         miniCtx.strokeRect(origin.x, origin.y, worldPx, worldPx);
-        miniCtx.shadowBlur = 0;
 
         for (const ball of state.balls) {
             const p = toMinimap(ball.x, ball.y);
@@ -672,6 +707,7 @@
             if (next === state.ballCount) return;
             state.ballCount = next;
             state.goal = clampGoal(state.goal);
+            saveSettings();
             restartGame();
         });
 
@@ -686,6 +722,7 @@
                 return;
             }
             state.goal = next;
+            saveSettings();
             updateHud();
             maybeWin();
         });
@@ -695,6 +732,7 @@
                 const next = Number(button.dataset.world);
                 if (next === state.world) return;
                 state.world = next;
+                saveSettings();
                 restartGame();
             });
         }

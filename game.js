@@ -63,7 +63,6 @@
     const miniCtx = minimap.getContext("2d");
     const foundEl = document.getElementById("found-count");
     const goalEl = document.getElementById("goal-count");
-    const ballsLeftEl = document.getElementById("balls-left");
     const coordsEl = document.getElementById("coords");
     const timerEl = document.getElementById("play-timer");
     const ballsSlider = document.getElementById("balls-slider");
@@ -210,10 +209,6 @@
         }
     }
 
-    function remaining() {
-        return state.balls.length;
-    }
-
     function formatPlayTime(ms) {
         const total = Math.floor(ms / 1000);
         const hours = Math.floor(total / 3600);
@@ -275,8 +270,6 @@
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
         syncGoalSlider();
-        const n = remaining();
-        ballsLeftEl.textContent = `${n} ball${n === 1 ? "" : "s"} in space`;
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
         for (const button of document.querySelectorAll(".world-btn")) {
             button.classList.toggle("is-on", Number(button.dataset.world) === state.world);

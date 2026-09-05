@@ -86,12 +86,6 @@ body {
     line-height: 1.1;
 }
 
-.sub {
-    margin: 4px 0 0;
-    font-size: 13px;
-    color: #c5d2ef;
-}
-
 .settings-btn {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));

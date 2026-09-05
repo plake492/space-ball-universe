@@ -399,18 +399,34 @@
         return window.matchMedia(COMPACT_UI).matches;
     }
 
+    function viewportSize() {
+        const view = window.visualViewport;
+        if (view) {
+            return {
+                width: Math.max(1, Math.round(view.width)),
+                height: Math.max(1, Math.round(view.height)),
+            };
+        }
+        return {
+            width: Math.max(1, window.innerWidth),
+            height: Math.max(1, window.innerHeight),
+        };
+    }
+
     function controlT() {
-        const vmin = Math.min(window.innerWidth, window.innerHeight);
+        const view = viewportSize();
+        const vmin = Math.min(view.width, view.height);
         return Math.min(1, Math.max(0, (vmin - SCALE_VMIN_START) / (SCALE_VMIN_FULL - SCALE_VMIN_START)));
     }
 
     function applyControlLayout() {
         const t = controlT();
+        const view = viewportSize();
         const grow = 1 + CONTROL_GROW * t;
         const root = document.documentElement;
         root.style.setProperty("--control-grow", String(grow));
-        root.style.setProperty("--control-inset-x", `${Math.max(0, (window.innerWidth / 6) * t - 100)}px`);
-        root.style.setProperty("--control-inset-y", `${Math.max(0, (window.innerHeight / 6) * t - 50)}px`);
+        root.style.setProperty("--control-inset-x", `${Math.max(0, (view.width / 6) * t - 100)}px`);
+        root.style.setProperty("--control-inset-y", `${Math.max(0, (view.height / 6) * t - 50)}px`);
     }
 
     function stickScale() {
@@ -441,16 +457,31 @@
     let uiCompact = isCompactUi();
     let lastStickScale = stickScale();
 
+    let resizeFrame = 0;
+
+    function scheduleResize() {
+        if (resizeFrame) return;
+        resizeFrame = requestAnimationFrame(() => {
+            resizeFrame = 0;
+            resize();
+        });
+    }
+
     function resize() {
         applyControlLayout();
+        const view = viewportSize();
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        state.width = window.innerWidth;
-        state.height = window.innerHeight;
+        state.width = view.width;
+        state.height = view.height;
         state.dpr = dpr;
-        canvas.width = Math.floor(state.width * dpr);
-        canvas.height = Math.floor(state.height * dpr);
+        const offsetLeft = window.visualViewport ? Math.round(window.visualViewport.offsetLeft) : 0;
+        const offsetTop = window.visualViewport ? Math.round(window.visualViewport.offsetTop) : 0;
+        canvas.style.left = `${offsetLeft}px`;
+        canvas.style.top = `${offsetTop}px`;
         canvas.style.width = `${state.width}px`;
         canvas.style.height = `${state.height}px`;
+        canvas.width = Math.floor(state.width * dpr);
+        canvas.height = Math.floor(state.height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         const size = minimapSize();
@@ -462,7 +493,7 @@
 
         const compact = isCompactUi();
         const nextScale = stickScale();
-        if (compact !== uiCompact || Math.abs(nextScale - lastStickScale) > 0.001) {
+        if (compact !== uiCompact || Math.abs(nextScale - lastStickScale) > 0.02) {
             uiCompact = compact;
             lastStickScale = nextScale;
             buildPips();
@@ -1830,18 +1861,30 @@
     bindPad();
     bindHud();
     preventBrowserGestures();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", scheduleResize);
+    window.addEventListener("orientationchange", scheduleResize);
+    document.addEventListener("fullscreenchange", scheduleResize);
+    document.addEventListener("webkitfullscreenchange", scheduleResize);
+    window.matchMedia(COMPACT_UI).addEventListener("change", scheduleResize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", scheduleResize);
+        window.visualViewport.addEventListener("scroll", scheduleResize);
+    }
     window.addEventListener("pagehide", () => {
         savePlay();
         pauseAudio();
     });
-    window.addEventListener("pageshow", resumeAudio);
+    window.addEventListener("pageshow", () => {
+        scheduleResize();
+        resumeAudio();
+    });
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
             savePlay();
             pauseAudio();
             return;
         }
+        scheduleResize();
         resumeAudio();
     });
     if ("serviceWorker" in navigator) {

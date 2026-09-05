@@ -72,6 +72,10 @@
 
             <div class="settings-body">
             <section class="settings-block">
+                <button type="button" class="settings-reset" id="settings-reset">Reset progress</button>
+            </section>
+
+            <section class="settings-block">
                 <p class="label">Username</p>
                 <input type="text" class="username-input" id="username-input" maxlength="20" autocomplete="username" enterkeyhint="done" spellcheck="false" placeholder="Pilot" aria-label="Username">
             </section>
@@ -197,6 +201,17 @@
                 <button type="button" class="settings-home" id="settings-home">Home</button>
                 <button type="button" class="settings-restart" id="settings-restart">Restart</button>
                 <button type="button" class="settings-continue" id="settings-continue">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="reset-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+        <div class="win-card resume-card">
+            <h1 id="reset-title">RESET ALL?</h1>
+            <p>This erases lifetime points, unlocked ships, the leaderboard, and any game in progress.</p>
+            <div class="resume-actions">
+                <button type="button" id="reset-cancel">Cancel</button>
+                <button type="button" class="reset-confirm" id="reset-confirm">Reset</button>
             </div>
         </div>
     </div>

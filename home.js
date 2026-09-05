@@ -292,6 +292,23 @@
     document.getElementById("settings-close").addEventListener("click", () => setMenuOpen(false));
     document.getElementById("settings-continue").addEventListener("click", () => setMenuOpen(false));
     document.getElementById("settings-board").addEventListener("click", () => openBoard("settings"));
+    const resetOverlay = document.getElementById("reset-overlay");
+    document.getElementById("settings-reset").addEventListener("click", () => resetOverlay.classList.remove("hidden"));
+    document.getElementById("reset-cancel").addEventListener("click", () => resetOverlay.classList.add("hidden"));
+    document.getElementById("reset-confirm").addEventListener("click", () => {
+        state.lifetime = 0;
+        state.ship = "classic";
+        try {
+            localStorage.removeItem(PLAY_KEY);
+            localStorage.removeItem(BOARD_KEY);
+        } catch {
+            // Ignore private-mode failures.
+        }
+        saveSettings();
+        resetOverlay.classList.add("hidden");
+        setMenuOpen(false);
+        updateHud();
+    });
     document.getElementById("board-back").addEventListener("click", closeBoard);
     document.getElementById("board-close").addEventListener("click", closeBoard);
 

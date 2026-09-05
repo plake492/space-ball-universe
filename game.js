@@ -239,6 +239,7 @@
     }
 
     function savePlay() {
+        if (state.wiped) return;
         try {
             localStorage.setItem(PLAY_KEY, JSON.stringify({
                 world: state.world,
@@ -377,6 +378,7 @@
         boardOpen: false,
         boardFrom: "settings",
         boardLogged: false,
+        wiped: false,
         minimapLarge: false,
         width: 0,
         height: 0,
@@ -1894,6 +1896,25 @@
 
         document.getElementById("settings-board").addEventListener("click", () => {
             openBoard("settings");
+        });
+
+        const resetOverlay = document.getElementById("reset-overlay");
+        const openReset = () => resetOverlay.classList.remove("hidden");
+        const closeReset = () => resetOverlay.classList.add("hidden");
+        document.getElementById("settings-reset").addEventListener("click", openReset);
+        document.getElementById("reset-cancel").addEventListener("click", closeReset);
+        document.getElementById("reset-confirm").addEventListener("click", () => {
+            state.wiped = true;
+            state.lifetime = 0;
+            state.ship = "classic";
+            try {
+                localStorage.removeItem(PLAY_KEY);
+                localStorage.removeItem(BOARD_KEY);
+            } catch {
+                // Ignore private-mode failures.
+            }
+            saveSettings();
+            location.href = "./index.html";
         });
 
         const homeBtn = document.getElementById("settings-home");

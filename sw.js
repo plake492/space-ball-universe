@@ -10,6 +10,8 @@ const ASSETS = [
     "./public/icons/icon-512-maskable.png",
     "./public/icons/apple-touch-icon.png",
     "./public/images/ships/ship-1.png",
+    "./public/images/ships/cat.png",
+    "./public/images/ships/wolf.png",
     "./public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3",
     "./public/audio/balls/audio_319c456817.mp3",
     "./public/audio/atmosphere/drone-outerspace-hum-danijel-zambo-1-02-27.mp3",

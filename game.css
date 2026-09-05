@@ -20,6 +20,11 @@ body {
     -webkit-user-select: none;
 }
 
+html {
+    --control-inset-x: clamp(0px, calc((100vmin - 520px) * 150 / 380), 150px);
+    --control-inset-y: clamp(0px, calc(25vh * (100vmin - 520px) / 380px), 25vh);
+}
+
 html.settings-open,
 body.settings-open {
     touch-action: pan-y;
@@ -301,8 +306,8 @@ body.settings-open {
 
 .controls {
     position: fixed;
-    left: max(20px, env(safe-area-inset-left));
-    bottom: max(24px, env(safe-area-inset-bottom));
+    left: calc(max(20px, env(safe-area-inset-left)) + var(--control-inset-x));
+    bottom: calc(max(24px, env(safe-area-inset-bottom)) + var(--control-inset-y));
     display: flex;
     align-items: flex-end;
     gap: 14px;
@@ -534,14 +539,14 @@ button {
 
     .controls {
         gap: 10px;
-        left: max(12px, env(safe-area-inset-left));
-        bottom: max(16px, env(safe-area-inset-bottom));
+        left: calc(max(12px, env(safe-area-inset-left)) + var(--control-inset-x));
+        bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--control-inset-y));
     }
 
     .boost-btn {
         position: fixed;
-        right: max(12px, env(safe-area-inset-right));
-        bottom: max(16px, env(safe-area-inset-bottom));
+        right: calc(max(12px, env(safe-area-inset-right)) + var(--control-inset-x));
+        bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--control-inset-y));
         margin: 0;
     }
 

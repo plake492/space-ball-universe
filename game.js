@@ -1936,7 +1936,8 @@
         for (const panel of document.querySelectorAll(".settings-panel")) {
             panel.classList.toggle("hidden", panel.dataset.panel !== id);
         }
-        settingsMenu.scrollTop = 0;
+        const body = settingsMenu.querySelector(".settings-body");
+        if (body) body.scrollTop = 0;
     }
 
     function openMenu() {
@@ -1949,7 +1950,6 @@
         document.documentElement.classList.add("settings-open");
         document.body.classList.add("settings-open");
         showSettingsPanel("");
-        settingsMenu.scrollTop = 0;
         syncBoost();
         savePlay();
     }

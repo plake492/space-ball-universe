@@ -251,7 +251,8 @@
         for (const panel of document.querySelectorAll(".settings-panel")) {
             panel.classList.toggle("hidden", panel.dataset.panel !== id);
         }
-        if (settingsMenu) settingsMenu.scrollTop = 0;
+        const body = settingsMenu && settingsMenu.querySelector(".settings-body");
+        if (body) body.scrollTop = 0;
     }
 
     function setMenuOpen(open) {
@@ -259,7 +260,10 @@
         settingsMenu.classList.toggle("hidden", !open);
         document.documentElement.classList.toggle("settings-open", open);
         document.body.classList.toggle("settings-open", open);
-        if (open) settingsMenu.scrollTop = 0;
+        if (open) {
+            const body = settingsMenu.querySelector(".settings-body");
+            if (body) body.scrollTop = 0;
+        }
     }
 
     function updateHome() {

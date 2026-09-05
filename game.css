@@ -187,13 +187,12 @@ body.board-open {
     inset: 0;
     z-index: 6;
     padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-    display: grid;
-    justify-items: center;
-    align-content: safe center;
-    overflow-x: hidden;
-    overflow-y: scroll;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
     touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     background:
         radial-gradient(ellipse 58% 42% at 16% 22%, rgba(148, 72, 210, 0.16), transparent 70%),
@@ -212,8 +211,9 @@ body.board-open {
     flex-direction: column;
     width: 600px;
     max-width: 100%;
+    max-height: 100%;
     min-height: 0;
-    overflow: visible;
+    overflow: hidden;
     touch-action: pan-y;
     border-radius: 28px;
     padding: 28px 24px 20px;
@@ -291,8 +291,17 @@ body.board-open {
 }
 
 .settings-body {
-    flex: 1 0 auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
     touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.settings-panel {
+    min-height: min-content;
 }
 
 .settings-block {
@@ -1227,6 +1236,17 @@ body.home {
     .settings-sheet {
         border-radius: 20px;
         padding: 16px 16px 14px;
+        max-height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .settings-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .settings-head {

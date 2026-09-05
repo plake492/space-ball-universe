@@ -7,6 +7,7 @@
     const BALLS_MAX = 250;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
+    const TRIAL_MS = [60000, 300000, 600000];
     const DIFFICULTIES = {
         easy: { world: 5000, ballCount: 40, goal: 25 },
         medium: { world: 10000, ballCount: 60, goal: 45 },
@@ -297,6 +298,8 @@
                 elapsed: playTime(performance.now()),
                 won: state.won,
                 boardLogged: state.boardLogged,
+                trial: state.trial,
+                trialMs: state.trialMs,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -309,6 +312,8 @@
             if (!data || Number(data.world) !== state.world || Number(data.ballCount) !== state.ballCount) {
                 return null;
             }
+            if (Boolean(data.trial) !== state.trial) return null;
+            if (state.trial && Number(data.trialMs) !== state.trialMs) return null;
             if (!Array.isArray(data.balls)) return null;
             const balls = [];
             for (const ball of data.balls) {
@@ -407,6 +412,8 @@
         lifetime: saved.lifetime,
         reqShips: saved.reqShips,
         difficulty: saved.difficulty || "",
+        trial: Boolean(saved.trial),
+        trialMs: TRIAL_MS.includes(Number(saved.trialMs)) ? Number(saved.trialMs) : 300000,
         speed: 0,
         boost: false,
         won: false,
@@ -656,50 +663,73 @@
         }
     }
 
-    function cometCount() {
-        if (state.world >= 20000) return 10;
-        if (state.world >= 15000) return 7;
-        if (state.world >= 10000) return 5;
-        return 3;
-    }
-
+    const COMET_EVERY = 30000;
     const COMET_TINTS = [
         { r: 220, g: 236, b: 255 },
         { r: 170, g: 214, b: 255 },
         { r: 255, g: 224, b: 176 },
         { r: 196, g: 255, b: 236 },
     ];
+    let lastComet = 0;
+
+    function makeComet() {
+        const margin = 90;
+        const side = Math.floor(Math.random() * 4);
+        let x = 0;
+        let y = 0;
+        let angle = 0;
+        if (side === 0) {
+            x = -margin;
+            y = rand(0, state.world);
+            angle = rand(-0.65, 0.65);
+        } else if (side === 1) {
+            x = state.world + margin;
+            y = rand(0, state.world);
+            angle = Math.PI + rand(-0.65, 0.65);
+        } else if (side === 2) {
+            x = rand(0, state.world);
+            y = -margin;
+            angle = Math.PI / 2 + rand(-0.65, 0.65);
+        } else {
+            x = rand(0, state.world);
+            y = state.world + margin;
+            angle = -Math.PI / 2 + rand(-0.65, 0.65);
+        }
+        const near = 0.28 + 0.72 * Math.random();
+        const speed = rand(90, 240) * (0.7 + 0.5 * near);
+        return {
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            angle,
+            r: 9 + 18 * near,
+            tail: 120 + 260 * near,
+            near,
+            tint: pick(COMET_TINTS),
+        };
+    }
 
     function spawnComets() {
         state.comets = [];
-        const pad = 80;
-        for (let i = 0; i < cometCount(); i += 1) {
-            const angle = rand(0, Math.PI * 2);
-            const near = 0.28 + 0.72 * Math.random();
-            const speed = rand(90, 240) * (0.7 + 0.5 * near);
-            state.comets.push({
-                x: rand(pad, state.world - pad),
-                y: rand(pad, state.world - pad),
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                angle,
-                r: 3.5 + 9 * near,
-                tail: 120 + 260 * near,
-                near,
-                tint: pick(COMET_TINTS),
-            });
-        }
+        lastComet = performance.now();
+        state.comets.push(makeComet());
     }
 
-    function moveComets(dt) {
-        const wrap = state.world + 480;
-        for (const comet of state.comets) {
+    function updateComets(dt, now, paused) {
+        if (paused) return;
+        for (let i = state.comets.length - 1; i >= 0; i -= 1) {
+            const comet = state.comets[i];
             comet.x += comet.vx * dt;
             comet.y += comet.vy * dt;
-            if (comet.x < -240) comet.x += wrap;
-            else if (comet.x > state.world + 240) comet.x -= wrap;
-            if (comet.y < -240) comet.y += wrap;
-            else if (comet.y > state.world + 240) comet.y -= wrap;
+            const pad = comet.tail + 280;
+            if (comet.x < -pad || comet.y < -pad || comet.x > state.world + pad || comet.y > state.world + pad) {
+                state.comets.splice(i, 1);
+            }
+        }
+        if (now - lastComet >= COMET_EVERY) {
+            lastComet = now;
+            state.comets.push(makeComet());
         }
     }
 
@@ -1674,17 +1704,20 @@
 
     function drawComets(cam) {
         ctx.save();
-        ctx.globalCompositeOperation = "lighter";
+        ctx.beginPath();
+        ctx.rect(-cam.x, -cam.y, state.world, state.world);
+        ctx.clip();
         for (const comet of state.comets) {
             const x = comet.x - cam.x;
             const y = comet.y - cam.y;
             const reach = comet.tail + comet.r * 6;
             if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
             const { r, g, b } = comet.tint;
-            const a = 0.35 + 0.65 * comet.near;
+            const a = 0.4 + 0.6 * comet.near;
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(comet.angle);
+            ctx.globalCompositeOperation = "lighter";
             const streak = ctx.createLinearGradient(-comet.tail, 0, comet.r * 2, 0);
             streak.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
             streak.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${0.08 * a})`);
@@ -1698,12 +1731,22 @@
             ctx.closePath();
             ctx.fill();
             const coma = ctx.createRadialGradient(0, 0, 0, 0, 0, comet.r * 4.2);
-            coma.addColorStop(0, `rgba(255, 255, 255, ${0.95 * a})`);
-            coma.addColorStop(0.22, `rgba(${r}, ${g}, ${b}, ${0.7 * a})`);
+            coma.addColorStop(0, `rgba(255, 255, 255, ${0.55 * a})`);
+            coma.addColorStop(0.28, `rgba(${r}, ${g}, ${b}, ${0.42 * a})`);
             coma.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
             ctx.fillStyle = coma;
             ctx.beginPath();
             ctx.arc(0, 0, comet.r * 4.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+            const ball = comet.r * 1.35;
+            const core = ctx.createRadialGradient(0, 0, 0, 0, 0, ball);
+            core.addColorStop(0, "#ffffff");
+            core.addColorStop(0.45, `rgb(${r}, ${g}, ${b})`);
+            core.addColorStop(1, `rgb(${Math.round(r * 0.72)}, ${Math.round(g * 0.72)}, ${Math.round(b * 0.72)})`);
+            ctx.fillStyle = core;
+            ctx.beginPath();
+            ctx.arc(0, 0, ball, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -1806,7 +1849,7 @@
         updateEngine(moving);
         const cam = camera();
 
-        moveComets(dt);
+        updateComets(dt, now, paused);
         drawSpace(cam);
         drawHoles(cam, now);
         drawComets(cam);

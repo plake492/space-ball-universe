@@ -479,6 +479,12 @@
         }
     }
 
+    function formatBoardDate(at) {
+        const date = new Date(Number(at) || 0);
+        if (!Number.isFinite(date.getTime()) || date.getTime() <= 0) return "—";
+        return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+    }
+
     function formatPlayTime(ms) {
         const total = Math.floor(ms / 1000);
         const hours = Math.floor(total / 3600);
@@ -1450,6 +1456,7 @@
                 row.name,
                 row.score.toLocaleString(),
                 formatPlayTime(row.elapsed),
+                formatBoardDate(row.at),
             ];
             for (const text of cells) {
                 const span = document.createElement("span");

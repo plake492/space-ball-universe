@@ -18,6 +18,11 @@
     <link rel="stylesheet" href="game.css">
 </head>
 <body class="home">
+    <button type="button" class="home-settings" id="home-settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.49-.42h-3.84a.49.49 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94L2.86 14.52a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.41.34.6.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.09.49 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"/>
+        </svg>
+    </button>
     <p class="home-user" id="home-user"></p>
     <main class="home-screen">
         <h1 class="home-title">SPACE HUNT</h1>
@@ -25,8 +30,14 @@
         <div class="home-actions">
             <button type="button" class="home-btn home-continue" id="home-continue" disabled>Continue</button>
             <button type="button" class="home-btn home-new" id="home-new">New game</button>
-            <button type="button" class="home-btn" id="home-settings">Settings</button>
             <button type="button" class="home-btn" id="home-board">Leaderboard</button>
+        </div>
+        <div class="home-diffs" role="group" aria-label="Difficulty">
+            <button type="button" class="diff-btn" data-diff="easy">Easy</button>
+            <button type="button" class="diff-btn" data-diff="medium">Medium</button>
+            <button type="button" class="diff-btn" data-diff="hard">Hard</button>
+            <button type="button" class="diff-btn" data-diff="extra">Extra hard</button>
+            <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
         </div>
     </main>
     <button type="button" class="home-reset" id="home-reset">Reset progress</button>
@@ -60,16 +71,6 @@
             </div>
 
             <div class="settings-panel hidden" data-panel="game">
-                <section class="settings-block">
-                    <p class="label">Difficulty</p>
-                    <div class="diff-choices" role="group" aria-label="Difficulty">
-                        <button type="button" class="diff-btn" data-diff="easy">Easy</button>
-                        <button type="button" class="diff-btn" data-diff="medium">Medium</button>
-                        <button type="button" class="diff-btn" data-diff="hard">Hard</button>
-                        <button type="button" class="diff-btn" data-diff="extra">Extra hard</button>
-                        <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
-                    </div>
-                </section>
                 <section class="settings-block">
                     <div class="settings-heading">
                         <p class="label">Balls</p>

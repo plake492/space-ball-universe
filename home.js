@@ -53,6 +53,7 @@
         boardOpen: false,
         boardFrom: "home",
         settingsPanel: "",
+        difficulty: "",
     };
 
     function snapStep(value, min, max, step) {
@@ -92,6 +93,7 @@
     function applyDifficulty(id) {
         const preset = DIFFICULTIES[id];
         if (!preset) return;
+        state.difficulty = id;
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
@@ -128,6 +130,15 @@
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
             state.ship = shipUnlocked(wanted) ? wanted : "classic";
             state.name = normalizeName(data.name);
+            if (DIFFICULTIES[data.difficulty]) {
+                const preset = DIFFICULTIES[data.difficulty];
+                state.difficulty = data.difficulty;
+                state.world = preset.world;
+                state.ballCount = preset.ballCount;
+                state.goal = preset.goal;
+            } else {
+                state.difficulty = matchingDifficulty();
+            }
         } catch {
             // Keep defaults.
         }
@@ -145,6 +156,7 @@
                 name: state.name,
                 lifetime: state.lifetime,
                 reqShips: state.reqShips,
+                difficulty: state.difficulty || "",
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -244,9 +256,8 @@
         for (const button of document.querySelectorAll(".world-btn")) {
             button.classList.toggle("is-on", Number(button.dataset.world) === state.world);
         }
-        const activeDiff = matchingDifficulty();
         for (const button of document.querySelectorAll(".diff-btn")) {
-            button.classList.toggle("is-on", button.dataset.diff === activeDiff);
+            button.classList.toggle("is-on", button.dataset.diff === state.difficulty);
         }
         for (const button of document.querySelectorAll(".palette-btn")) {
             button.classList.toggle("is-on", button.dataset.palette === state.palette);
@@ -393,6 +404,7 @@
     ballsSlider.addEventListener("change", () => {
         state.ballCount = Number(ballsSlider.value);
         state.goal = clampGoal(state.goal);
+        state.difficulty = matchingDifficulty();
         saveSettings();
         updateHud();
     });
@@ -401,6 +413,7 @@
     });
     goalSlider.addEventListener("change", () => {
         state.goal = clampGoal(Number(goalSlider.value));
+        state.difficulty = matchingDifficulty();
         saveSettings();
         updateHud();
     });
@@ -413,6 +426,7 @@
             const next = Number(button.dataset.world);
             if (!WORLD_SIZES.includes(next) || next === state.world) return;
             state.world = next;
+            state.difficulty = matchingDifficulty();
             saveSettings();
             updateHud();
         });

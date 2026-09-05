@@ -984,6 +984,31 @@ body.home {
     touch-action: pan-y;
 }
 
+.home-settings {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: max(16px, env(safe-area-inset-left));
+    z-index: 4;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(170, 200, 255, 0.28);
+    background: rgba(10, 16, 36, 0.72);
+    color: #eef3ff;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.home-settings svg {
+    display: block;
+    width: 28px;
+    height: 28px;
+}
+
 .home-user {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));
@@ -1034,6 +1059,18 @@ body.home {
     flex-direction: column;
     width: min(420px, 100%);
     gap: 12px;
+}
+
+.home-diffs {
+    display: flex;
+    flex-wrap: wrap;
+    width: min(420px, 100%);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.home-diffs .diff-btn {
+    flex: 1 1 calc(33.333% - 8px);
 }
 
 .home-btn {
@@ -1309,8 +1346,24 @@ body.home {
         font-size: clamp(36px, 9vw, 52px);
     }
 
+    .home-settings {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+    }
+
+    .home-settings svg {
+        width: 22px;
+        height: 22px;
+    }
+
     .home-actions {
         gap: 10px;
+    }
+
+    .home-diffs {
+        margin-top: 16px;
+        gap: 8px;
     }
 
     .home-btn {

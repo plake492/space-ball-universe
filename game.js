@@ -190,9 +190,25 @@
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
             const ship = shipUnlocked(wanted, lifetime, reqShips) ? wanted : "classic";
             const name = normalizeName(data.name);
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips };
+            const difficulty = DIFFICULTIES[data.difficulty] ? data.difficulty : "";
+            if (difficulty) {
+                const preset = DIFFICULTIES[difficulty];
+                return {
+                    world: preset.world,
+                    ballCount: preset.ballCount,
+                    goal: preset.goal,
+                    palette,
+                    pulse,
+                    ship,
+                    name,
+                    lifetime,
+                    reqShips,
+                    difficulty,
+                };
+            }
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "" };
         }
     }
 
@@ -208,6 +224,7 @@
                 name: state.name,
                 lifetime: state.lifetime,
                 reqShips: state.reqShips,
+                difficulty: state.difficulty || "",
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -388,6 +405,7 @@
         name: saved.name,
         lifetime: saved.lifetime,
         reqShips: saved.reqShips,
+        difficulty: saved.difficulty || "",
         speed: 0,
         boost: false,
         won: false,
@@ -744,6 +762,7 @@
         const preset = DIFFICULTIES[id];
         if (!preset) return;
         const restart = preset.world !== state.world || preset.ballCount !== state.ballCount;
+        state.difficulty = id;
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
@@ -773,9 +792,8 @@
         for (const button of document.querySelectorAll(".world-btn")) {
             button.classList.toggle("is-on", Number(button.dataset.world) === state.world);
         }
-        const activeDiff = matchingDifficulty();
         for (const button of document.querySelectorAll(".diff-btn")) {
-            button.classList.toggle("is-on", button.dataset.diff === activeDiff);
+            button.classList.toggle("is-on", button.dataset.diff === state.difficulty);
         }
         for (const button of document.querySelectorAll(".palette-btn")) {
             button.classList.toggle("is-on", button.dataset.palette === state.palette);
@@ -2059,6 +2077,7 @@
             if (next === state.ballCount) return;
             state.ballCount = next;
             state.goal = clampGoal(state.goal);
+            state.difficulty = matchingDifficulty();
             saveSettings();
             restartGame();
         });
@@ -2074,6 +2093,7 @@
                 return;
             }
             state.goal = next;
+            state.difficulty = matchingDifficulty();
             saveSettings();
             updateHud();
             maybeWin();
@@ -2088,6 +2108,7 @@
                 const next = Number(button.dataset.world);
                 if (next === state.world) return;
                 state.world = next;
+                state.difficulty = matchingDifficulty();
                 saveSettings();
                 restartGame();
             });

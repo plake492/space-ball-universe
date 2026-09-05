@@ -29,13 +29,14 @@ body {
 .hud-stats {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));
-    left: max(16px, env(safe-area-inset-left));
-    right: max(16px, env(safe-area-inset-right));
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    align-items: stretch;
-    gap: 12px;
+    align-items: center;
+    gap: 14px;
     pointer-events: none;
-    z-index: 2;
+    z-index: 4;
+    min-width: 0;
 }
 
 .panel,
@@ -49,26 +50,21 @@ body {
     backdrop-filter: blur(10px);
 }
 
-.timer-panel {
-    position: fixed;
-    top: max(16px, env(safe-area-inset-top));
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 4;
-    pointer-events: none;
-    text-align: center;
-    min-width: 110px;
-}
-
-.timer-panel .value {
-    font-variant-numeric: tabular-nums;
-}
-
 .panel {
     pointer-events: auto;
     border-radius: 18px;
     padding: 12px 16px;
-    min-width: 120px;
+    min-width: 0;
+}
+
+.hud-stats .value {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.hud-timer {
+    padding-left: 14px;
+    border-left: 1px solid rgba(170, 200, 255, 0.28);
 }
 
 .label {
@@ -482,25 +478,18 @@ button {
 
 @media (max-width: 1024px) {
     .hud-stats {
-        left: 50%;
-        right: auto;
-        width: max-content;
-        transform: translateX(-50%);
-        justify-content: center;
-        gap: 8px;
-        z-index: 4;
+        top: max(12px, env(safe-area-inset-top));
+        gap: 10px;
+        padding: 6px 10px;
+        border-radius: 14px;
     }
 
-    .timer-panel {
-        position: static;
-        left: auto;
-        transform: none;
-        min-width: 0;
+    .hud-timer {
+        padding-left: 10px;
     }
 
     .panel {
         padding: 8px 12px;
-        min-width: 0;
         border-radius: 14px;
     }
 
@@ -531,9 +520,9 @@ button {
     }
 
     .minimap {
-        top: max(60px, calc(env(safe-area-inset-top) + 52px));
-        left: max(12px, env(safe-area-inset-left));
-        right: auto;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        left: auto;
         bottom: auto;
         width: 108px;
         height: 108px;
@@ -629,7 +618,13 @@ button {
 
 @media (max-width: 700px) {
     .hud-stats {
-        gap: 6px;
+        gap: 8px;
+        padding: 5px 8px;
+        border-radius: 12px;
+    }
+
+    .hud-timer {
+        padding-left: 8px;
     }
 
     .panel {

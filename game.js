@@ -2061,16 +2061,16 @@
     }
 
     function shieldDropPath(target, x, y, r) {
-        const w = r * 0.78;
-        const top = y - r * 0.88;
-        const mid = y - r * 0.02;
-        const tip = y + r * 1.08;
+        const px = (dx) => x + dx * r;
+        const py = (dy) => y + dy * r;
         target.beginPath();
-        target.moveTo(x, top);
-        target.bezierCurveTo(x + w * 0.18, top + r * 0.02, x + w, top + r * 0.12, x + w, mid);
-        target.quadraticCurveTo(x + w * 0.9, y + r * 0.48, x, tip);
-        target.quadraticCurveTo(x - w * 0.9, y + r * 0.48, x - w, mid);
-        target.bezierCurveTo(x - w, top + r * 0.12, x - w * 0.18, top + r * 0.02, x, top);
+        target.moveTo(px(0), py(-1.04));
+        target.quadraticCurveTo(px(0.38), py(-0.68), px(0.86), py(-0.64));
+        target.lineTo(px(0.9), py(-0.1));
+        target.quadraticCurveTo(px(0.78), py(0.46), px(0), py(1.1));
+        target.quadraticCurveTo(px(-0.78), py(0.46), px(-0.9), py(-0.1));
+        target.lineTo(px(-0.86), py(-0.64));
+        target.quadraticCurveTo(px(-0.38), py(-0.68), px(0), py(-1.04));
         target.closePath();
     }
 
@@ -2099,24 +2099,11 @@
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.88 * glow})`;
-        ctx.lineWidth = Math.max(2, r * 0.1);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.92 * glow})`;
+        ctx.lineJoin = "miter";
+        ctx.miterLimit = 8;
+        ctx.lineWidth = Math.max(2.4, r * 0.12);
         shieldDropPath(ctx, x, y, r);
-        ctx.stroke();
-
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.45 * glow})`;
-        ctx.lineWidth = Math.max(1.2, r * 0.05);
-        shieldDropPath(ctx, x, y, r * 0.72);
-        ctx.stroke();
-
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * glow})`;
-        ctx.lineWidth = Math.max(1.6, r * 0.07);
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(x, y - r * 0.42);
-        ctx.lineTo(x, y + r * 0.38);
-        ctx.moveTo(x - r * 0.32, y - r * 0.08);
-        ctx.lineTo(x + r * 0.32, y - r * 0.08);
         ctx.stroke();
         ctx.restore();
     }

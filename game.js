@@ -153,7 +153,8 @@
     function shipUnlockAt(id) {
         const index = SHIP_IDS.indexOf(id);
         if (index <= 0) return 0;
-        return Math.round(SHIP_COST_START * (SHIP_COST_GROW ** (index - 1)));
+        const raw = SHIP_COST_START * (SHIP_COST_GROW ** (index - 1));
+        return Math.ceil(raw / 10) * 10;
     }
 
     function shipUnlocked(id, lifetime) {

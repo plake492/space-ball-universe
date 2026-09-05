@@ -1022,22 +1022,38 @@ body.home {
     height: 28px;
 }
 
-.home-user {
+.home-pilot {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));
     right: max(16px, env(safe-area-inset-right));
     z-index: 4;
-    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
     max-width: min(50vw, 280px);
+    pointer-events: none;
+}
+
+.home-user,
+.home-lifetime {
+    margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.06em;
-    color: #e8f6ff;
     text-align: right;
-    pointer-events: none;
+}
+
+.home-user {
+    font-size: 16px;
+    color: #e8f6ff;
+}
+
+.home-lifetime {
+    font-size: 13px;
+    color: rgba(232, 246, 255, 0.72);
 }
 
 .home-screen {

@@ -41,6 +41,7 @@
     const continueBtn = document.getElementById("home-continue");
     const homeSub = document.getElementById("home-sub");
     const homeUser = document.getElementById("home-user");
+    const homeLifetime = document.getElementById("home-lifetime");
     const homeDiffBalls = document.getElementById("home-diff-balls");
     const homeDiffGoal = document.getElementById("home-diff-goal");
     const homeDiffWorld = document.getElementById("home-diff-world");
@@ -313,6 +314,7 @@
         if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
         if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         if (homeUser) homeUser.textContent = state.name || "Pilot";
+        if (homeLifetime) homeLifetime.textContent = state.lifetime.toLocaleString();
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
         goalSlider.min = String(GOAL_MIN);

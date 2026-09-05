@@ -30,6 +30,7 @@
     const MAX_BALL = BALL_TYPES[BALL_TYPES.length - 1].size;
     const SPIKE_TYPES = BALL_TYPES.slice(-2);
     const SPIKE_CHANCE = 0.2;
+    const SPIKE_REACH = 1.4;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SHIP_ACCEL = 2000;
@@ -812,11 +813,38 @@
         savePlay();
     }
 
+    function burstAllBalls() {
+        for (const ball of state.balls) {
+            state.pops.push({
+                x: ball.x,
+                y: ball.y,
+                r: ball.r,
+                color: ball.color,
+                life: 1,
+            });
+        }
+        state.balls = [];
+    }
+
+    function hitSpikes() {
+        burstAllBalls();
+        state.found = 0;
+        state.score = 0;
+        playHit();
+        updateHud();
+        savePlay();
+    }
+
     function collectIfHit() {
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
-            const reach = ball.r + SHIP_RADIUS;
+            const body = ball.hasSpikes ? ball.r * SPIKE_REACH : ball.r;
+            const reach = body + SHIP_RADIUS;
             if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
+                if (ball.hasSpikes) {
+                    hitSpikes();
+                    return;
+                }
                 state.balls.splice(i, 1);
                 state.found += 1;
                 const points = ball.points || ballTypeFor(ball).points;

@@ -14,6 +14,7 @@
     const MAX_BALL = 250;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
+    const SPAWN_CLEARANCE = 15;
     const RAINBOW = [
         "#ff3b30",
         "#ff9500",
@@ -143,10 +144,24 @@
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) {
             const size = rand(MIN_BALL, MAX_BALL);
+            const r = size / 2;
+            const minDist = SHIP_RADIUS + r + SPAWN_CLEARANCE;
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = rand(MAX_BALL, state.world - MAX_BALL);
+                y = rand(MAX_BALL, state.world - MAX_BALL);
+                attempts += 1;
+            } while (
+                Math.hypot(x - state.shipX, y - state.shipY) < minDist &&
+                attempts < 80
+            );
+
             state.balls.push({
-                x: rand(MAX_BALL, state.world - MAX_BALL),
-                y: rand(MAX_BALL, state.world - MAX_BALL),
-                r: size / 2,
+                x,
+                y,
+                r,
                 color: pick(RAINBOW),
             });
         }

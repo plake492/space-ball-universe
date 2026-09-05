@@ -1417,7 +1417,7 @@
             return;
         }
 
-        const pulse = ballPulse(ball, now);
+        const pulse = ball.hasSpikes ? 1 : ballPulse(ball, now);
         ctx.save();
         ctx.globalAlpha = pulse;
         if (!ball.hasSpikes) {
@@ -1657,7 +1657,7 @@
             const r = Math.max(ball.hasSpikes ? 3.4 * mark : 2.2 * mark, ball.r * scale) * (ball.hasSpikes ? 0.375 : 1);
             const reach = ball.hasSpikes ? r * 1.9 : r;
             if (p.x < -reach || p.y < -reach || p.x > size + reach || p.y > size + reach) continue;
-            miniCtx.globalAlpha = ballPulse(ball, now);
+            miniCtx.globalAlpha = ball.hasSpikes ? 1 : ballPulse(ball, now);
             miniCtx.fillStyle = ball.color;
             if (ball.hasSpikes) {
                 const spikes = 7;

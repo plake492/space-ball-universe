@@ -563,8 +563,8 @@ body.board-open {
 
 .controls {
     position: fixed;
-    right: max(16px, env(safe-area-inset-right));
-    left: auto;
+    left: max(16px, env(safe-area-inset-left));
+    right: auto;
     bottom: max(16px, env(safe-area-inset-bottom));
     display: flex;
     align-items: flex-end;

@@ -826,10 +826,19 @@
         state.balls = [];
     }
 
+    function flashSpikeBorder() {
+        const flash = document.getElementById("spike-flash");
+        if (!flash) return;
+        flash.classList.remove("is-on");
+        void flash.offsetWidth;
+        flash.classList.add("is-on");
+    }
+
     function hitSpikes() {
         burstAllBalls();
         state.found = 0;
         state.score = 0;
+        flashSpikeBorder();
         playHit();
         updateHud();
         savePlay();

@@ -65,6 +65,10 @@
             </section>
 
             <section class="settings-block">
+                <button type="button" class="settings-board" id="settings-board">Leaderboard</button>
+            </section>
+
+            <section class="settings-block">
                 <p class="label">Fullscreen</p>
                 <div class="fullscreen-choices" role="group" aria-label="Fullscreen">
                     <button type="button" class="fullscreen-btn" data-fullscreen="on">On</button>
@@ -149,12 +153,33 @@
         </div>
     </div>
 
+    <div class="overlay hidden" id="board-overlay" role="dialog" aria-modal="true" aria-labelledby="board-title">
+        <div class="win-card board-card">
+            <div class="board-head">
+                <button type="button" class="board-back" id="board-back">Back</button>
+                <h1 id="board-title">SCORES</h1>
+                <button type="button" class="board-close" id="board-close" aria-label="Close leaderboard">×</button>
+            </div>
+            <div class="board-cols" aria-hidden="true">
+                <span>#</span>
+                <span>Name</span>
+                <span>Score</span>
+                <span>Time</span>
+            </div>
+            <div class="board-list" id="board-list"></div>
+            <p class="board-empty hidden" id="board-empty">No wins yet.</p>
+        </div>
+    </div>
+
     <div class="overlay hidden" id="win-overlay">
         <div class="win-card">
             <h1>YOU WON</h1>
             <p class="win-score" id="win-score">0</p>
             <p id="win-message">You reached the goal.</p>
-            <button type="button" id="win-restart">Restart</button>
+            <div class="win-actions">
+                <button type="button" id="win-board">Leaderboard</button>
+                <button type="button" id="win-restart">Restart</button>
+            </div>
         </div>
     </div>
 

@@ -10,6 +10,8 @@
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
+    const BOARD_KEY = "harlie-space-board";
+    const BOARD_MAX = 25;
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
     const MINIMAP_GROW = 1.3;
@@ -104,6 +106,9 @@
     const winScoreEl = document.getElementById("win-score");
     const resumeOverlay = document.getElementById("resume-overlay");
     const resumeMessage = document.getElementById("resume-message");
+    const boardOverlay = document.getElementById("board-overlay");
+    const boardList = document.getElementById("board-list");
+    const boardEmpty = document.getElementById("board-empty");
     const timer = { elapsed: 0, runningSince: performance.now() };
     let shownSecond = -1;
 
@@ -225,6 +230,7 @@
                 score: state.score,
                 elapsed: playTime(performance.now()),
                 won: state.won,
+                boardLogged: state.boardLogged,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -259,10 +265,57 @@
                 score,
                 elapsed: Math.max(0, Number(data.elapsed) || 0),
                 won: Boolean(data.won),
+                boardLogged: Boolean(data.boardLogged),
             };
         } catch {
             return null;
         }
+    }
+
+    function loadBoard() {
+        try {
+            const data = JSON.parse(localStorage.getItem(BOARD_KEY) || "[]");
+            if (!Array.isArray(data)) return [];
+            const rows = [];
+            for (const row of data) {
+                const name = normalizeName(row && row.name) || "Pilot";
+                const score = Math.max(0, Math.round(Number(row && row.score) || 0));
+                const elapsed = Math.max(0, Number(row && row.elapsed) || 0);
+                if (!Number.isFinite(elapsed)) continue;
+                rows.push({
+                    name,
+                    score,
+                    elapsed,
+                    at: Number(row && row.at) || 0,
+                });
+            }
+            rows.sort((a, b) => b.score - a.score || a.elapsed - b.elapsed || b.at - a.at);
+            return rows.slice(0, BOARD_MAX);
+        } catch {
+            return [];
+        }
+    }
+
+    function saveBoard(rows) {
+        try {
+            localStorage.setItem(BOARD_KEY, JSON.stringify(rows.slice(0, BOARD_MAX)));
+        } catch {
+            // Ignore quota or private-mode failures.
+        }
+    }
+
+    function recordWinScore() {
+        if (state.boardLogged) return;
+        const rows = loadBoard();
+        rows.push({
+            name: state.name || "Pilot",
+            score: state.score,
+            elapsed: timer.elapsed,
+            at: Date.now(),
+        });
+        rows.sort((a, b) => b.score - a.score || a.elapsed - b.elapsed || b.at - a.at);
+        saveBoard(rows);
+        state.boardLogged = true;
     }
 
     const saved = loadSettings();
@@ -287,6 +340,9 @@
         won: false,
         menuOpen: false,
         resumeOpen: false,
+        boardOpen: false,
+        boardFrom: "settings",
+        boardLogged: false,
         minimapLarge: false,
         width: 0,
         height: 0,
@@ -539,6 +595,8 @@
         keys.clear();
         resetStick();
         if (state.menuOpen) closeMenu();
+        if (state.boardOpen) closeBoard();
+        recordWinScore();
         if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
         winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(playTime(performance.now()))}`;
         winOverlay.classList.remove("hidden");
@@ -576,7 +634,7 @@
     }
 
     function moveShip(dt) {
-        if (state.menuOpen || state.won || state.resumeOpen) return false;
+        if (state.menuOpen || state.won || state.resumeOpen || state.boardOpen) return false;
         let vx = 0;
         let vy = 0;
         if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
@@ -1115,7 +1173,7 @@
         const dt = Math.min(0.033, (now - last) / 1000);
         last = now;
 
-        const paused = state.menuOpen || state.won || state.resumeOpen;
+        const paused = state.menuOpen || state.won || state.resumeOpen || state.boardOpen;
         const moving = paused ? false : moveShip(dt);
         if (!paused) collectIfHit();
         updateEngine(moving);
@@ -1140,7 +1198,7 @@
     const boostHold = { pointer: false, space: false };
 
     function syncBoost() {
-        const on = !state.menuOpen && !state.won && !state.resumeOpen && (boostHold.pointer || boostHold.space);
+        const on = !state.menuOpen && !state.won && !state.resumeOpen && !state.boardOpen && (boostHold.pointer || boostHold.space);
         state.boost = on;
         const button = document.getElementById("boost-btn");
         button.classList.toggle("is-on", on);
@@ -1151,7 +1209,7 @@
     function bindKeys() {
         window.addEventListener("keydown", (event) => {
             unlockEngine();
-            if (state.menuOpen || state.won || state.resumeOpen) return;
+            if (state.menuOpen || state.won || state.resumeOpen || state.boardOpen) return;
             if (event.key === " " || event.code === "Space") {
                 event.preventDefault();
                 boostHold.space = true;
@@ -1275,7 +1333,7 @@
 
         joystick.addEventListener("pointerdown", (event) => {
             unlockEngine();
-            if (state.menuOpen || state.won || state.resumeOpen) return;
+            if (state.menuOpen || state.won || state.resumeOpen || state.boardOpen) return;
             event.preventDefault();
             pointerId = event.pointerId;
             joystick.setPointerCapture(event.pointerId);
@@ -1310,9 +1368,11 @@
         state.found = 0;
         state.score = 0;
         state.won = false;
+        state.boardLogged = false;
         keys.clear();
         resetStick();
         winOverlay.classList.add("hidden");
+        closeBoard();
         closeResume(false);
         spawnBalls(state.ballCount);
         resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
@@ -1340,8 +1400,71 @@
         settingsMenu.classList.add("hidden");
         document.documentElement.classList.remove("settings-open");
         document.body.classList.remove("settings-open");
-        if (!state.won) resumeTimer(performance.now());
+        if (!state.won && !state.boardOpen) resumeTimer(performance.now());
         savePlay();
+    }
+
+    function renderBoard() {
+        const rows = loadBoard();
+        boardList.replaceChildren();
+        const hasRows = rows.length > 0;
+        document.querySelector(".board-cols").classList.toggle("hidden", !hasRows);
+        boardEmpty.classList.toggle("hidden", hasRows);
+        for (const [index, row] of rows.entries()) {
+            const el = document.createElement("div");
+            el.className = "board-row";
+            if (state.won && row.name === (state.name || "Pilot") && row.score === state.score && Math.abs(row.elapsed - timer.elapsed) < 1) {
+                el.classList.add("is-you");
+            }
+            const cells = [
+                String(index + 1),
+                row.name,
+                row.score.toLocaleString(),
+                formatPlayTime(row.elapsed),
+            ];
+            for (const text of cells) {
+                const span = document.createElement("span");
+                span.textContent = text;
+                el.append(span);
+            }
+            boardList.append(el);
+        }
+    }
+
+    function openBoard(from) {
+        state.boardFrom = from === "win" ? "win" : "settings";
+        state.boardOpen = true;
+        renderBoard();
+        if (state.boardFrom === "settings") {
+            settingsMenu.classList.add("hidden");
+            document.documentElement.classList.remove("settings-open");
+            document.body.classList.remove("settings-open");
+        } else {
+            winOverlay.classList.add("hidden");
+        }
+        boardOverlay.classList.remove("hidden");
+        document.documentElement.classList.add("board-open");
+        document.body.classList.add("board-open");
+    }
+
+    function closeBoard() {
+        if (!state.boardOpen) return;
+        const from = state.boardFrom;
+        state.boardOpen = false;
+        boardOverlay.classList.add("hidden");
+        document.documentElement.classList.remove("board-open");
+        document.body.classList.remove("board-open");
+        if (from === "win") {
+            winOverlay.classList.remove("hidden");
+            return;
+        }
+        if (state.menuOpen) {
+            settingsMenu.classList.remove("hidden");
+            document.documentElement.classList.add("settings-open");
+            document.body.classList.add("settings-open");
+            return;
+        }
+        openMenu();
     }
 
     function bindHud() {
@@ -1374,7 +1497,7 @@
         const boostBtn = document.getElementById("boost-btn");
         boostBtn.addEventListener("pointerdown", (event) => {
             unlockEngine();
-            if (state.menuOpen || state.won || state.resumeOpen) return;
+            if (state.menuOpen || state.won || state.resumeOpen || state.boardOpen) return;
             event.preventDefault();
             boostHold.pointer = true;
             boostBtn.setPointerCapture(event.pointerId);
@@ -1476,6 +1599,10 @@
             });
         }
 
+        document.getElementById("settings-board").addEventListener("click", () => {
+            openBoard("settings");
+        });
+
         document.getElementById("settings-restart").addEventListener("click", () => {
             restartGame();
             closeMenu();
@@ -1484,9 +1611,16 @@
         document.getElementById("settings-close").addEventListener("click", closeMenu);
         document.getElementById("settings-continue").addEventListener("click", closeMenu);
 
+        document.getElementById("win-board").addEventListener("click", () => {
+            openBoard("win");
+        });
         document.getElementById("win-restart").addEventListener("click", () => {
             restartGame();
         });
+
+        const leaveBoard = () => closeBoard();
+        document.getElementById("board-back").addEventListener("click", leaveBoard);
+        document.getElementById("board-close").addEventListener("click", leaveBoard);
 
         document.getElementById("resume-new").addEventListener("click", () => {
             restartGame();
@@ -1516,7 +1650,7 @@
 
     function preventBrowserGestures() {
         document.addEventListener("touchmove", (event) => {
-            if (state.menuOpen || event.target.closest("#settings-menu")) return;
+            if (state.menuOpen || state.boardOpen || event.target.closest("#settings-menu") || event.target.closest("#board-overlay")) return;
             event.preventDefault();
         }, { passive: false });
         document.addEventListener("gesturestart", (event) => event.preventDefault());
@@ -1538,10 +1672,12 @@
         state.found = play.found;
         state.score = play.score;
         state.won = play.won;
+        state.boardLogged = play.boardLogged;
         timer.elapsed = play.elapsed;
         timer.runningSince = null;
         shownSecond = -1;
         if (play.won) {
+            recordWinScore();
             if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
             winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(play.elapsed)}`;
             winOverlay.classList.remove("hidden");

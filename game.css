@@ -27,7 +27,9 @@ html {
 }
 
 html.settings-open,
-body.settings-open {
+body.settings-open,
+html.board-open,
+body.board-open {
     touch-action: pan-y;
 }
 
@@ -231,6 +233,21 @@ body.settings-open {
 .username-input::placeholder {
     color: rgba(190, 210, 245, 0.45);
     font-weight: 500;
+}
+
+.settings-board {
+    display: block;
+    width: 100%;
+    margin-top: 0;
+    min-height: 56px;
+    border-radius: 16px;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    background: rgba(79, 124, 255, 0.42);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 #balls-slider,
@@ -571,6 +588,128 @@ body.settings-open {
     border-color: rgba(255, 190, 190, 0.4);
 }
 
+.win-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.win-actions button {
+    flex: 1;
+    min-width: 0;
+}
+
+.board-card {
+    width: min(400px, calc(100vw - 56px));
+    max-height: min(62vh, 520px);
+    padding: 18px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.board-card h1 {
+    margin: 0;
+    font-size: clamp(18px, 4vw, 26px);
+    letter-spacing: 0.14em;
+}
+
+.board-head {
+    display: grid;
+    grid-template-columns: 72px 1fr 48px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.board-back,
+.board-close {
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: "Orbitron", sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.board-close {
+    width: 48px;
+    justify-self: end;
+    font-size: 26px;
+    line-height: 1;
+}
+
+.board-cols,
+.board-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 72px 56px;
+    gap: 8px;
+    align-items: center;
+}
+
+.board-cols {
+    margin: 0 0 8px;
+    padding: 0 6px;
+    font-family: "Orbitron", sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #9eb0d6;
+}
+
+.board-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
+.board-row {
+    margin: 0 0 6px;
+    padding: 10px 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    font-family: "Orbitron", sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: #e8f6ff;
+}
+
+.board-row.is-you {
+    background: rgba(79, 124, 255, 0.28);
+    border: 1px solid rgba(190, 230, 255, 0.35);
+}
+
+.board-row span:nth-child(3),
+.board-row span:nth-child(4) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.board-row span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board-empty {
+    margin: 12px 0 0 !important;
+    text-align: center;
+}
+
+.board-cols.hidden,
+.board-empty.hidden {
+    display: none;
+}
+
 button {
     font-family: inherit;
     cursor: pointer;
@@ -688,6 +827,12 @@ button {
         font-size: 16px;
     }
 
+    .settings-board {
+        min-height: 40px;
+        border-radius: 10px;
+        font-size: 15px;
+    }
+
     #balls-slider,
     #goal-slider {
         height: 32px;
@@ -738,5 +883,34 @@ button {
         min-height: 44px;
         border-radius: 10px;
         font-size: 15px;
+    }
+
+    .board-card {
+        width: min(360px, calc(100vw - 32px));
+        max-height: min(58vh, 440px);
+        padding: 14px 12px 12px;
+        border-radius: 18px;
+    }
+
+    .board-head {
+        grid-template-columns: 64px 1fr 40px;
+        margin-bottom: 10px;
+    }
+
+    .board-back,
+    .board-close {
+        min-height: 40px;
+        border-radius: 10px;
+        font-size: 13px;
+    }
+
+    .board-close {
+        width: 40px;
+        font-size: 22px;
+    }
+
+    .board-row {
+        padding: 8px 6px;
+        font-size: 12px;
     }
 }

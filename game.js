@@ -359,6 +359,7 @@
         heading: -Math.PI / 2,
         balls: [],
         holes: [],
+        nebulae: [],
         pops: [],
         floaters: [],
         found: 0,
@@ -570,6 +571,58 @@
                 spin: rand(0, Math.PI * 2),
             });
         }
+    }
+
+    const NEBULA_TINTS = [
+        { r: 148, g: 72, b: 210 },
+        { r: 46, g: 118, b: 196 },
+        { r: 210, g: 78, b: 148 },
+        { r: 48, g: 168, b: 176 },
+        { r: 90, g: 60, b: 180 },
+    ];
+
+    function nebulaCount() {
+        if (state.world >= 20000) return 8;
+        if (state.world >= 15000) return 6;
+        if (state.world >= 10000) return 5;
+        return 3;
+    }
+
+    function spawnNebulae() {
+        state.nebulae = [];
+        const count = nebulaCount();
+        const sizes = [900, 1200, 1600, 2100];
+        const pad = 480;
+        for (let i = 0; i < count; i += 1) {
+            const r = pick(sizes);
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = rand(pad, state.world - pad);
+                y = rand(pad, state.world - pad);
+                attempts += 1;
+            } while (attempts < 80 && state.nebulae.some((cloud) => Math.hypot(x - cloud.x, y - cloud.y) < r + cloud.r * 0.45));
+            const tint = pick(NEBULA_TINTS);
+            state.nebulae.push({
+                x,
+                y,
+                r,
+                angle: rand(0, Math.PI * 2),
+                stretch: rand(1.2, 1.85),
+                tint,
+                lobes: [
+                    { dx: 0, dy: 0, scale: 1, alpha: 0.11 },
+                    { dx: rand(-0.38, 0.38), dy: rand(-0.28, 0.28), scale: rand(0.48, 0.78), alpha: 0.07 },
+                    { dx: rand(-0.42, 0.42), dy: rand(-0.32, 0.32), scale: rand(0.32, 0.58), alpha: 0.055 },
+                ],
+            });
+        }
+    }
+
+    function spawnDecor() {
+        spawnHoles();
+        spawnNebulae();
     }
 
     function spawnBalls(count) {
@@ -1374,8 +1427,41 @@
         ctx.fillStyle = nebula;
         ctx.fillRect(0, 0, state.width, state.height);
 
+        drawNebulae(cam);
         drawStars(cam);
         drawBorder(cam);
+    }
+
+    function drawNebulae(cam) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const cloud of state.nebulae) {
+            const x = cloud.x - cam.x;
+            const y = cloud.y - cam.y;
+            const reach = cloud.r * cloud.stretch;
+            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(cloud.angle);
+            ctx.scale(cloud.stretch, 1);
+            const { r, g, b } = cloud.tint;
+            for (const lobe of cloud.lobes) {
+                const cx = lobe.dx * cloud.r;
+                const cy = lobe.dy * cloud.r;
+                const lr = cloud.r * lobe.scale;
+                const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, lr);
+                glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${lobe.alpha})`);
+                glow.addColorStop(0.42, `rgba(${r}, ${g}, ${b}, ${lobe.alpha * 0.42})`);
+                glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(cx, cy, lr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+        ctx.restore();
     }
 
     function drawHoles(cam, now) {
@@ -1645,6 +1731,7 @@
         state.speed = 0;
         state.balls = [];
         state.holes = [];
+        state.nebulae = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;
@@ -1656,7 +1743,7 @@
         winOverlay.classList.add("hidden");
         closeBoard();
         closeResume(false);
-        spawnHoles();
+        spawnDecor();
         spawnBalls(state.ballCount);
         resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
         updateHud();
@@ -2043,7 +2130,7 @@
 
         const play = loadPlay();
         if (!play) {
-            spawnHoles();
+            spawnDecor();
             spawnBalls(state.ballCount);
             return;
         }
@@ -2060,7 +2147,7 @@
         timer.elapsed = play.elapsed;
         timer.runningSince = null;
         shownSecond = -1;
-        spawnHoles();
+        spawnDecor();
         if (play.won) {
             recordWinScore();
             if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();

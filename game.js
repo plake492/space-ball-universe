@@ -28,6 +28,8 @@
         { size: 150, points: 100 },
     ];
     const MAX_BALL = BALL_TYPES[BALL_TYPES.length - 1].size;
+    const SPIKE_TYPES = BALL_TYPES.slice(-2);
+    const SPIKE_CHANCE = 0.2;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SHIP_ACCEL = 2000;
@@ -234,8 +236,11 @@
             color: typeof ball.color === "string" ? ball.color : "#007aff",
             pulseMs: Number(ball.pulseMs) || rand(1000, 5000),
             pulseOffset: Number(ball.pulseOffset) || rand(0, Math.PI * 2),
-            hasRings: Boolean(ball.hasRings),
+            hasRings: Boolean(ball.hasRings) && !ball.hasSpikes,
             ringTilt: Number.isFinite(Number(ball.ringTilt)) ? Number(ball.ringTilt) : 0,
+            hasSpikes: Boolean(ball.hasSpikes),
+            spikeCount: Math.max(8, Math.min(16, Math.round(Number(ball.spikeCount) || 12))),
+            spikeSpin: Number.isFinite(Number(ball.spikeSpin)) ? Number(ball.spikeSpin) : 0,
         };
     }
 
@@ -258,6 +263,9 @@
                     pulseOffset: ball.pulseOffset,
                     hasRings: ball.hasRings,
                     ringTilt: ball.ringTilt,
+                    hasSpikes: ball.hasSpikes,
+                    spikeCount: ball.spikeCount,
+                    spikeSpin: ball.spikeSpin,
                 })),
                 found: state.found,
                 score: state.score,
@@ -627,7 +635,8 @@
 
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) {
-            const type = pick(BALL_TYPES);
+            const spiked = Math.random() < SPIKE_CHANCE;
+            const type = spiked ? pick(SPIKE_TYPES) : pick(BALL_TYPES);
             const size = type.size;
             const r = size / 2;
             const minDist = SHIP_RADIUS + r + SPAWN_CLEARANCE;
@@ -651,8 +660,11 @@
                 color: pick(PALETTES[state.palette] || PALETTES.rainbow),
                 pulseMs: rand(1000, 5000),
                 pulseOffset: rand(0, Math.PI * 2),
-                hasRings: Math.random() < 0.28,
+                hasRings: !spiked && Math.random() < 0.28,
                 ringTilt: rand(-0.75, 0.75),
+                hasSpikes: spiked,
+                spikeCount: 10 + Math.floor(Math.random() * 5),
+                spikeSpin: rand(0, Math.PI * 2),
             });
         }
     }
@@ -1239,6 +1251,40 @@
         ctx.restore();
     }
 
+    function drawBallSpikes(x, y, ball, pulse, layer) {
+        const count = ball.spikeCount || 12;
+        const spin = ball.spikeSpin || 0;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(spin);
+        ctx.globalAlpha = 0.72 + 0.28 * pulse;
+        for (let i = 0; i < count; i += 1) {
+            const along = i / count;
+            const depth = Math.cos(along * Math.PI * 2 + 0.4);
+            if (layer === "back" && depth > 0.12) continue;
+            if (layer === "front" && depth <= 0.12) continue;
+            const a = along * Math.PI * 2 + (i % 2) * 0.07;
+            const tip = ball.r * (i % 2 ? 1.46 : 1.3);
+            const half = ball.r * (i % 2 ? 0.15 : 0.18);
+            const root = ball.r * 0.42;
+            ctx.save();
+            ctx.rotate(a);
+            const g = ctx.createLinearGradient(root, 0, tip, 0);
+            g.addColorStop(0, shadeColor(ball.color, layer === "front" ? 0.7 : 0.38));
+            g.addColorStop(0.62, shadeColor(ball.color, layer === "front" ? 1.12 : 0.78));
+            g.addColorStop(1, shadeColor(ball.color, layer === "front" ? 1.32 : 0.95));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(root, -half);
+            ctx.lineTo(tip, 0);
+            ctx.lineTo(root, half);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
     function drawBallRingsFront(x, y, ball, pulse) {
         const rx = ball.r * 1.85;
         const ry = ball.r * 0.36;
@@ -1261,13 +1307,13 @@
 
     function drawBall(ball, cam, now) {
         if (ball.hasRings == null) {
-            ball.hasRings = Math.random() < 0.28;
+            ball.hasRings = !ball.hasSpikes && Math.random() < 0.28;
             ball.ringTilt = rand(-0.75, 0.75);
         }
 
         const x = ball.x - cam.x;
         const y = ball.y - cam.y;
-        const reach = ball.hasRings ? ball.r * 2.1 : ball.r + 20;
+        const reach = ball.hasRings || ball.hasSpikes ? ball.r * 2.1 : ball.r + 20;
         if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) {
             return;
         }
@@ -1279,6 +1325,7 @@
         ctx.shadowBlur = 10 + 16 * pulse;
 
         if (ball.hasRings) drawBallRings(x, y, ball, pulse);
+        if (ball.hasSpikes) drawBallSpikes(x, y, ball, pulse, "back");
 
         const glow = ctx.createRadialGradient(x, y, 0, x, y, ball.r);
         glow.addColorStop(0, shadeColor(ball.color, 1.28));
@@ -1291,6 +1338,7 @@
         ctx.fill();
 
         if (ball.hasRings) drawBallRingsFront(x, y, ball, pulse);
+        if (ball.hasSpikes) drawBallSpikes(x, y, ball, pulse, "front");
         ctx.restore();
     }
 

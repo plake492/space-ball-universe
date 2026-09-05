@@ -359,10 +359,7 @@
         pauseTimer(performance.now());
         keys.clear();
         resetStick();
-        if (state.menuOpen) {
-            state.menuOpen = false;
-            settingsMenu.classList.add("hidden");
-        }
+        if (state.menuOpen) closeMenu();
         winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(playTime(performance.now()))}`;
         winOverlay.classList.remove("hidden");
     }
@@ -1027,8 +1024,9 @@
         keys.clear();
         resetStick();
         settingsMenu.classList.remove("hidden");
-        const settingsBody = settingsMenu.querySelector(".settings-body");
-        if (settingsBody) settingsBody.scrollTop = 0;
+        document.documentElement.classList.add("settings-open");
+        document.body.classList.add("settings-open");
+        settingsMenu.scrollTop = 0;
         syncBoost();
     }
 
@@ -1036,6 +1034,8 @@
         if (!state.menuOpen) return;
         state.menuOpen = false;
         settingsMenu.classList.add("hidden");
+        document.documentElement.classList.remove("settings-open");
+        document.body.classList.remove("settings-open");
         if (!state.won) resumeTimer(performance.now());
     }
 
@@ -1150,7 +1150,7 @@
 
     function preventBrowserGestures() {
         document.addEventListener("touchmove", (event) => {
-            if (state.menuOpen) return;
+            if (state.menuOpen || event.target.closest("#settings-menu")) return;
             event.preventDefault();
         }, { passive: false });
         document.addEventListener("gesturestart", (event) => event.preventDefault());

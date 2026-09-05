@@ -20,6 +20,11 @@ body {
     -webkit-user-select: none;
 }
 
+html.settings-open,
+body.settings-open {
+    touch-action: pan-y;
+}
+
 #game {
     display: block;
     width: 100%;
@@ -107,9 +112,12 @@ body {
     inset: 0;
     z-index: 6;
     padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-    display: flex;
-    min-height: 0;
-    touch-action: auto;
+    display: block;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     background: rgba(4, 8, 22, 0.18);
 }
 
@@ -118,12 +126,12 @@ body {
 }
 
 .settings-sheet {
-    flex: 1;
     display: flex;
     flex-direction: column;
     width: 100%;
-    min-height: 0;
-    overflow: hidden;
+    min-height: 100%;
+    overflow: visible;
+    touch-action: pan-y;
     border-radius: 28px;
     padding: 28px 24px 20px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(12, 20, 48, 0.28));
@@ -161,13 +169,8 @@ body {
 }
 
 .settings-body {
-    flex: 1;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
+    flex: 1 0 auto;
     touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
 }
 
 .settings-block {

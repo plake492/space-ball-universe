@@ -853,22 +853,24 @@
 
     function drawFloaters(cam, dt) {
         ctx.save();
-        ctx.font = "700 22px 'Avenir Next', 'Segoe UI', sans-serif";
+        ctx.font = "600 15px 'Avenir Next', 'Segoe UI', sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         for (let i = state.floaters.length - 1; i >= 0; i -= 1) {
             const floater = state.floaters[i];
-            floater.life -= dt * 0.9;
+            floater.life -= dt / 1.15;
             if (floater.life <= 0) {
                 state.floaters.splice(i, 1);
                 continue;
             }
-            ctx.globalAlpha = Math.max(0, floater.life);
-            ctx.fillStyle = "#e8f6ff";
+            const t = 1 - floater.life;
+            const fade = floater.life * floater.life;
+            ctx.globalAlpha = 0.72 * fade;
+            ctx.fillStyle = "#c5d4f5";
             ctx.fillText(
                 `+${floater.points}`,
                 floater.x - cam.x,
-                floater.y - cam.y - (1 - floater.life) * 48
+                floater.y - cam.y - 8 - t * 42
             );
         }
         ctx.restore();

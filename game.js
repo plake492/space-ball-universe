@@ -10,8 +10,8 @@
     const SETTINGS_KEY = "harlie-space-settings";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
-    const MIN_BALL = 50;
-    const MAX_BALL = 250;
+    const MIN_BALL = 25;
+    const MAX_BALL = 150;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SPAWN_CLEARANCE = 15;

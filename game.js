@@ -684,7 +684,8 @@
         }
     }
 
-    const COMET_EVERY = 30000;
+    const COMET_MIN = 15000;
+    const COMET_MAX = 30000;
     const COMET_POINTS = 1000;
     const COMET_TINTS = [
         { r: 220, g: 236, b: 255 },
@@ -692,7 +693,11 @@
         { r: 255, g: 224, b: 176 },
         { r: 196, g: 255, b: 236 },
     ];
-    let lastComet = 0;
+    let nextCometAt = 0;
+
+    function cometWait() {
+        return rand(COMET_MIN, COMET_MAX);
+    }
 
     function makeComet() {
         const margin = 90;
@@ -734,7 +739,7 @@
 
     function spawnComets() {
         state.comets = [];
-        lastComet = performance.now();
+        nextCometAt = performance.now() + cometWait();
         state.comets.push(makeComet());
     }
 
@@ -749,8 +754,8 @@
                 state.comets.splice(i, 1);
             }
         }
-        if (now - lastComet >= COMET_EVERY) {
-            lastComet = now;
+        if (now >= nextCometAt) {
+            nextCometAt = now + cometWait();
             state.comets.push(makeComet());
         }
     }
@@ -1954,6 +1959,38 @@
             }
             miniCtx.globalAlpha = 1;
         }
+
+        miniCtx.save();
+        miniCtx.beginPath();
+        miniCtx.rect(origin.x, origin.y, worldPx, worldPx);
+        miniCtx.clip();
+        for (const comet of state.comets) {
+            const p = toMinimap(comet.x, comet.y, size, scale);
+            const tail = Math.max(9 * mark, comet.tail * scale * 0.28);
+            const r = Math.max(2.2 * mark, cometBody(comet) * scale);
+            if (p.x < -tail || p.y < -tail || p.x > size + tail || p.y > size + tail) continue;
+            const { r: cr, g, b } = comet.tint;
+            miniCtx.save();
+            miniCtx.translate(p.x, p.y);
+            miniCtx.rotate(comet.angle);
+            miniCtx.strokeStyle = `rgba(${cr}, ${g}, ${b}, 0.75)`;
+            miniCtx.lineWidth = Math.max(1.2 * mark, r * 0.55);
+            miniCtx.lineCap = "round";
+            miniCtx.beginPath();
+            miniCtx.moveTo(-tail, 0);
+            miniCtx.lineTo(0, 0);
+            miniCtx.stroke();
+            miniCtx.fillStyle = `rgb(${cr}, ${g}, ${b})`;
+            miniCtx.beginPath();
+            miniCtx.arc(0, 0, r, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.fillStyle = "#ffffff";
+            miniCtx.beginPath();
+            miniCtx.arc(0, 0, r * 0.42, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.restore();
+        }
+        miniCtx.restore();
 
         const cx = size / 2;
         const cy = size / 2;

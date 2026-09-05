@@ -94,6 +94,8 @@
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
     const winScoreEl = document.getElementById("win-score");
+    const resumeOverlay = document.getElementById("resume-overlay");
+    const resumeMessage = document.getElementById("resume-message");
     const timer = { elapsed: 0, runningSince: performance.now() };
     let shownSecond = -1;
 
@@ -269,6 +271,7 @@
         boost: false,
         won: false,
         menuOpen: false,
+        resumeOpen: false,
         width: 0,
         height: 0,
         dpr: 1,
@@ -545,7 +548,7 @@
     }
 
     function moveShip(dt) {
-        if (state.menuOpen || state.won) return false;
+        if (state.menuOpen || state.won || state.resumeOpen) return false;
         let vx = 0;
         let vy = 0;
         if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
@@ -1050,8 +1053,9 @@
         const dt = Math.min(0.033, (now - last) / 1000);
         last = now;
 
-        const moving = state.menuOpen || state.won ? false : moveShip(dt);
-        if (!state.menuOpen && !state.won) collectIfHit();
+        const paused = state.menuOpen || state.won || state.resumeOpen;
+        const moving = paused ? false : moveShip(dt);
+        if (!paused) collectIfHit();
         updateEngine(moving);
         const cam = camera();
 
@@ -1063,7 +1067,7 @@
         drawMinimap(now);
         updateTimer(now);
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
-        if (!state.menuOpen && now - lastPlaySave > 1000) {
+        if (!state.menuOpen && !state.resumeOpen && now - lastPlaySave > 1000) {
             lastPlaySave = now;
             savePlay();
         }
@@ -1074,7 +1078,7 @@
     const boostHold = { pointer: false, space: false };
 
     function syncBoost() {
-        const on = !state.menuOpen && !state.won && (boostHold.pointer || boostHold.space);
+        const on = !state.menuOpen && !state.won && !state.resumeOpen && (boostHold.pointer || boostHold.space);
         state.boost = on;
         const button = document.getElementById("boost-btn");
         button.classList.toggle("is-on", on);
@@ -1085,7 +1089,7 @@
     function bindKeys() {
         window.addEventListener("keydown", (event) => {
             unlockEngine();
-            if (state.menuOpen || state.won) return;
+            if (state.menuOpen || state.won || state.resumeOpen) return;
             if (event.key === " " || event.code === "Space") {
                 event.preventDefault();
                 boostHold.space = true;
@@ -1209,7 +1213,7 @@
 
         joystick.addEventListener("pointerdown", (event) => {
             unlockEngine();
-            if (state.menuOpen || state.won) return;
+            if (state.menuOpen || state.won || state.resumeOpen) return;
             event.preventDefault();
             pointerId = event.pointerId;
             joystick.setPointerCapture(event.pointerId);
@@ -1247,8 +1251,9 @@
         keys.clear();
         resetStick();
         winOverlay.classList.add("hidden");
+        closeResume(false);
         spawnBalls(state.ballCount);
-        resetTimer(performance.now(), !state.menuOpen && !state.won);
+        resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
         updateHud();
         savePlay();
     }
@@ -1283,7 +1288,7 @@
         const boostBtn = document.getElementById("boost-btn");
         boostBtn.addEventListener("pointerdown", (event) => {
             unlockEngine();
-            if (state.menuOpen || state.won) return;
+            if (state.menuOpen || state.won || state.resumeOpen) return;
             event.preventDefault();
             boostHold.pointer = true;
             boostBtn.setPointerCapture(event.pointerId);
@@ -1396,6 +1401,31 @@
         document.getElementById("win-restart").addEventListener("click", () => {
             restartGame();
         });
+
+        document.getElementById("resume-new").addEventListener("click", () => {
+            restartGame();
+        });
+        document.getElementById("resume-continue").addEventListener("click", () => {
+            closeResume(true);
+        });
+    }
+
+    function playIsActive(play) {
+        return Boolean(play && !play.won && (play.found > 0 || play.score > 0 || play.elapsed >= 2500));
+    }
+
+    function openResume() {
+        state.resumeOpen = true;
+        timer.runningSince = null;
+        resumeMessage.textContent = `${state.found} / ${state.goal} · ${state.score.toLocaleString()} · ${formatPlayTime(timer.elapsed)}`;
+        resumeOverlay.classList.remove("hidden");
+    }
+
+    function closeResume(resume) {
+        if (!state.resumeOpen) return;
+        state.resumeOpen = false;
+        resumeOverlay.classList.add("hidden");
+        if (resume && !state.won && !state.menuOpen) resumeTimer(performance.now());
     }
 
     function preventBrowserGestures() {
@@ -1423,13 +1453,19 @@
         state.score = play.score;
         state.won = play.won;
         timer.elapsed = play.elapsed;
-        timer.runningSince = play.won ? null : performance.now();
+        timer.runningSince = null;
         shownSecond = -1;
         if (play.won) {
             if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
             winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(play.elapsed)}`;
             winOverlay.classList.remove("hidden");
+            return;
         }
+        if (playIsActive(play)) {
+            openResume();
+            return;
+        }
+        timer.runningSince = performance.now();
     }
 
     loadShipImage(state.ship);

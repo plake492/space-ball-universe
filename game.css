@@ -378,7 +378,8 @@ body.board-open {
 }
 
 #balls-slider,
-#goal-slider {
+#goal-slider,
+#volume-slider {
     width: 100%;
     height: 44px;
     accent-color: #4f7cff;
@@ -412,6 +413,7 @@ body.board-open {
 .palette-btn,
 .pulse-btn,
 .req-btn,
+.audio-btn,
 .fullscreen-btn,
 .diff-btn {
     flex: 1;
@@ -430,6 +432,7 @@ body.board-open {
 .palette-btn,
 .pulse-btn,
 .req-btn,
+.audio-btn,
 .fullscreen-btn,
 .diff-btn {
     text-transform: none;
@@ -446,6 +449,7 @@ body.board-open {
 .palette-btn.is-on,
 .pulse-btn.is-on,
 .req-btn.is-on,
+.audio-btn.is-on,
 .fullscreen-btn.is-on,
 .diff-btn.is-on,
 .ship-btn.is-on {
@@ -1342,7 +1346,8 @@ body.home {
     }
 
     #balls-slider,
-    #goal-slider {
+    #goal-slider,
+    #volume-slider {
         height: 32px;
     }
 
@@ -1360,6 +1365,7 @@ body.home {
     .palette-btn,
     .pulse-btn,
     .req-btn,
+    .audio-btn,
     .fullscreen-btn,
     .diff-btn {
         min-height: 40px;
@@ -1383,6 +1389,7 @@ body.home {
     .palette-btn,
     .pulse-btn,
     .req-btn,
+    .audio-btn,
     .fullscreen-btn {
         font-size: 13px;
     }

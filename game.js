@@ -125,6 +125,8 @@
     const ballsSliderValue = document.getElementById("balls-slider-value");
     const goalSlider = document.getElementById("goal-slider");
     const goalSliderValue = document.getElementById("goal-slider-value");
+    const volumeSlider = document.getElementById("volume-slider");
+    const volumeSliderValue = document.getElementById("volume-slider-value");
     const settingsMenu = document.getElementById("settings-menu");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
@@ -178,6 +180,11 @@
         return (lifetime ?? state.lifetime) >= shipUnlockAt(id);
     }
 
+    function clampVolume(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 100;
+    }
+
     function loadSettings() {
         try {
             const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "");
@@ -194,6 +201,8 @@
             const difficulty = data.difficulty === "custom" || DIFFICULTIES[data.difficulty] ? data.difficulty : "";
             const trial = data.trial === true;
             const trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
+            const audio = data.audio !== false;
+            const volume = data.volume == null ? 100 : clampVolume(data.volume);
             if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
@@ -209,11 +218,13 @@
                     difficulty,
                     trial,
                     trialMs,
+                    audio,
+                    volume,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs };
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100 };
         }
     }
 
@@ -232,6 +243,8 @@
                 difficulty: state.difficulty || "",
                 trial: state.trial,
                 trialMs: state.trialMs,
+                audio: state.audio,
+                volume: state.volume,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -420,6 +433,8 @@
         difficulty: saved.difficulty || "",
         trial: Boolean(saved.trial),
         trialMs: TRIAL_MS.includes(Number(saved.trialMs)) ? Number(saved.trialMs) : 300000,
+        audio: saved.audio !== false,
+        volume: saved.volume == null ? 100 : clampVolume(saved.volume),
         speed: 0,
         boost: false,
         won: false,
@@ -932,6 +947,11 @@
         for (const button of document.querySelectorAll(".fullscreen-btn")) {
             button.classList.toggle("is-on", (button.dataset.fullscreen === "on") === fullscreenOn);
         }
+        for (const button of document.querySelectorAll(".audio-btn")) {
+            button.classList.toggle("is-on", (button.dataset.audio === "on") === state.audio);
+        }
+        if (volumeSlider) volumeSlider.value = String(state.volume);
+        if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
     }
 
     function fullscreenElement() {
@@ -1126,6 +1146,35 @@
         atmoGain: null,
     };
 
+    function masterGain() {
+        if (!state.audio) return 0;
+        return Math.min(1, Math.max(0, state.volume / 100));
+    }
+
+    function engineLevel() {
+        return ENGINE_GAIN * masterGain();
+    }
+
+    function atmoLevel() {
+        return ATMO_GAIN * masterGain();
+    }
+
+    function applyAudioLevels() {
+        if (!engine.ctx) return;
+        const now = engine.ctx.currentTime;
+        if (engine.gain) {
+            const target = engine.wanted ? engineLevel() : 0;
+            engine.gain.gain.cancelScheduledValues(now);
+            engine.gain.gain.setValueAtTime(engine.gain.gain.value, now);
+            engine.gain.gain.linearRampToValueAtTime(target, now + 0.06);
+        }
+        if (engine.atmoGain) {
+            engine.atmoGain.gain.cancelScheduledValues(now);
+            engine.atmoGain.gain.setValueAtTime(engine.atmoGain.gain.value, now);
+            engine.atmoGain.gain.linearRampToValueAtTime(atmoLevel(), now + 0.06);
+        }
+    }
+
     function engineContext() {
         if (!engine.ctx) {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1202,7 +1251,7 @@
         const gain = ctx.createGain();
         const now = ctx.currentTime;
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(ATMO_GAIN, now + ATMO_FADE);
+        gain.gain.linearRampToValueAtTime(atmoLevel(), now + ATMO_FADE);
         source.connect(gain);
         gain.connect(ctx.destination);
         source.start(0);
@@ -1211,12 +1260,15 @@
     }
 
     function playHit() {
-        if (!pageIsVisible() || !engine.hit) return;
+        if (!pageIsVisible() || !engine.hit || masterGain() <= 0) return;
         const ctx = engineContext();
         if (ctx.state === "suspended") ctx.resume();
         const source = ctx.createBufferSource();
         source.buffer = engine.hit;
-        source.connect(ctx.destination);
+        const gain = ctx.createGain();
+        gain.gain.value = masterGain();
+        source.connect(gain);
+        gain.connect(ctx.destination);
         source.start();
     }
 
@@ -1237,7 +1289,7 @@
         const now = ctx.currentTime;
         if (fadeIn) {
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(ENGINE_GAIN, now + ENGINE_FADE_IN);
+            gain.gain.linearRampToValueAtTime(engineLevel(), now + ENGINE_FADE_IN);
         } else {
             gain.gain.setValueAtTime(0, now);
         }
@@ -1274,7 +1326,7 @@
         if (!engine.buffer) return;
         if (moving) {
             if (!engine.source) startEngine(true);
-            else fadeEngine(ENGINE_GAIN);
+            else fadeEngine(engineLevel());
         } else if (engine.source) {
             fadeEngine(0);
         }
@@ -2112,7 +2164,7 @@
 
     function showSettingsPanel(id) {
         state.settingsPanel = id || "";
-        const titles = { user: "User", game: "Game", visuals: "Visuals" };
+        const titles = { user: "User", game: "Game", audio: "Volume", visuals: "Visuals" };
         const nav = document.getElementById("settings-nav");
         const back = document.getElementById("settings-back");
         const title = document.getElementById("settings-title");
@@ -2317,6 +2369,31 @@
                 if (next === state.pulse) return;
                 state.pulse = next;
                 saveSettings();
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".audio-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.audio === "on";
+                if (next === state.audio) return;
+                state.audio = next;
+                saveSettings();
+                applyAudioLevels();
+                updateHud();
+            });
+        }
+
+        if (volumeSlider) {
+            volumeSlider.addEventListener("input", () => {
+                state.volume = clampVolume(volumeSlider.value);
+                if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
+                applyAudioLevels();
+            });
+            volumeSlider.addEventListener("change", () => {
+                state.volume = clampVolume(volumeSlider.value);
+                saveSettings();
+                applyAudioLevels();
                 updateHud();
             });
         }

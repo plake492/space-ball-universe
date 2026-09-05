@@ -32,6 +32,8 @@
     const ballsSliderValue = document.getElementById("balls-slider-value");
     const goalSlider = document.getElementById("goal-slider");
     const goalSliderValue = document.getElementById("goal-slider-value");
+    const volumeSlider = document.getElementById("volume-slider");
+    const volumeSliderValue = document.getElementById("volume-slider-value");
     const boardOverlay = document.getElementById("board-overlay");
     const boardTable = document.getElementById("board-table");
     const boardList = document.getElementById("board-list");
@@ -60,11 +62,18 @@
         difficulty: "",
         trial: false,
         trialMs: 300000,
+        audio: true,
+        volume: 100,
     };
 
     function snapStep(value, min, max, step) {
         const snapped = Math.round(value / step) * step;
         return Math.min(max, Math.max(min, snapped));
+    }
+
+    function clampVolume(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 100;
     }
 
     function normalizeName(value) {
@@ -175,6 +184,8 @@
             }
             state.trial = data.trial === true;
             state.trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
+            state.audio = data.audio !== false;
+            state.volume = data.volume == null ? 100 : clampVolume(data.volume);
         } catch {
             // Keep defaults.
         }
@@ -195,6 +206,8 @@
                 difficulty: state.difficulty || "",
                 trial: state.trial,
                 trialMs: state.trialMs,
+                audio: state.audio,
+                volume: state.volume,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -257,7 +270,7 @@
 
     function showSettingsPanel(id) {
         state.settingsPanel = id || "";
-        const titles = { user: "User", game: "Game", visuals: "Visuals" };
+        const titles = { user: "User", game: "Game", audio: "Volume", visuals: "Visuals" };
         const nav = document.getElementById("settings-nav");
         const back = document.getElementById("settings-back");
         const title = document.getElementById("settings-title");
@@ -346,6 +359,11 @@
         for (const button of document.querySelectorAll(".fullscreen-btn")) {
             button.classList.toggle("is-on", (button.dataset.fullscreen === "on") === fullscreenOn);
         }
+        for (const button of document.querySelectorAll(".audio-btn")) {
+            button.classList.toggle("is-on", (button.dataset.audio === "on") === state.audio);
+        }
+        if (volumeSlider) volumeSlider.value = String(state.volume);
+        if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
         updateHome();
     }
 
@@ -522,6 +540,24 @@
     for (const button of document.querySelectorAll(".pulse-btn")) {
         button.addEventListener("click", () => {
             state.pulse = button.dataset.pulse === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".audio-btn")) {
+        button.addEventListener("click", () => {
+            state.audio = button.dataset.audio === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    if (volumeSlider) {
+        volumeSlider.addEventListener("input", () => {
+            state.volume = clampVolume(volumeSlider.value);
+            if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
+        });
+        volumeSlider.addEventListener("change", () => {
+            state.volume = clampVolume(volumeSlider.value);
             saveSettings();
             updateHud();
         });

@@ -79,6 +79,7 @@
             <div class="settings-nav" id="settings-nav">
                 <button type="button" class="settings-cat" data-panel="user">User settings</button>
                 <button type="button" class="settings-cat" data-panel="game">Game settings</button>
+                <button type="button" class="settings-cat" data-panel="audio">Volume</button>
                 <button type="button" class="settings-cat" data-panel="visuals">Visuals</button>
             </div>
 
@@ -129,6 +130,23 @@
                         <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
                         <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
                     </div>
+                </section>
+            </div>
+
+            <div class="settings-panel hidden" data-panel="audio">
+                <section class="settings-block">
+                    <p class="label">Audio</p>
+                    <div class="pulse-choices" role="group" aria-label="Audio">
+                        <button type="button" class="audio-btn is-on" data-audio="on">On</button>
+                        <button type="button" class="audio-btn" data-audio="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Volume</p>
+                        <p class="value"><span id="volume-slider-value">100</span></p>
+                    </div>
+                    <input type="range" id="volume-slider" min="0" max="100" step="1" value="100" aria-label="Volume">
                 </section>
             </div>
 

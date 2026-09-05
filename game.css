@@ -113,9 +113,11 @@ body.board-open {
 }
 
 .settings-btn {
-    position: fixed;
-    top: max(16px, env(safe-area-inset-top));
-    right: max(16px, env(safe-area-inset-right));
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 12px);
+    left: auto;
+    transform: translateY(-50%);
     z-index: 4;
     pointer-events: auto;
     width: 56px;
@@ -910,14 +912,9 @@ body.home {
     }
 
     .settings-btn {
-        position: absolute;
-        top: calc(50% + 10px);
-        left: auto;
-        right: calc(100% + 10px);
         width: 40px;
         height: 40px;
         border-radius: 12px;
-        transform: translateY(-50%);
     }
 
     .settings-btn svg {

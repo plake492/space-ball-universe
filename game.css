@@ -979,10 +979,10 @@ body.home {
     }
 
     .minimap {
-        top: max(12px, env(safe-area-inset-top));
+        top: auto;
         right: max(12px, env(safe-area-inset-right));
         left: auto;
-        bottom: auto;
+        bottom: max(16px, env(safe-area-inset-bottom));
         width: 108px;
         height: 108px;
         border-radius: 10px;
@@ -990,17 +990,16 @@ body.home {
 
     .controls {
         gap: 10px;
-        left: calc(max(12px, env(safe-area-inset-left)) + var(--control-inset-x));
+        left: max(12px, env(safe-area-inset-left));
         right: auto;
-        bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--control-inset-y));
+        bottom: max(16px, env(safe-area-inset-bottom));
         opacity: 1;
     }
 
     .boost-btn {
-        position: fixed;
-        right: calc(max(12px, env(safe-area-inset-right)) + var(--control-inset-x));
-        bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--control-inset-y));
-        margin: 0;
+        position: static;
+        right: auto;
+        bottom: auto;
     }
 
     .joystick {

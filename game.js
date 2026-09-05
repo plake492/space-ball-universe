@@ -320,6 +320,7 @@
                 elapsed: playTime(performance.now()),
                 won: state.won,
                 boardLogged: state.boardLogged,
+                cometSpawns: state.cometSpawns,
                 trial: state.trial,
                 trialMs: state.trialMs,
             }));
@@ -359,6 +360,7 @@
                 elapsed: Math.max(0, Number(data.elapsed) || 0),
                 won: Boolean(data.won),
                 boardLogged: Boolean(data.boardLogged),
+                cometSpawns: Math.max(0, Math.min(COMET_LIMIT, Math.round(Number(data.cometSpawns) || 0))),
             };
         } catch {
             return null;
@@ -421,6 +423,7 @@
         holes: [],
         nebulae: [],
         comets: [],
+        cometSpawns: 0,
         meteors: [],
         pops: [],
         floaters: [],
@@ -690,11 +693,13 @@
         }
     }
 
-    const COMET_MIN = 15000;
-    const COMET_MAX = 30000;
+    const COMET_CHECK = 15000;
+    const COMET_AFTER = 30000;
+    const COMET_CHANCE = 0.1;
+    const COMET_LIMIT = 3;
     const COMET_SPEED_MIN = 99;
     const COMET_SPEED_MAX = 288;
-    const COMET_POINTS = 1000;
+    const COMET_POINTS = 60000;
     const COMET_TINTS = [
         { r: 220, g: 236, b: 255 },
         { r: 170, g: 214, b: 255 },
@@ -774,8 +779,7 @@
 
     function spawnComets() {
         state.comets = [];
-        nextCometAt = performance.now() + flyerWait(COMET_MIN, COMET_MAX);
-        state.comets.push(makeComet());
+        nextCometAt = performance.now() + COMET_CHECK;
     }
 
     function spawnMeteors() {
@@ -784,7 +788,7 @@
         state.meteors.push(makeMeteor());
     }
 
-    function updateFlyers(list, dt, makeNext, nextAt, setNextAt, waitMin, waitMax, now) {
+    function moveFlyers(list, dt) {
         for (let i = list.length - 1; i >= 0; i -= 1) {
             const flyer = list[i];
             flyer.x += flyer.vx * dt;
@@ -795,6 +799,10 @@
                 list.splice(i, 1);
             }
         }
+    }
+
+    function updateFlyers(list, dt, makeNext, nextAt, setNextAt, waitMin, waitMax, now) {
+        moveFlyers(list, dt);
         if (now >= nextAt) {
             setNextAt(now + flyerWait(waitMin, waitMax));
             list.push(makeNext());
@@ -803,7 +811,15 @@
 
     function updateComets(dt, now, paused) {
         if (paused) return;
-        updateFlyers(state.comets, dt, makeComet, nextCometAt, (at) => { nextCometAt = at; }, COMET_MIN, COMET_MAX, now);
+        moveFlyers(state.comets, dt);
+        if (state.cometSpawns >= COMET_LIMIT || now < nextCometAt) return;
+        if (Math.random() < COMET_CHANCE) {
+            state.comets.push(makeComet());
+            state.cometSpawns += 1;
+            nextCometAt = now + COMET_AFTER;
+        } else {
+            nextCometAt = now + COMET_CHECK;
+        }
     }
 
     function updateMeteors(dt, now, paused) {
@@ -2433,6 +2449,7 @@
         state.holes = [];
         state.nebulae = [];
         state.comets = [];
+        state.cometSpawns = 0;
         state.meteors = [];
         state.pops = [];
         state.floaters = [];
@@ -2889,6 +2906,7 @@
         state.score = play.score;
         state.won = play.won;
         state.boardLogged = play.boardLogged;
+        state.cometSpawns = play.cometSpawns;
         timer.elapsed = play.elapsed;
         timer.runningSince = null;
         shownSecond = -1;

@@ -110,6 +110,10 @@
             </section>
 
             <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Lifetime</p>
+                    <p class="value" id="lifetime-points" aria-label="Lifetime points">0</p>
+                </div>
                 <p class="label">Ship</p>
                 <div class="ship-choices" role="group" aria-label="Ship">
                     <button type="button" class="ship-btn is-on" data-ship="classic" aria-label="Classic ship">
@@ -118,14 +122,17 @@
                             <ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/>
                         </svg>
                     </button>
-                    <button type="button" class="ship-btn" data-ship="ship-1" aria-label="Crew ship">
+                    <button type="button" class="ship-btn is-locked" data-ship="ship-1" aria-label="Crew ship">
                         <img src="public/images/ships/ship-1.png" alt="">
+                        <span class="ship-lock">1,000</span>
                     </button>
-                    <button type="button" class="ship-btn" data-ship="cat" aria-label="Cat ship">
+                    <button type="button" class="ship-btn is-locked" data-ship="cat" aria-label="Cat ship">
                         <img src="public/images/ships/cat.png" alt="">
+                        <span class="ship-lock">2,000</span>
                     </button>
-                    <button type="button" class="ship-btn" data-ship="wolf" aria-label="Wolf ship">
+                    <button type="button" class="ship-btn is-locked" data-ship="wolf" aria-label="Wolf ship">
                         <img src="public/images/ships/wolf.png" alt="">
+                        <span class="ship-lock">3,000</span>
                     </button>
                 </div>
             </section>

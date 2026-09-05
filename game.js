@@ -87,6 +87,7 @@
         wolf: "public/images/ships/wolf.png",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf"]);
+    const SHIP_COST = 1000;
     const shipImages = {};
 
     const canvas = document.getElementById("game");
@@ -98,6 +99,7 @@
     const scoreEl = document.getElementById("play-score");
     const coordsEl = document.getElementById("coords");
     const timerEl = document.getElementById("play-timer");
+    const lifetimeEl = document.getElementById("lifetime-points");
     const nameInput = document.getElementById("username-input");
     const ballsSlider = document.getElementById("balls-slider");
     const ballsSliderValue = document.getElementById("balls-slider-value");
@@ -143,6 +145,15 @@
         return String(value || "").replace(/\s+/g, " ").trim().slice(0, NAME_MAX);
     }
 
+    function shipUnlockAt(id) {
+        const index = SHIP_IDS.indexOf(id);
+        return Math.max(0, index) * SHIP_COST;
+    }
+
+    function shipUnlocked(id, lifetime) {
+        return (lifetime ?? state.lifetime) >= shipUnlockAt(id);
+    }
+
     function loadSettings() {
         try {
             const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "");
@@ -151,11 +162,13 @@
             const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
             const pulse = data.pulse !== false;
-            const ship = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
+            const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
+            const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
+            const ship = shipUnlocked(wanted, lifetime) ? wanted : "classic";
             const name = normalizeName(data.name);
-            return { world, ballCount, goal, palette, pulse, ship, name };
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "" };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0 };
         }
     }
 
@@ -169,6 +182,7 @@
                 pulse: state.pulse,
                 ship: state.ship,
                 name: state.name,
+                lifetime: state.lifetime,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -338,6 +352,7 @@
         pulse: saved.pulse,
         ship: saved.ship,
         name: saved.name,
+        lifetime: saved.lifetime,
         speed: 0,
         boost: false,
         won: false,
@@ -541,6 +556,7 @@
     }
 
     function updateHud() {
+        if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
         if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         foundEl.textContent = String(state.found);
         if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
@@ -559,7 +575,13 @@
             button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
         }
         for (const button of document.querySelectorAll(".ship-btn")) {
-            button.classList.toggle("is-on", button.dataset.ship === state.ship);
+            const id = button.dataset.ship;
+            const locked = !shipUnlocked(id);
+            button.classList.toggle("is-on", id === state.ship);
+            button.classList.toggle("is-locked", locked);
+            button.setAttribute("aria-disabled", locked ? "true" : "false");
+            const need = button.querySelector(".ship-lock");
+            if (need) need.textContent = shipUnlockAt(id).toLocaleString();
         }
         const fullscreenOn = isFullscreen();
         for (const button of document.querySelectorAll(".fullscreen-btn")) {
@@ -621,6 +643,8 @@
                 state.found += 1;
                 const points = ball.points || ballTypeFor(ball).points;
                 state.score += points;
+                state.lifetime += points;
+                saveSettings();
                 state.pops.push({
                     x: ball.x,
                     y: ball.y,
@@ -1627,7 +1651,7 @@
         for (const button of document.querySelectorAll(".ship-btn")) {
             button.addEventListener("click", () => {
                 const next = button.dataset.ship;
-                if (!SHIP_IDS.includes(next) || next === state.ship) return;
+                if (!SHIP_IDS.includes(next) || next === state.ship || !shipUnlocked(next)) return;
                 state.ship = next;
                 loadShipImage(next);
                 saveSettings();

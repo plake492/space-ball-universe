@@ -306,6 +306,7 @@ body.board-open {
 }
 
 .ship-btn {
+    position: relative;
     flex: 1 1 calc(25% - 12px);
     min-width: 72px;
     min-height: 88px;
@@ -318,6 +319,30 @@ body.board-open {
     place-items: center;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+}
+
+.ship-btn.is-locked {
+    opacity: 0.42;
+}
+
+.ship-lock {
+    display: none;
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    padding: 2px 0;
+    border-radius: 8px;
+    background: rgba(4, 8, 22, 0.72);
+    font-family: "Orbitron", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #e8f6ff;
+}
+
+.ship-btn.is-locked .ship-lock {
+    display: block;
 }
 
 .ship-btn img,

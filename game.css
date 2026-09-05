@@ -255,17 +255,6 @@ body {
     background: rgba(10, 16, 36, 0.72);
 }
 
-.hint {
-    position: fixed;
-    right: max(20px, env(safe-area-inset-right));
-    bottom: max(276px, calc(env(safe-area-inset-bottom) + 272px));
-    margin: 0;
-    z-index: 2;
-    font-size: 14px;
-    color: rgba(190, 210, 245, 0.72);
-    pointer-events: none;
-}
-
 .controls {
     position: fixed;
     left: max(20px, env(safe-area-inset-left));
@@ -443,9 +432,5 @@ button {
     .hud {
         flex-wrap: wrap;
         padding-top: 76px;
-    }
-
-    .hint {
-        display: none;
     }
 }

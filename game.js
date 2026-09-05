@@ -52,6 +52,9 @@
     const BOOST_REFILL = 7.5;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
+    const ZOOM_MIN = 1;
+    const ZOOM_MAX = 5;
+    const ZOOM_STEP = 0.5;
     const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
     const ENGINE_LOOP_START = 0.5;
     const ENGINE_LOOP_END = 15;
@@ -134,6 +137,8 @@
     const goalSliderValue = document.getElementById("goal-slider-value");
     const volumeSlider = document.getElementById("volume-slider");
     const volumeSliderValue = document.getElementById("volume-slider-value");
+    const zoomSlider = document.getElementById("zoom-slider");
+    const zoomSliderValue = document.getElementById("zoom-slider-value");
     const settingsMenu = document.getElementById("settings-menu");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
@@ -192,6 +197,12 @@
         return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 100;
     }
 
+    function clampZoom(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 1;
+        return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP));
+    }
+
     function loadSettings() {
         try {
             const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "");
@@ -213,6 +224,7 @@
             const spikes = data.spikes !== false;
             const meteorOn = data.meteorOn !== false;
             const infiniteFuel = data.infiniteFuel === true;
+            const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
@@ -233,11 +245,12 @@
                     spikes,
                     meteorOn,
                     infiniteFuel,
+                    zoom,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel };
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
         }
     }
 
@@ -261,6 +274,7 @@
                 spikes: state.spikes,
                 meteorOn: state.meteorOn,
                 infiniteFuel: state.infiniteFuel,
+                zoom: state.zoom,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -341,6 +355,20 @@
                     r: drop.r,
                 })),
                 shield: state.shield,
+                taken: state.taken.map((ball) => ({
+                    x: ball.x,
+                    y: ball.y,
+                    r: ball.r,
+                    points: ball.points,
+                    color: ball.color,
+                    pulseMs: ball.pulseMs,
+                    pulseOffset: ball.pulseOffset,
+                    hasRings: ball.hasRings,
+                    ringTilt: ball.ringTilt,
+                    hasSpikes: false,
+                    spikeCount: ball.spikeCount,
+                    spikeSpin: ball.spikeSpin,
+                })),
                 trial: state.trial,
                 trialMs: state.trialMs,
                 spikes: state.spikes,
@@ -377,6 +405,13 @@
                     if (next) drops.push(next);
                 }
             }
+            const taken = [];
+            if (Array.isArray(data.taken)) {
+                for (const ball of data.taken) {
+                    const next = normalizeBall(ball);
+                    if (next && !next.hasSpikes) taken.push(next);
+                }
+            }
             const found = Math.max(0, Math.round(Number(data.found) || 0));
             const score = Math.max(0, Math.round(Number(data.score) || 0));
             const shipX = Number(data.shipX);
@@ -397,6 +432,7 @@
                 drops,
                 hasDrops: Array.isArray(data.drops),
                 shield: data.shield === true,
+                taken,
             };
         } catch {
             return null;
@@ -464,6 +500,7 @@
         drops: [],
         shield: false,
         shieldRings: [],
+        taken: [],
         pops: [],
         floaters: [],
         found: 0,
@@ -484,6 +521,7 @@
         spikes: saved.spikes !== false,
         meteorOn: saved.meteorOn !== false,
         infiniteFuel: saved.infiniteFuel === true,
+        zoom: clampZoom(saved.zoom == null ? 1 : saved.zoom),
         speed: 0,
         boost: false,
         boostFuel: 1,
@@ -1151,6 +1189,8 @@
         }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
+        if (zoomSlider) zoomSlider.value = String(state.zoom);
+        if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
     }
 
     function fullscreenElement() {
@@ -1242,6 +1282,14 @@
         return true;
     }
 
+    function returnTakenPlanets() {
+        for (const planet of state.taken) {
+            const next = normalizeBall(planet);
+            if (next) state.balls.push(next);
+        }
+        state.taken = [];
+    }
+
     function applyHazardHit() {
         state.found = 0;
         state.score = 0;
@@ -1278,6 +1326,7 @@
             burstShield();
             return;
         }
+        returnTakenPlanets();
         applyHazardHit();
     }
 
@@ -1380,6 +1429,20 @@
                     collectComets();
                     return;
                 }
+                state.taken.push({
+                    x: ball.x,
+                    y: ball.y,
+                    r: ball.r,
+                    points: ball.points,
+                    color: ball.color,
+                    pulseMs: ball.pulseMs,
+                    pulseOffset: ball.pulseOffset,
+                    hasRings: ball.hasRings,
+                    ringTilt: ball.ringTilt,
+                    hasSpikes: false,
+                    spikeCount: ball.spikeCount,
+                    spikeSpin: ball.spikeSpin,
+                });
                 state.balls.splice(i, 1);
                 state.found += 1;
                 const points = ball.points || ballTypeFor(ball).points;
@@ -1651,18 +1714,37 @@
     }
 
     function camera() {
+        const z = clampZoom(state.zoom);
         return {
-            x: state.shipX - state.width / 2,
-            y: state.shipY - state.height / 2,
+            x: state.shipX - (state.width * z) / 2,
+            y: state.shipY - (state.height * z) / 2,
+            z,
+            w: state.width * z,
+            h: state.height * z,
         };
+    }
+
+    function beginWorld(cam) {
+        ctx.save();
+        ctx.translate(state.width / 2, state.height / 2);
+        ctx.scale(1 / cam.z, 1 / cam.z);
+        ctx.translate(-cam.w / 2, -cam.h / 2);
+    }
+
+    function endWorld() {
+        ctx.restore();
+    }
+
+    function offView(x, y, reach, cam) {
+        return x < -reach || y < -reach || x > cam.w + reach || y > cam.h + reach;
     }
 
     function drawStars(cam) {
         const cell = 160;
         const left = Math.floor((cam.x - 40) / cell);
-        const right = Math.ceil((cam.x + state.width + 40) / cell);
+        const right = Math.ceil((cam.x + cam.w + 40) / cell);
         const top = Math.floor((cam.y - 40) / cell);
-        const bottom = Math.ceil((cam.y + state.height + 40) / cell);
+        const bottom = Math.ceil((cam.y + cam.h + 40) / cell);
 
         for (let gy = top; gy <= bottom; gy += 1) {
             for (let gx = left; gx <= right; gx += 1) {
@@ -1690,10 +1772,10 @@
         const h = state.world;
         ctx.save();
         ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, state.width, Math.max(0, y));
-        ctx.fillRect(0, y + h, state.width, Math.max(0, state.height - (y + h)));
+        ctx.fillRect(0, 0, cam.w, Math.max(0, y));
+        ctx.fillRect(0, y + h, cam.w, Math.max(0, cam.h - (y + h)));
         ctx.fillRect(0, y, Math.max(0, x), h);
-        ctx.fillRect(x + w, y, Math.max(0, state.width - (x + w)), h);
+        ctx.fillRect(x + w, y, Math.max(0, cam.w - (x + w)), h);
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = 18;
         ctx.strokeRect(x, y, w, h);
@@ -1724,7 +1806,7 @@
         const y = hole.y - cam.y;
         const r = hole.r * (0.32 + 0.68 * near);
         const reach = r * 3.4;
-        if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) return;
+        if (offView(x, y, reach, cam)) return;
 
         const spin = now * 0.0001 + hole.spin;
         const rx = r * 2.7;
@@ -1913,7 +1995,7 @@
         const x = ball.x - cam.x;
         const y = ball.y - cam.y;
         const reach = ball.hasRings || ball.hasSpikes ? ball.r * 2.1 : ball.r + 20;
-        if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) {
+        if (offView(x, y, reach, cam)) {
             return;
         }
 
@@ -2048,9 +2130,9 @@
         ctx.drawImage(img, -width / 2, -height / 2, width, height);
     }
 
-    function drawShip(moving) {
+    function drawShip(moving, cam) {
         ctx.save();
-        ctx.translate(state.width / 2, state.height / 2);
+        ctx.translate(cam.w / 2, cam.h / 2);
         const img = state.ship !== "classic" ? loadShipImage(state.ship) : null;
         if (img && img.complete && img.naturalWidth) {
             drawImageShip(img, moving);
@@ -2113,15 +2195,15 @@
             const x = drop.x - cam.x;
             const y = drop.y - cam.y;
             const reach = drop.r * 2.3;
-            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            if (offView(x, y, reach, cam)) continue;
             drawShieldDrop(x, y, drop.r, now);
         }
     }
 
-    function drawShipShield(now) {
+    function drawShipShield(now, cam) {
         if (!state.shield) return;
-        const x = state.width / 2;
-        const y = state.height / 2;
+        const x = cam.w / 2;
+        const y = cam.h / 2;
         const r = SHIELD_SHIP_R;
         const glow = 0.88 + 0.12 * Math.sin(now / 520);
         ctx.save();
@@ -2144,7 +2226,7 @@
         ctx.restore();
     }
 
-    function drawShieldRings(dt) {
+    function drawShieldRings(dt, cam) {
         for (let i = state.shieldRings.length - 1; i >= 0; i -= 1) {
             const ring = state.shieldRings[i];
             ring.life -= dt * 1.35;
@@ -2160,12 +2242,12 @@
             ctx.shadowBlur = 22;
             ctx.lineWidth = 3.5 + t * 5;
             ctx.beginPath();
-            ctx.arc(state.width / 2, state.height / 2, r, 0, Math.PI * 2);
+            ctx.arc(cam.w / 2, cam.h / 2, r, 0, Math.PI * 2);
             ctx.stroke();
             ctx.globalAlpha = ring.life * 0.35;
             ctx.lineWidth = 1.6;
             ctx.beginPath();
-            ctx.arc(state.width / 2, state.height / 2, r * 0.78, 0, Math.PI * 2);
+            ctx.arc(cam.w / 2, cam.h / 2, r * 0.78, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
@@ -2177,7 +2259,7 @@
         sky.addColorStop(0.55, "#0a0830");
         sky.addColorStop(1, "#07051c");
         ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, state.width, state.height);
+        ctx.fillRect(0, 0, cam.w, cam.h);
 
         const nebula = ctx.createRadialGradient(
             state.width * 0.7,
@@ -2190,7 +2272,7 @@
         nebula.addColorStop(0, "rgba(90, 40, 140, 0.18)");
         nebula.addColorStop(1, "rgba(0, 0, 0, 0)");
         ctx.fillStyle = nebula;
-        ctx.fillRect(0, 0, state.width, state.height);
+        ctx.fillRect(0, 0, cam.w, cam.h);
 
         drawNebulae(cam);
         drawStars(cam);
@@ -2204,7 +2286,7 @@
             const x = cloud.x - cam.x;
             const y = cloud.y - cam.y;
             const reach = cloud.r * cloud.stretch;
-            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            if (offView(x, y, reach, cam)) continue;
 
             ctx.save();
             ctx.translate(x, y);
@@ -2243,7 +2325,7 @@
             const x = comet.x - cam.x;
             const y = comet.y - cam.y;
             const reach = comet.tail + comet.r * 6;
-            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            if (offView(x, y, reach, cam)) continue;
             const { r, g, b } = comet.tint;
             const a = 0.4 + 0.6 * comet.near;
             ctx.save();
@@ -2308,7 +2390,7 @@
             const x = meteor.x - cam.x;
             const y = meteor.y - cam.y;
             const reach = meteor.tail + meteor.r * 4;
-            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            if (offView(x, y, reach, cam)) continue;
             const { r, g, b } = meteor.tint;
             const a = 0.45 + 0.55 * meteor.near;
             ctx.save();
@@ -2507,6 +2589,7 @@
         updateBoostFuel(dt, paused);
         updateComets(dt, now, paused);
         updateMeteors(dt, now, paused);
+        beginWorld(cam);
         drawSpace(cam);
         drawHoles(cam, now);
         drawComets(cam);
@@ -2515,9 +2598,10 @@
         drawDrops(cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
-        drawShip(moving);
-        drawShipShield(now);
-        drawShieldRings(dt);
+        drawShip(moving, cam);
+        drawShipShield(now, cam);
+        drawShieldRings(dt, cam);
+        endWorld();
         drawMinimap(now);
         updateTimer(now);
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
@@ -2742,6 +2826,7 @@
         state.drops = [];
         state.shield = false;
         state.shieldRings = [];
+        state.taken = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;
@@ -3048,6 +3133,18 @@
             });
         }
 
+        if (zoomSlider) {
+            zoomSlider.addEventListener("input", () => {
+                state.zoom = clampZoom(zoomSlider.value);
+                if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
+            });
+            zoomSlider.addEventListener("change", () => {
+                state.zoom = clampZoom(zoomSlider.value);
+                saveSettings();
+                updateHud();
+            });
+        }
+
         if (volumeSlider) {
             volumeSlider.addEventListener("input", () => {
                 state.volume = clampVolume(volumeSlider.value);
@@ -3255,6 +3352,7 @@
         state.boardLogged = play.boardLogged;
         state.cometSpawns = play.cometSpawns;
         state.shield = play.shield;
+        state.taken = play.taken || [];
         if (play.hasDrops) state.drops = play.drops;
         else spawnDrops();
         timer.elapsed = play.elapsed;

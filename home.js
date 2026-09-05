@@ -7,6 +7,9 @@
     const BALLS_MAX = 250;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
+    const ZOOM_MIN = 1;
+    const ZOOM_MAX = 5;
+    const ZOOM_STEP = 0.5;
     const TRIAL_MS = [60000, 300000, 600000];
     const DIFFICULTIES = {
         easy: { world: 5000, ballCount: 40, goal: 25 },
@@ -47,6 +50,8 @@
     const goalSliderValue = document.getElementById("goal-slider-value");
     const volumeSlider = document.getElementById("volume-slider");
     const volumeSliderValue = document.getElementById("volume-slider-value");
+    const zoomSlider = document.getElementById("zoom-slider");
+    const zoomSliderValue = document.getElementById("zoom-slider-value");
     const boardOverlay = document.getElementById("board-overlay");
     const boardTable = document.getElementById("board-table");
     const boardList = document.getElementById("board-list");
@@ -84,6 +89,7 @@
         spikes: true,
         meteorOn: true,
         infiniteFuel: false,
+        zoom: 1,
     };
 
     function snapStep(value, min, max, step) {
@@ -94,6 +100,12 @@
     function clampVolume(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 100;
+    }
+
+    function clampZoom(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 1;
+        return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP));
     }
 
     function normalizeName(value) {
@@ -209,6 +221,7 @@
             state.spikes = data.spikes !== false;
             state.meteorOn = data.meteorOn !== false;
             state.infiniteFuel = data.infiniteFuel === true;
+            state.zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
         } catch {
             // Keep defaults.
         }
@@ -234,6 +247,7 @@
                 spikes: state.spikes,
                 meteorOn: state.meteorOn,
                 infiniteFuel: state.infiniteFuel,
+                zoom: state.zoom,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -421,6 +435,8 @@
         }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
+        if (zoomSlider) zoomSlider.value = String(state.zoom);
+        if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
         updateHome();
     }
 
@@ -650,6 +666,17 @@
         });
         volumeSlider.addEventListener("change", () => {
             state.volume = clampVolume(volumeSlider.value);
+            saveSettings();
+            updateHud();
+        });
+    }
+    if (zoomSlider) {
+        zoomSlider.addEventListener("input", () => {
+            state.zoom = clampZoom(zoomSlider.value);
+            if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
+        });
+        zoomSlider.addEventListener("change", () => {
+            state.zoom = clampZoom(zoomSlider.value);
             saveSettings();
             updateHud();
         });

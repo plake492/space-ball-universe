@@ -20,6 +20,7 @@
     const ENGINE_LOOP_END = 15;
     const ENGINE_FADE = 0.3;
     const ENGINE_BOOST_RATE = 1.25;
+    const HIT_SRC = "public/audio/balls/audio_319c456817.mp3";
     const PALETTES = {
         rainbow: [
             "#ff3b30",
@@ -315,6 +316,7 @@
                     color: ball.color,
                     life: 1,
                 });
+                playHit();
                 updateHud();
                 maybeWin();
             }
@@ -360,6 +362,7 @@
         gain: null,
         loading: null,
         wanted: false,
+        hit: null,
     };
 
     function engineContext() {
@@ -379,13 +382,26 @@
     async function loadEngine() {
         try {
             const ctx = engineContext();
-            const response = await fetch(ENGINE_SRC);
-            const bytes = await response.arrayBuffer();
-            engine.buffer = await ctx.decodeAudioData(bytes);
+            const [engineBytes, hitBytes] = await Promise.all([
+                fetch(ENGINE_SRC).then((res) => res.arrayBuffer()),
+                fetch(HIT_SRC).then((res) => res.arrayBuffer()),
+            ]);
+            engine.buffer = await ctx.decodeAudioData(engineBytes.slice(0));
+            engine.hit = await ctx.decodeAudioData(hitBytes.slice(0));
             if (engine.wanted) startEngine(true);
         } catch {
             engine.loading = null;
         }
+    }
+
+    function playHit() {
+        if (!engine.hit) return;
+        const ctx = engineContext();
+        if (ctx.state === "suspended") ctx.resume();
+        const source = ctx.createBufferSource();
+        source.buffer = engine.hit;
+        source.connect(ctx.destination);
+        source.start();
     }
 
     function engineRate() {

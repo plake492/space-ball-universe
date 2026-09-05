@@ -1,0 +1,32 @@
+{
+    "id": "/harlie-space-hunt",
+    "name": "Harlie Space Hunt",
+    "short_name": "Space Hunt",
+    "description": "Fly through space and collect glowing balls.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#050217",
+    "theme_color": "#050217",
+    "icons": [
+        {
+            "src": "public/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "public/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "public/icons/icon-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

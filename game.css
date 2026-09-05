@@ -479,7 +479,7 @@ button {
     cursor: pointer;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1440px) {
     .hud-stats {
         top: max(12px, env(safe-area-inset-top));
         gap: 10px;

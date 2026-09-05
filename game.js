@@ -10,7 +10,7 @@
     const SETTINGS_KEY = "harlie-space-settings";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
-    const COMPACT_UI = "(max-width: 1024px)";
+    const COMPACT_UI = "(max-width: 1440px)";
     const COMPACT_STICK = 140 / 220;
     const STICK_PIP = 96;
     const MIN_BALL = 25;

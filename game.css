@@ -456,14 +456,33 @@ body.board-open {
     pointer-events: none;
 }
 
-.minimap {
+.minimap-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: #02010a;
+}
+
+.minimap-backdrop.hidden {
+    display: none;
+}
+
+.minimap-stage {
     position: fixed;
     top: max(20px, env(safe-area-inset-top));
     right: max(20px, env(safe-area-inset-right));
     bottom: auto;
+    left: auto;
     width: 240px;
     height: 240px;
     z-index: 3;
+}
+
+.minimap {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: auto;
     touch-action: manipulation;
     cursor: pointer;
@@ -471,6 +490,29 @@ body.board-open {
     border: 1px solid rgba(170, 200, 255, 0.28);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     background: rgba(10, 16, 36, 0.72);
+}
+
+.minimap-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    width: 64px;
+    height: 64px;
+    padding: 0;
+    border: 1px solid rgba(220, 235, 255, 0.35);
+    border-radius: 16px;
+    background: rgba(10, 16, 36, 0.78);
+    color: #eef3ff;
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.minimap-close.hidden {
+    display: none;
 }
 
 .controls {
@@ -481,7 +523,7 @@ body.board-open {
     display: flex;
     align-items: flex-end;
     gap: 14px;
-    z-index: 3;
+    z-index: 8;
     opacity: 0.5;
 }
 
@@ -978,13 +1020,16 @@ body.home {
         font-size: 11px;
     }
 
-    .minimap {
+    .minimap-stage {
         top: auto;
         right: max(12px, env(safe-area-inset-right));
         left: auto;
         bottom: max(16px, env(safe-area-inset-bottom));
         width: 108px;
         height: 108px;
+    }
+
+    .minimap {
         border-radius: 10px;
     }
 
@@ -1141,4 +1186,14 @@ body.home {
         min-height: 52px;
         font-size: 18px;
     }
+}
+
+html.minimap-open .minimap-stage,
+body.minimap-open .minimap-stage {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    z-index: 6;
 }

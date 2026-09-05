@@ -14,7 +14,6 @@
     const BOARD_MAX = 25;
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
-    const MINIMAP_GROW = 1.2;
     const COMPACT_UI = "(max-width: 1440px)";
     const COMPACT_STICK = 140 / 220;
     const CONTROL_GROW = 0.6;
@@ -102,6 +101,9 @@
     const ctx = canvas.getContext("2d");
     const minimap = document.getElementById("minimap");
     const miniCtx = minimap.getContext("2d");
+    const minimapStage = document.getElementById("minimap-stage");
+    const minimapBackdrop = document.getElementById("minimap-backdrop");
+    const minimapClose = document.getElementById("minimap-close");
     const foundEl = document.getElementById("found-count");
     const goalEl = document.getElementById("goal-count");
     const scoreEl = document.getElementById("play-score");
@@ -440,7 +442,20 @@
     }
 
     function minimapSize() {
-        return minimapBaseSize() * (state.minimapLarge ? MINIMAP_GROW : 1);
+        if (!state.minimapLarge) return minimapBaseSize();
+        const view = viewportSize();
+        return Math.max(180, Math.floor(Math.min(view.width, view.height) * 0.86 - 24));
+    }
+
+    function setMinimapOpen(open) {
+        state.minimapLarge = open;
+        document.documentElement.classList.toggle("minimap-open", open);
+        document.body.classList.toggle("minimap-open", open);
+        if (minimapBackdrop) minimapBackdrop.classList.toggle("hidden", !open);
+        if (minimapClose) minimapClose.classList.toggle("hidden", !open);
+        minimap.setAttribute("aria-pressed", open ? "true" : "false");
+        minimap.setAttribute("aria-label", open ? "Minimap" : "Minimap, tap to expand");
+        resize();
     }
 
     function minimapWorldScale() {
@@ -486,6 +501,10 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         const size = minimapSize();
+        if (minimapStage) {
+            minimapStage.style.width = `${size}px`;
+            minimapStage.style.height = `${size}px`;
+        }
         minimap.width = Math.floor(size * dpr);
         minimap.height = Math.floor(size * dpr);
         minimap.style.width = `${size}px`;
@@ -1376,7 +1395,7 @@
         miniCtx.clearRect(0, 0, size, size);
         miniCtx.save();
         miniCtx.beginPath();
-        miniCtx.roundRect(0, 0, size, size, 20 * mark);
+        miniCtx.roundRect(0, 0, size, size, Math.min(28, size * 0.06));
         miniCtx.clip();
 
         miniCtx.fillStyle = "#000000";
@@ -1759,11 +1778,10 @@
         });
 
         minimap.addEventListener("click", () => {
-            state.minimapLarge = !state.minimapLarge;
-            minimap.setAttribute("aria-pressed", state.minimapLarge ? "true" : "false");
-            minimap.setAttribute("aria-label", state.minimapLarge ? "Minimap, tap to shrink" : "Minimap, tap to expand");
-            resize();
+            if (!state.minimapLarge) setMinimapOpen(true);
         });
+        if (minimapClose) minimapClose.addEventListener("click", () => setMinimapOpen(false));
+        if (minimapBackdrop) minimapBackdrop.addEventListener("click", () => setMinimapOpen(false));
 
         const boostBtn = document.getElementById("boost-btn");
         boostBtn.addEventListener("pointerdown", (event) => {

@@ -188,9 +188,11 @@ body {
 
 .joystick-pip {
     position: absolute;
-    width: 10px;
-    height: 10px;
-    margin: -5px 0 0 -5px;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
     border-radius: 50%;
     background: rgba(190, 210, 245, 0.38);
     pointer-events: none;
@@ -200,15 +202,6 @@ body {
     background: #9ec2ff;
     box-shadow: 0 0 10px #7aa8ff;
 }
-
-.joystick-pip[data-dir="up"] { top: 14px; left: 50%; }
-.joystick-pip[data-dir="up-right"] { top: 27%; left: 73%; }
-.joystick-pip[data-dir="right"] { top: 50%; left: calc(100% - 14px); }
-.joystick-pip[data-dir="down-right"] { top: 73%; left: 73%; }
-.joystick-pip[data-dir="down"] { top: calc(100% - 14px); left: 50%; }
-.joystick-pip[data-dir="down-left"] { top: 73%; left: 27%; }
-.joystick-pip[data-dir="left"] { top: 50%; left: 14px; }
-.joystick-pip[data-dir="up-left"] { top: 27%; left: 27%; }
 
 .overlay {
     position: fixed;

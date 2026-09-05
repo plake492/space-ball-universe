@@ -35,16 +35,16 @@
 
     const keys = new Set();
     const stick = { vx: 0, vy: 0, dir: "" };
-    const DIRS = [
-        { name: "right", vx: 1, vy: 0 },
-        { name: "down-right", vx: 1, vy: 1 },
-        { name: "down", vx: 0, vy: 1 },
-        { name: "down-left", vx: -1, vy: 1 },
-        { name: "left", vx: -1, vy: 0 },
-        { name: "up-left", vx: -1, vy: -1 },
-        { name: "up", vx: 0, vy: -1 },
-        { name: "up-right", vx: 1, vy: -1 },
-    ];
+    const DIR_COUNT = 16;
+    const DIRS = Array.from({ length: DIR_COUNT }, (_, i) => {
+        const angle = (i * Math.PI * 2) / DIR_COUNT;
+        return {
+            name: `dir-${i}`,
+            vx: Math.cos(angle),
+            vy: Math.sin(angle),
+            angle,
+        };
+    });
 
     const state = {
         shipX: START_X,
@@ -478,6 +478,18 @@
         setStick({ vx: 0, vy: 0, dir: "", knobX: 0, knobY: 0 });
     }
 
+    function buildPips() {
+        const base = document.querySelector(".joystick-base");
+        const knob = document.getElementById("joystick-knob");
+        for (const dir of DIRS) {
+            const pip = document.createElement("span");
+            pip.className = "joystick-pip";
+            pip.dataset.dir = dir.name;
+            pip.style.transform = `rotate(${dir.angle}rad) translateX(96px)`;
+            base.insertBefore(pip, knob);
+        }
+    }
+
     function bindPad() {
         const joystick = document.getElementById("joystick");
         let pointerId = null;
@@ -549,6 +561,7 @@
     spawnBalls(START_BALLS, START_X, START_Y);
     updateHud();
     bindKeys();
+    buildPips();
     bindPad();
     bindHud();
     preventBrowserGestures();

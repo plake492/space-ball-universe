@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Harlie Space Hunt</title>
+    <link rel="stylesheet" href="game.css">
+</head>
+<body>
+    <canvas id="game" aria-label="Space hunt play area"></canvas>
+
+    <div class="hud">
+        <section class="panel score-panel" aria-live="polite">
+            <p class="label">Found</p>
+            <p class="value"><span id="found-count">0</span> / <span id="goal-count">25</span></p>
+            <p class="sub" id="balls-left">25 balls in space</p>
+        </section>
+
+        <section class="panel goal-panel">
+            <p class="label">Goal</p>
+            <div class="stepper">
+                <button type="button" id="goal-minus" aria-label="Lower goal">−</button>
+                <span id="goal-stepper">25</span>
+                <button type="button" id="goal-plus" aria-label="Raise goal">+</button>
+            </div>
+        </section>
+
+        <button type="button" class="add-btn" id="add-balls">+ Add 5 balls</button>
+    </div>
+
+    <p class="coords" id="coords">0, 0</p>
+
+    <div class="dpad" role="group" aria-label="Ship controls">
+        <button type="button" class="pad-btn pad-up" data-dir="up" aria-label="Move up">▲</button>
+        <button type="button" class="pad-btn pad-left" data-dir="left" aria-label="Move left">◀</button>
+        <button type="button" class="pad-btn pad-right" data-dir="right" aria-label="Move right">▶</button>
+        <button type="button" class="pad-btn pad-down" data-dir="down" aria-label="Move down">▼</button>
+    </div>
+
+    <p class="hint">W A S D or the pad to fly</p>
+
+    <div class="overlay hidden" id="win-overlay">
+        <div class="win-card">
+            <h1>All found</h1>
+            <p id="win-message">You collected the goal.</p>
+            <button type="button" id="keep-flying">Keep flying</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

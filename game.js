@@ -813,19 +813,6 @@
         savePlay();
     }
 
-    function burstAllBalls() {
-        for (const ball of state.balls) {
-            state.pops.push({
-                x: ball.x,
-                y: ball.y,
-                r: ball.r,
-                color: ball.color,
-                life: 1,
-            });
-        }
-        state.balls = [];
-    }
-
     function flashSpikeBorder() {
         const flash = document.getElementById("spike-flash");
         if (!flash) return;
@@ -834,8 +821,18 @@
         flash.classList.add("is-on");
     }
 
-    function hitSpikes() {
-        burstAllBalls();
+    function hitSpikes(index) {
+        const ball = state.balls[index];
+        if (ball) {
+            state.pops.push({
+                x: ball.x,
+                y: ball.y,
+                r: ball.r,
+                color: ball.color,
+                life: 1,
+            });
+            state.balls.splice(index, 1);
+        }
         state.found = 0;
         state.score = 0;
         flashSpikeBorder();
@@ -851,7 +848,7 @@
             const reach = body + SHIP_RADIUS;
             if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
                 if (ball.hasSpikes) {
-                    hitSpikes();
+                    hitSpikes(i);
                     return;
                 }
                 state.balls.splice(i, 1);

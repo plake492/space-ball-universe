@@ -30,6 +30,7 @@
     const SHIP_ACCEL = 2000;
     const SHIP_DECEL = 1500;
     const SPAWN_CLEARANCE = 15;
+    const BALL_GAP = 3;
     const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
     const ENGINE_LOOP_START = 0.5;
     const ENGINE_LOOP_END = 15;
@@ -365,6 +366,13 @@
         }
     }
 
+    function tooCloseToBalls(x, y, r) {
+        for (const ball of state.balls) {
+            if (Math.hypot(x - ball.x, y - ball.y) < r + ball.r + BALL_GAP) return true;
+        }
+        return false;
+    }
+
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) {
             const type = pick(BALL_TYPES);
@@ -379,8 +387,8 @@
                 y = rand(MAX_BALL, state.world - MAX_BALL);
                 attempts += 1;
             } while (
-                Math.hypot(x - state.shipX, y - state.shipY) < minDist &&
-                attempts < 80
+                (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r)) &&
+                attempts < 200
             );
 
             state.balls.push({

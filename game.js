@@ -2071,7 +2071,7 @@
         const fill = document.getElementById("boost-fuel");
         const meter = fill && fill.parentElement;
         const pct = Math.round(state.boostFuel * 100);
-        if (fill) fill.style.height = `${pct}%`;
+        if (fill) fill.style.width = `${pct}%`;
         if (meter) meter.setAttribute("aria-valuenow", String(pct));
     }
 

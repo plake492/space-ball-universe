@@ -655,17 +655,18 @@ body.board-open {
 
 .boost-wrap {
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    align-items: center;
     gap: 8px;
     margin-bottom: 8px;
 }
 
 .boost-fuel {
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    width: calc(10px * var(--control-grow));
-    height: calc(76px * var(--control-grow));
+    flex-direction: row;
+    justify-content: flex-start;
+    width: calc(76px * var(--control-grow));
+    height: calc(10px * var(--control-grow));
     border-radius: 999px;
     border: 1px solid rgba(220, 235, 255, 0.35);
     background: rgba(10, 16, 36, 0.55);
@@ -677,7 +678,7 @@ body.board-open {
     width: 100%;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(180deg, #9ad0ff, #4f7cff);
+    background: linear-gradient(90deg, #4f7cff, #9ad0ff);
 }
 
 .boost-btn {

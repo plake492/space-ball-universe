@@ -1762,6 +1762,11 @@
         const boot = new URLSearchParams(location.search).get("mode");
         if (boot) history.replaceState({}, "", location.pathname);
 
+        if (boot !== "new" && boot !== "continue") {
+            location.replace("./index.html");
+            return;
+        }
+
         if (boot === "new") {
             restartGame();
             return;
@@ -1792,15 +1797,7 @@
             winOverlay.classList.remove("hidden");
             return;
         }
-        if (boot === "continue") {
-            timer.runningSince = play.won ? null : performance.now();
-            return;
-        }
-        if (playIsActive(play)) {
-            openResume();
-            return;
-        }
-        timer.runningSince = performance.now();
+        timer.runningSince = play.won ? null : performance.now();
     }
 
     loadShipImage(state.ship);

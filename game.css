@@ -93,14 +93,23 @@ body {
 }
 
 .settings-btn {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    z-index: 4;
     pointer-events: auto;
-    margin-left: auto;
-    border-radius: 18px;
-    padding: 0 22px;
-    color: #fff;
-    font-size: 18px;
-    font-weight: 700;
-    min-height: 72px;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-radius: 16px;
+    color: #eef3ff;
+    display: grid;
+    place-items: center;
+}
+
+.settings-btn svg {
+    width: 28px;
+    height: 28px;
 }
 
 .settings-overlay {
@@ -440,12 +449,6 @@ button {
     .hud {
         flex-wrap: wrap;
         padding-top: 76px;
-    }
-
-    .settings-btn {
-        margin-left: 0;
-        min-height: 56px;
-        width: 100%;
     }
 
     .hint {

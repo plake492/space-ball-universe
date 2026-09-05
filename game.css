@@ -112,6 +112,8 @@ body {
     z-index: 6;
     padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     display: flex;
+    min-height: 0;
+    touch-action: auto;
     background: rgba(4, 8, 22, 0.18);
 }
 
@@ -124,6 +126,8 @@ body {
     display: flex;
     flex-direction: column;
     width: 100%;
+    min-height: 0;
+    overflow: hidden;
     border-radius: 28px;
     padding: 28px 24px 20px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(12, 20, 48, 0.28));
@@ -133,13 +137,49 @@ body {
     -webkit-backdrop-filter: blur(22px) saturate(160%);
 }
 
+.settings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
 .settings-sheet h1 {
-    margin: 0 0 28px;
+    margin: 0;
     font-size: 40px;
+}
+
+.settings-close {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 32px;
+    line-height: 1;
+}
+
+.settings-body {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 .settings-block {
     margin-bottom: 28px;
+}
+
+.settings-body .settings-block:last-child {
+    margin-bottom: 0;
 }
 
 .settings-heading {
@@ -206,7 +246,8 @@ body {
 .settings-actions {
     display: flex;
     gap: 16px;
-    margin-top: auto;
+    margin-top: 16px;
+    flex-shrink: 0;
 }
 
 .settings-actions button {
@@ -440,14 +481,27 @@ button {
 }
 
 @media (max-width: 1024px) {
-    .panel {
-        padding: 8px 12px;
-        min-width: 88px;
-        border-radius: 14px;
+    .hud-stats {
+        left: 50%;
+        right: auto;
+        width: max-content;
+        transform: translateX(-50%);
+        justify-content: center;
+        gap: 8px;
+        z-index: 4;
     }
 
     .timer-panel {
-        min-width: 84px;
+        position: static;
+        left: auto;
+        transform: none;
+        min-width: 0;
+    }
+
+    .panel {
+        padding: 8px 12px;
+        min-width: 0;
+        border-radius: 14px;
     }
 
     .label {
@@ -459,6 +513,9 @@ button {
     }
 
     .settings-btn {
+        top: max(12px, env(safe-area-inset-top));
+        left: max(12px, env(safe-area-inset-left));
+        right: auto;
         width: 40px;
         height: 40px;
         border-radius: 12px;
@@ -474,63 +531,6 @@ button {
     }
 
     .minimap {
-        width: 120px;
-        height: 120px;
-        border-radius: 12px;
-        right: max(12px, env(safe-area-inset-right));
-        bottom: max(16px, env(safe-area-inset-bottom));
-    }
-
-    .controls {
-        gap: 10px;
-        left: max(12px, env(safe-area-inset-left));
-        bottom: max(16px, env(safe-area-inset-bottom));
-    }
-
-    .joystick {
-        --stick-scale: 0.6363636364;
-    }
-}
-
-@media (max-width: 700px) {
-    .hud-stats {
-        left: 50%;
-        right: auto;
-        width: max-content;
-        transform: translateX(-50%);
-        justify-content: center;
-        gap: 6px;
-        z-index: 4;
-    }
-
-    .timer-panel {
-        position: static;
-        left: auto;
-        transform: none;
-        min-width: 0;
-    }
-
-    .panel {
-        padding: 6px 8px;
-        min-width: 0;
-        border-radius: 12px;
-    }
-
-    .label {
-        font-size: 8px;
-    }
-
-    .value {
-        font-size: 16px;
-    }
-
-    .settings-btn {
-        top: max(12px, env(safe-area-inset-top));
-        left: max(12px, env(safe-area-inset-left));
-        right: auto;
-    }
-
-    .minimap {
         top: max(60px, calc(env(safe-area-inset-top) + 52px));
         left: max(12px, env(safe-area-inset-left));
         right: auto;
@@ -540,11 +540,109 @@ button {
         border-radius: 10px;
     }
 
+    .controls {
+        gap: 10px;
+        left: max(12px, env(safe-area-inset-left));
+        bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
     .boost-btn {
         position: fixed;
         right: max(12px, env(safe-area-inset-right));
         bottom: max(16px, env(safe-area-inset-bottom));
         margin: 0;
+    }
+
+    .joystick {
+        --stick-scale: 0.6363636364;
+    }
+
+    .settings-sheet {
+        border-radius: 20px;
+        padding: 16px 16px 14px;
+    }
+
+    .settings-head {
+        margin-bottom: 12px;
+        gap: 10px;
+    }
+
+    .settings-sheet h1 {
+        font-size: 24px;
+    }
+
+    .settings-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: 24px;
+    }
+
+    .settings-block {
+        margin-bottom: 14px;
+    }
+
+    .settings-heading {
+        margin-bottom: 6px;
+        gap: 8px;
+    }
+
+    #balls-slider,
+    #goal-slider {
+        height: 32px;
+    }
+
+    .world-sizes,
+    .palette-choices,
+    .pulse-choices,
+    .fullscreen-choices {
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .world-btn,
+    .palette-btn,
+    .pulse-btn,
+    .fullscreen-btn {
+        min-height: 40px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .palette-btn,
+    .pulse-btn,
+    .fullscreen-btn {
+        font-size: 13px;
+    }
+
+    .settings-actions {
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .settings-actions button {
+        min-height: 44px;
+        border-radius: 10px;
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 700px) {
+    .hud-stats {
+        gap: 6px;
+    }
+
+    .panel {
+        padding: 6px 8px;
+        border-radius: 12px;
+    }
+
+    .label {
+        font-size: 8px;
+    }
+
+    .value {
+        font-size: 16px;
     }
 
     .coords {

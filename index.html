@@ -50,8 +50,12 @@
 
     <div class="settings-overlay hidden" id="settings-menu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="settings-sheet">
-            <h1 id="settings-title">Settings</h1>
+            <div class="settings-head">
+                <h1 id="settings-title">Settings</h1>
+                <button type="button" class="settings-close" id="settings-close" aria-label="Close settings">×</button>
+            </div>
 
+            <div class="settings-body">
             <section class="settings-block">
                 <div class="settings-heading">
                     <p class="label">Balls</p>
@@ -102,6 +106,7 @@
                     <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
                 </div>
             </section>
+            </div>
 
             <div class="settings-actions">
                 <button type="button" class="settings-restart" id="settings-restart">Restart</button>

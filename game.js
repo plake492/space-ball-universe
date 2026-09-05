@@ -11,7 +11,6 @@
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
     const COMPACT_UI = "(max-width: 1024px)";
-    const MOBILE_UI = "(max-width: 700px)";
     const COMPACT_STICK = 140 / 220;
     const STICK_PIP = 96;
     const MIN_BALL = 25;
@@ -169,18 +168,12 @@
         return window.matchMedia(COMPACT_UI).matches;
     }
 
-    function isMobileUi() {
-        return window.matchMedia(MOBILE_UI).matches;
-    }
-
     function stickScale() {
         return isCompactUi() ? COMPACT_STICK : 1;
     }
 
     function minimapSize() {
-        if (isMobileUi()) return MINIMAP_SIZE * 0.5 * 0.9;
-        if (isCompactUi()) return MINIMAP_SIZE * 0.5;
-        return MINIMAP_SIZE;
+        return isCompactUi() ? MINIMAP_SIZE * 0.5 * 0.9 : MINIMAP_SIZE;
     }
 
     function minimapWorldScale() {
@@ -1034,6 +1027,8 @@
         keys.clear();
         resetStick();
         settingsMenu.classList.remove("hidden");
+        const settingsBody = settingsMenu.querySelector(".settings-body");
+        if (settingsBody) settingsBody.scrollTop = 0;
         syncBoost();
     }
 
@@ -1145,6 +1140,7 @@
             closeMenu();
         });
 
+        document.getElementById("settings-close").addEventListener("click", closeMenu);
         document.getElementById("settings-continue").addEventListener("click", closeMenu);
 
         document.getElementById("win-restart").addEventListener("click", () => {

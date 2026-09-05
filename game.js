@@ -421,6 +421,7 @@
         holes: [],
         nebulae: [],
         comets: [],
+        meteors: [],
         pops: [],
         floaters: [],
         found: 0,
@@ -698,35 +699,38 @@
         { r: 255, g: 224, b: 176 },
         { r: 196, g: 255, b: 236 },
     ];
+    const METEOR_MIN = 15000;
+    const METEOR_MAX = 30000;
+    const METEOR_POINTS = 500;
+    const METEOR_TINTS = [
+        { r: 168, g: 128, b: 92 },
+        { r: 118, g: 108, b: 98 },
+        { r: 186, g: 108, b: 64 },
+        { r: 96, g: 88, b: 80 },
+    ];
     let nextCometAt = 0;
+    let nextMeteorAt = 0;
 
-    function cometWait() {
-        return rand(COMET_MIN, COMET_MAX);
+    function flyerWait(min, max) {
+        return rand(min, max);
+    }
+
+    function spawnFromEdge(margin) {
+        const side = Math.floor(Math.random() * 4);
+        if (side === 0) {
+            return { x: -margin, y: rand(0, state.world), angle: rand(-0.65, 0.65) };
+        }
+        if (side === 1) {
+            return { x: state.world + margin, y: rand(0, state.world), angle: Math.PI + rand(-0.65, 0.65) };
+        }
+        if (side === 2) {
+            return { x: rand(0, state.world), y: -margin, angle: Math.PI / 2 + rand(-0.65, 0.65) };
+        }
+        return { x: rand(0, state.world), y: state.world + margin, angle: -Math.PI / 2 + rand(-0.65, 0.65) };
     }
 
     function makeComet() {
-        const margin = 90;
-        const side = Math.floor(Math.random() * 4);
-        let x = 0;
-        let y = 0;
-        let angle = 0;
-        if (side === 0) {
-            x = -margin;
-            y = rand(0, state.world);
-            angle = rand(-0.65, 0.65);
-        } else if (side === 1) {
-            x = state.world + margin;
-            y = rand(0, state.world);
-            angle = Math.PI + rand(-0.65, 0.65);
-        } else if (side === 2) {
-            x = rand(0, state.world);
-            y = -margin;
-            angle = Math.PI / 2 + rand(-0.65, 0.65);
-        } else {
-            x = rand(0, state.world);
-            y = state.world + margin;
-            angle = -Math.PI / 2 + rand(-0.65, 0.65);
-        }
+        const { x, y, angle } = spawnFromEdge(90);
         const near = 0.28 + 0.72 * Math.random();
         const speed = rand(99, 288) * (0.7 + 0.5 * near);
         return {
@@ -742,33 +746,73 @@
         };
     }
 
+    function makeMeteor() {
+        const { x, y, angle } = spawnFromEdge(90);
+        const near = 0.28 + 0.72 * Math.random();
+        const speed = rand(99, 288) * (0.7 + 0.5 * near);
+        const lumps = [];
+        const count = 6 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i += 1) lumps.push(0.7 + Math.random() * 0.42);
+        return {
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            angle,
+            spin: rand(0, Math.PI * 2),
+            spinRate: rand(-2.4, 2.4),
+            r: 11 + 20 * near,
+            tail: 70 + 140 * near,
+            near,
+            lumps,
+            tint: pick(METEOR_TINTS),
+        };
+    }
+
     function spawnComets() {
         state.comets = [];
-        nextCometAt = performance.now() + cometWait();
+        nextCometAt = performance.now() + flyerWait(COMET_MIN, COMET_MAX);
         state.comets.push(makeComet());
+    }
+
+    function spawnMeteors() {
+        state.meteors = [];
+        nextMeteorAt = performance.now() + flyerWait(METEOR_MIN, METEOR_MAX);
+        state.meteors.push(makeMeteor());
+    }
+
+    function updateFlyers(list, dt, makeNext, nextAt, setNextAt, waitMin, waitMax, now) {
+        for (let i = list.length - 1; i >= 0; i -= 1) {
+            const flyer = list[i];
+            flyer.x += flyer.vx * dt;
+            flyer.y += flyer.vy * dt;
+            if (flyer.spinRate) flyer.spin += flyer.spinRate * dt;
+            const pad = flyer.tail + 280;
+            if (flyer.x < -pad || flyer.y < -pad || flyer.x > state.world + pad || flyer.y > state.world + pad) {
+                list.splice(i, 1);
+            }
+        }
+        if (now >= nextAt) {
+            setNextAt(now + flyerWait(waitMin, waitMax));
+            list.push(makeNext());
+        }
     }
 
     function updateComets(dt, now, paused) {
         if (paused) return;
-        for (let i = state.comets.length - 1; i >= 0; i -= 1) {
-            const comet = state.comets[i];
-            comet.x += comet.vx * dt;
-            comet.y += comet.vy * dt;
-            const pad = comet.tail + 280;
-            if (comet.x < -pad || comet.y < -pad || comet.x > state.world + pad || comet.y > state.world + pad) {
-                state.comets.splice(i, 1);
-            }
-        }
-        if (now >= nextCometAt) {
-            nextCometAt = now + cometWait();
-            state.comets.push(makeComet());
-        }
+        updateFlyers(state.comets, dt, makeComet, nextCometAt, (at) => { nextCometAt = at; }, COMET_MIN, COMET_MAX, now);
+    }
+
+    function updateMeteors(dt, now, paused) {
+        if (paused) return;
+        updateFlyers(state.meteors, dt, makeMeteor, nextMeteorAt, (at) => { nextMeteorAt = at; }, METEOR_MIN, METEOR_MAX, now);
     }
 
     function spawnDecor() {
         spawnHoles();
         spawnNebulae();
         spawnComets();
+        spawnMeteors();
     }
 
     function placeBall(spiked) {
@@ -1109,6 +1153,42 @@
         }
     }
 
+    function meteorBody(meteor) {
+        return meteor.r * 1.15;
+    }
+
+    function meteorColor(meteor) {
+        const { r, g, b } = meteor.tint;
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function collectMeteors() {
+        for (let i = state.meteors.length - 1; i >= 0; i -= 1) {
+            const meteor = state.meteors[i];
+            if (Math.hypot(meteor.x - state.shipX, meteor.y - state.shipY) > meteorBody(meteor) + SHIP_RADIUS) continue;
+            state.meteors.splice(i, 1);
+            state.score += METEOR_POINTS;
+            state.lifetime += METEOR_POINTS;
+            saveSettings();
+            state.pops.push({
+                x: meteor.x,
+                y: meteor.y,
+                r: meteorBody(meteor),
+                color: meteorColor(meteor),
+                life: 1,
+            });
+            state.floaters.push({
+                x: meteor.x,
+                y: meteor.y,
+                points: METEOR_POINTS,
+                life: 1,
+            });
+            playHit();
+            updateHud();
+            savePlay();
+        }
+    }
+
     function collectIfHit() {
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
@@ -1118,6 +1198,7 @@
                 if (ball.hasSpikes) {
                     hitSpikes(i);
                     collectComets();
+                    collectMeteors();
                     return;
                 }
                 state.balls.splice(i, 1);
@@ -1146,6 +1227,7 @@
             }
         }
         collectComets();
+        collectMeteors();
     }
 
     function moveShip(dt) {
@@ -1913,6 +1995,62 @@
         ctx.restore();
     }
 
+    function meteorPath(ctx, meteor, scale) {
+        const lumps = meteor.lumps;
+        ctx.beginPath();
+        for (let i = 0; i < lumps.length; i += 1) {
+            const a = (i / lumps.length) * Math.PI * 2;
+            const rad = meteor.r * lumps[i] * scale;
+            const px = Math.cos(a) * rad;
+            const py = Math.sin(a) * rad;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+    }
+
+    function drawMeteors(cam) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-cam.x, -cam.y, state.world, state.world);
+        ctx.clip();
+        for (const meteor of state.meteors) {
+            const x = meteor.x - cam.x;
+            const y = meteor.y - cam.y;
+            const reach = meteor.tail + meteor.r * 4;
+            if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) continue;
+            const { r, g, b } = meteor.tint;
+            const a = 0.45 + 0.55 * meteor.near;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(meteor.angle);
+            ctx.globalCompositeOperation = "lighter";
+            const streak = ctx.createLinearGradient(-meteor.tail, 0, meteor.r, 0);
+            streak.addColorStop(0, "rgba(255, 80, 20, 0)");
+            streak.addColorStop(0.55, `rgba(255, 110, 32, ${0.12 * a})`);
+            streak.addColorStop(0.86, `rgba(255, 176, 64, ${0.38 * a})`);
+            streak.addColorStop(1, `rgba(255, 230, 160, ${0.62 * a})`);
+            ctx.fillStyle = streak;
+            ctx.beginPath();
+            ctx.moveTo(-meteor.tail, 0);
+            ctx.lineTo(meteor.r * 0.2, meteor.r * 0.95);
+            ctx.lineTo(meteor.r * 0.2, -meteor.r * 0.95);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+            ctx.rotate(meteor.spin);
+            meteorPath(ctx, meteor, 1);
+            const shade = ctx.createRadialGradient(-meteor.r * 0.28, -meteor.r * 0.22, meteor.r * 0.12, 0, 0, meteor.r * 1.15);
+            shade.addColorStop(0, `rgb(${Math.min(255, r + 38)}, ${Math.min(255, g + 28)}, ${Math.min(255, b + 18)})`);
+            shade.addColorStop(0.55, `rgb(${r}, ${g}, ${b})`);
+            shade.addColorStop(1, `rgb(${Math.round(r * 0.42)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.38)})`);
+            ctx.fillStyle = shade;
+            ctx.fill();
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
     function toMinimap(worldX, worldY, size, scale) {
         return {
             x: size / 2 + (worldX - state.shipX) * scale,
@@ -2003,6 +2141,28 @@
             miniCtx.fill();
             miniCtx.restore();
         }
+        for (const meteor of state.meteors) {
+            const p = toMinimap(meteor.x, meteor.y, size, scale);
+            const tail = Math.max(7 * mark, meteor.tail * scale * 0.28);
+            const r = Math.max(2.4 * mark, meteorBody(meteor) * scale);
+            if (p.x < -tail || p.y < -tail || p.x > size + tail || p.y > size + tail) continue;
+            const { r: mr, g, b } = meteor.tint;
+            miniCtx.save();
+            miniCtx.translate(p.x, p.y);
+            miniCtx.rotate(meteor.angle);
+            miniCtx.strokeStyle = "rgba(255, 140, 48, 0.8)";
+            miniCtx.lineWidth = Math.max(1.2 * mark, r * 0.5);
+            miniCtx.lineCap = "round";
+            miniCtx.beginPath();
+            miniCtx.moveTo(-tail, 0);
+            miniCtx.lineTo(0, 0);
+            miniCtx.stroke();
+            miniCtx.rotate(meteor.spin);
+            meteorPath(miniCtx, meteor, Math.max(0.18, r / meteor.r));
+            miniCtx.fillStyle = `rgb(${mr}, ${g}, ${b})`;
+            miniCtx.fill();
+            miniCtx.restore();
+        }
         miniCtx.restore();
 
         const cx = size / 2;
@@ -2043,9 +2203,11 @@
 
         updateBoostFuel(dt, paused);
         updateComets(dt, now, paused);
+        updateMeteors(dt, now, paused);
         drawSpace(cam);
         drawHoles(cam, now);
         drawComets(cam);
+        drawMeteors(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
@@ -2267,6 +2429,7 @@
         state.holes = [];
         state.nebulae = [];
         state.comets = [];
+        state.meteors = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;

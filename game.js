@@ -19,7 +19,7 @@
     const ENGINE_LOOP_START = 0.5;
     const ENGINE_LOOP_END = 15;
     const ENGINE_FADE = 0.3;
-    const ENGINE_BOOST_RATE = 1.5;
+    const ENGINE_BOOST_RATE = 1.25;
     const PALETTES = {
         rainbow: [
             "#ff3b30",
@@ -400,7 +400,7 @@
         source.loop = true;
         source.loopStart = ENGINE_LOOP_START;
         source.loopEnd = Math.min(ENGINE_LOOP_END, engine.buffer.duration);
-        source.playbackRate.value = engineRate();
+        source.playbackRate.value = 1;
         const gain = ctx.createGain();
         const now = ctx.currentTime;
         if (fadeIn) {
@@ -414,6 +414,7 @@
         source.start(0, ENGINE_LOOP_START);
         engine.source = source;
         engine.gain = gain;
+        if (state.boost) fadeEngineRate();
     }
 
     function fadeEngine(target) {
@@ -426,17 +427,22 @@
         param.linearRampToValueAtTime(target, now + ENGINE_FADE);
     }
 
+    function fadeEngineRate() {
+        if (!engine.source) return;
+        const param = engine.source.playbackRate;
+        const now = engine.ctx.currentTime;
+        param.cancelScheduledValues(now);
+        param.setValueAtTime(param.value, now);
+        param.linearRampToValueAtTime(engineRate(), now + ENGINE_FADE);
+    }
+
     function updateEngine(moving) {
-        if (moving === engine.wanted && engine.source) {
-            engine.source.playbackRate.value = engineRate();
-            return;
-        }
+        if (moving === engine.wanted && engine.source) return;
         engine.wanted = moving;
         if (!engine.buffer) return;
         if (moving) {
             if (!engine.source) startEngine(true);
             else fadeEngine(1);
-            engine.source.playbackRate.value = engineRate();
         } else if (engine.source) {
             fadeEngine(0);
         }
@@ -761,7 +767,7 @@
         const button = document.getElementById("boost-btn");
         button.classList.toggle("is-on", on);
         button.setAttribute("aria-pressed", on ? "true" : "false");
-        if (engine.source) engine.source.playbackRate.value = engineRate();
+        fadeEngineRate();
     }
 
     function bindKeys() {

@@ -2640,12 +2640,30 @@
     }
 
     function bindHud() {
-        document.getElementById("go-home").addEventListener("click", () => {
+        const bindHudTap = (el, fn) => {
+            let last = 0;
+            const run = () => {
+                const now = performance.now();
+                if (now - last < 400) return;
+                last = now;
+                fn();
+            };
+            el.addEventListener("pointerup", (event) => {
+                if (event.pointerType !== "touch" && event.button !== 0) return;
+                event.preventDefault();
+                run();
+            });
+            el.addEventListener("click", (event) => {
+                event.preventDefault();
+                run();
+            });
+        };
+        bindHudTap(document.getElementById("go-home"), () => {
             savePlay();
             saveSettings();
             location.href = "./index.html";
         });
-        document.getElementById("play-settings").addEventListener("click", () => {
+        bindHudTap(document.getElementById("play-settings"), () => {
             if (state.won || state.resumeOpen || state.boardOpen) return;
             openMenu(true);
         });
@@ -2961,7 +2979,7 @@
 
         let lastTap = 0;
         document.addEventListener("touchend", (event) => {
-            if (event.target.closest("input, textarea")) return;
+            if (event.target.closest("input, textarea, #go-home, #play-settings")) return;
             const now = event.timeStamp;
             if (now - lastTap <= 350) event.preventDefault();
             lastTap = now;

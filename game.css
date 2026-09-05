@@ -82,10 +82,13 @@ body.board-open {
 
 .hud-cluster {
     position: fixed;
-    top: max(16px, env(safe-area-inset-top));
+    top: max(20px, env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
-    z-index: 4;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 15px;
     pointer-events: none;
 }
 
@@ -101,7 +104,7 @@ body.board-open {
 .hud-stats-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 18px;
 }
 
 .panel,
@@ -117,19 +120,20 @@ body.board-open {
 
 .panel {
     pointer-events: auto;
-    border-radius: 18px;
-    padding: 12px 16px;
+    border-radius: 22px;
+    padding: 15px 20px;
     min-width: 0;
 }
 
 .hud-stats .value {
     margin: 0;
+    font-size: 35px;
     font-variant-numeric: tabular-nums;
 }
 
 .hud-score,
 .hud-timer {
-    padding-left: 14px;
+    padding-left: 18px;
     border-left: 1px solid rgba(170, 200, 255, 0.28);
 }
 
@@ -157,17 +161,14 @@ body.board-open {
 }
 
 .settings-btn {
-    position: absolute;
-    top: 50%;
-    right: calc(100% + 12px);
-    left: auto;
-    transform: translateY(-50%);
-    z-index: 4;
+    position: relative;
+    z-index: 5;
     pointer-events: auto;
-    width: 56px;
-    height: 56px;
+    touch-action: manipulation;
+    width: 70px;
+    height: 70px;
     padding: 0;
-    border-radius: 16px;
+    border-radius: 20px;
     color: #eef3ff;
     display: grid;
     place-items: center;
@@ -177,14 +178,10 @@ body.board-open {
 
 .settings-btn svg {
     display: block;
-    width: 28px;
-    height: 28px;
+    width: 35px;
+    height: 35px;
     overflow: visible;
-}
-
-.settings-btn.play-settings {
-    right: auto;
-    left: calc(100% + 12px);
+    pointer-events: none;
 }
 
 .settings-lite .settings-cat[data-panel="user"],
@@ -1295,26 +1292,27 @@ body.home {
 
 @media (max-width: 1440px) {
     .hud-cluster {
-        top: max(12px, env(safe-area-inset-top));
+        top: max(15px, env(safe-area-inset-top));
+        gap: 13px;
     }
 
     .hud-stats {
-        padding: 6px 10px;
-        border-radius: 14px;
+        padding: 8px 13px;
+        border-radius: 18px;
     }
 
     .hud-stats-row {
-        gap: 10px;
+        gap: 13px;
     }
 
     .hud-score,
     .hud-timer {
-        padding-left: 10px;
+        padding-left: 13px;
     }
 
     .panel {
-        padding: 8px 12px;
-        border-radius: 14px;
+        padding: 10px 15px;
+        border-radius: 18px;
     }
 
     .label {
@@ -1325,15 +1323,19 @@ body.home {
         font-size: 20px;
     }
 
+    .hud-stats .value {
+        font-size: 25px;
+    }
+
     .settings-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
+        width: 50px;
+        height: 50px;
+        border-radius: 15px;
     }
 
     .settings-btn svg {
-        width: 20px;
-        height: 20px;
+        width: 25px;
+        height: 25px;
     }
 
     .coords {

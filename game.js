@@ -12,9 +12,9 @@
     const MINIMAP_SCALE = 0.1;
     const COMPACT_UI = "(max-width: 1440px)";
     const COMPACT_STICK = 140 / 220;
-    const CONTROL_GROW = 0.33;
-    const SCALE_VMIN_START = 520;
-    const SCALE_VMIN_SPAN = 380;
+    const CONTROL_GROW = 0.6;
+    const SCALE_VMIN_START = 320;
+    const SCALE_VMIN_FULL = 768;
     const STICK_PIP = 96;
     const MIN_BALL = 25;
     const MAX_BALL = 150;
@@ -173,7 +173,16 @@
 
     function controlT() {
         const vmin = Math.min(window.innerWidth, window.innerHeight);
-        return Math.min(1, Math.max(0, (vmin - SCALE_VMIN_START) / SCALE_VMIN_SPAN));
+        return Math.min(1, Math.max(0, (vmin - SCALE_VMIN_START) / (SCALE_VMIN_FULL - SCALE_VMIN_START)));
+    }
+
+    function applyControlLayout() {
+        const t = controlT();
+        const grow = 1 + CONTROL_GROW * t;
+        const root = document.documentElement;
+        root.style.setProperty("--control-grow", String(grow));
+        root.style.setProperty("--control-inset-x", `${(window.innerWidth / 6) * t}px`);
+        root.style.setProperty("--control-inset-y", `${(window.innerHeight / 6) * t}px`);
     }
 
     function stickScale() {
@@ -201,6 +210,7 @@
     let lastStickScale = stickScale();
 
     function resize() {
+        applyControlLayout();
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         state.width = window.innerWidth;
         state.height = window.innerHeight;

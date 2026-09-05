@@ -212,6 +212,7 @@
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "space";
             const pulse = data.pulse === true;
             const nebula = data.nebula !== false;
+            const starDrift = data.starDrift !== false;
             const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             const reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -235,6 +236,7 @@
                     palette,
                     pulse,
                     nebula,
+                    starDrift,
                     ship,
                     name,
                     lifetime,
@@ -250,9 +252,9 @@
                     zoom,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, nebula, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
+            return { world, ballCount, goal, palette, pulse, nebula, starDrift, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
         }
     }
 
@@ -265,6 +267,7 @@
                 palette: state.palette,
                 pulse: state.pulse,
                 nebula: state.nebula,
+                starDrift: state.starDrift,
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
@@ -513,6 +516,7 @@
         palette: saved.palette,
         pulse: saved.pulse,
         nebula: saved.nebula !== false,
+        starDrift: saved.starDrift !== false,
         ship: saved.ship,
         name: saved.name,
         lifetime: saved.lifetime,
@@ -1167,6 +1171,9 @@
         for (const button of document.querySelectorAll(".nebula-btn")) {
             button.classList.toggle("is-on", (button.dataset.nebula === "on") === state.nebula);
         }
+        for (const button of document.querySelectorAll(".star-btn")) {
+            button.classList.toggle("is-on", (button.dataset.stars === "on") === state.starDrift);
+        }
         for (const button of document.querySelectorAll(".req-btn")) {
             button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
         }
@@ -1747,12 +1754,14 @@
         return x < -reach || y < -reach || x > cam.w + reach || y > cam.h + reach;
     }
 
-    function drawStars(cam) {
+    function drawStars(cam, now) {
         const cell = 160;
         const left = Math.floor((cam.x - 40) / cell);
         const right = Math.ceil((cam.x + cam.w + 40) / cell);
         const top = Math.floor((cam.y - 40) / cell);
         const bottom = Math.ceil((cam.y + cam.h + 40) / cell);
+        const driftOn = state.starDrift !== false;
+        const t = driftOn ? now / 1000 : 0;
 
         for (let gy = top; gy <= bottom; gy += 1) {
             for (let gx = left; gx <= right; gx += 1) {
@@ -1760,8 +1769,19 @@
                 for (let i = 0; i < starsInCell; i += 1) {
                     const hx = hash2(gx + i * 19.1, gy + 7.3);
                     const hy = hash2(gx + 4.8, gy + i * 13.7);
-                    const x = gx * cell + hx * cell - cam.x;
-                    const y = gy * cell + hy * cell - cam.y;
+                    let x = gx * cell + hx * cell;
+                    let y = gy * cell + hy * cell;
+                    if (driftOn) {
+                        const depth = hash2(gx * 2.7, gy + i * 5.1);
+                        const speed = 4 + depth * 16;
+                        const turn = -0.35 + (hash2(i + gx, gy * 4.2) - 0.5) * 0.65;
+                        const dx = Math.cos(turn) * speed * t;
+                        const dy = Math.sin(turn) * speed * t;
+                        x = gx * cell + (((hx * cell + dx) % cell) + cell) % cell;
+                        y = gy * cell + (((hy * cell + dy) % cell) + cell) % cell;
+                    }
+                    x -= cam.x;
+                    y -= cam.y;
                     const twinkle = 0.45 + hash2(gx * 3.1, gy + i) * 0.55;
                     const size = 0.6 + hash2(i + gx, gy * 2.2) * 1.8;
                     ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
@@ -2261,7 +2281,7 @@
         }
     }
 
-    function drawSpace(cam) {
+    function drawSpace(cam, now) {
         const sky = ctx.createLinearGradient(0, 0, 0, state.height);
         sky.addColorStop(0, "#050217");
         sky.addColorStop(0.55, "#0a0830");
@@ -2284,7 +2304,7 @@
             ctx.fillRect(0, 0, cam.w, cam.h);
             drawNebulae(cam);
         }
-        drawStars(cam);
+        drawStars(cam, now);
         drawBorder(cam);
     }
 
@@ -2599,7 +2619,7 @@
         updateComets(dt, now, paused);
         updateMeteors(dt, now, paused);
         beginWorld(cam);
-        drawSpace(cam);
+        drawSpace(cam, now);
         drawHoles(cam, now);
         drawComets(cam);
         drawMeteors(cam);
@@ -3099,6 +3119,16 @@
                 if (next === state.nebula) return;
                 state.nebula = next;
                 if (state.nebula && !state.nebulae.length) spawnNebulae();
+                saveSettings();
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".star-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.stars === "on";
+                if (next === state.starDrift) return;
+                state.starDrift = next;
                 saveSettings();
                 updateHud();
             });

@@ -426,6 +426,7 @@ body.board-open {
 .meteor-btn,
 .fuel-btn,
 .nebula-btn,
+.star-btn,
 .diff-btn {
     flex: 1;
     min-height: 72px;
@@ -449,6 +450,7 @@ body.board-open {
 .meteor-btn,
 .fuel-btn,
 .nebula-btn,
+.star-btn,
 .diff-btn {
     text-transform: none;
     font-size: 18px;
@@ -470,6 +472,7 @@ body.board-open {
 .meteor-btn.is-on,
 .fuel-btn.is-on,
 .nebula-btn.is-on,
+.star-btn.is-on,
 .diff-btn.is-on,
 .ship-btn.is-on {
     background: rgba(79, 124, 255, 0.42);
@@ -1494,6 +1497,7 @@ body.home {
     .meteor-btn,
     .fuel-btn,
     .nebula-btn,
+    .star-btn,
     .diff-btn {
         min-height: 40px;
         border-radius: 10px;
@@ -1521,7 +1525,8 @@ body.home {
     .spike-btn,
     .meteor-btn,
     .fuel-btn,
-    .nebula-btn {
+    .nebula-btn,
+    .star-btn {
         font-size: 13px;
     }
 

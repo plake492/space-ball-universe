@@ -74,6 +74,7 @@
         palette: "space",
         pulse: false,
         nebula: true,
+        starDrift: true,
         ship: "classic",
         name: "",
         lifetime: 0,
@@ -205,15 +206,48 @@
         homeSky.back = paintHomeBackdrop(width, height);
         homeSky.stars = buildHomeStars(width, height);
         homeSky.last = 0;
+        if (!state.starDrift) {
+            homeSky.running = false;
+            if (homeSky.frame) cancelAnimationFrame(homeSky.frame);
+            homeSky.frame = 0;
+            drawHomeStars(0);
+            return;
+        }
         if (!homeSky.running) {
             homeSky.running = true;
             homeSky.frame = requestAnimationFrame(tickHomeSky);
         }
     }
 
+    function drawHomeStars(dt) {
+        const ctx = homeSky.ctx;
+        if (!ctx) return;
+        const width = homeSky.width;
+        const height = homeSky.height;
+        if (homeSky.back) ctx.drawImage(homeSky.back, 0, 0, width, height);
+        else {
+            ctx.fillStyle = "#050217";
+            ctx.fillRect(0, 0, width, height);
+        }
+        for (const star of homeSky.stars) {
+            if (dt) {
+                star.x += star.vx * dt;
+                star.y += star.vy * dt;
+                if (star.x < -4) star.x = width + 4;
+                else if (star.x > width + 4) star.x = -4;
+                if (star.y < -4) star.y = height + 4;
+                else if (star.y > height + 4) star.y = -4;
+            }
+            ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
     function tickHomeSky(now) {
         const ctx = homeSky.ctx;
-        if (!ctx) {
+        if (!ctx || !state.starDrift) {
             homeSky.running = false;
             return;
         }
@@ -224,25 +258,7 @@
         }
         const dt = homeSky.last ? Math.min(0.05, (now - homeSky.last) / 1000) : 0;
         homeSky.last = now;
-        const width = homeSky.width;
-        const height = homeSky.height;
-        if (homeSky.back) ctx.drawImage(homeSky.back, 0, 0, width, height);
-        else {
-            ctx.fillStyle = "#050217";
-            ctx.fillRect(0, 0, width, height);
-        }
-        for (const star of homeSky.stars) {
-            star.x += star.vx * dt;
-            star.y += star.vy * dt;
-            if (star.x < -4) star.x = width + 4;
-            else if (star.x > width + 4) star.x = -4;
-            if (star.y < -4) star.y = height + 4;
-            else if (star.y > height + 4) star.y = -4;
-            ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        drawHomeStars(dt);
     }
 
     function clampZoom(value) {
@@ -342,6 +358,7 @@
             state.palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "space";
             state.pulse = data.pulse === true;
             state.nebula = data.nebula !== false;
+            state.starDrift = data.starDrift !== false;
             state.lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             state.reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -380,6 +397,7 @@
                 palette: state.palette,
                 pulse: state.pulse,
                 nebula: state.nebula,
+                starDrift: state.starDrift,
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
@@ -552,6 +570,9 @@
         }
         for (const button of document.querySelectorAll(".nebula-btn")) {
             button.classList.toggle("is-on", (button.dataset.nebula === "on") === state.nebula);
+        }
+        for (const button of document.querySelectorAll(".star-btn")) {
+            button.classList.toggle("is-on", (button.dataset.stars === "on") === state.starDrift);
         }
         for (const button of document.querySelectorAll(".req-btn")) {
             button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
@@ -785,6 +806,14 @@
     for (const button of document.querySelectorAll(".nebula-btn")) {
         button.addEventListener("click", () => {
             state.nebula = button.dataset.nebula === "on";
+            saveSettings();
+            paintHomeSky();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".star-btn")) {
+        button.addEventListener("click", () => {
+            state.starDrift = button.dataset.stars === "on";
             saveSettings();
             paintHomeSky();
             updateHud();

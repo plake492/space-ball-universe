@@ -692,6 +692,8 @@
 
     const COMET_MIN = 15000;
     const COMET_MAX = 30000;
+    const COMET_SPEED_MIN = 99;
+    const COMET_SPEED_MAX = 288;
     const COMET_POINTS = 1000;
     const COMET_TINTS = [
         { r: 220, g: 236, b: 255 },
@@ -699,8 +701,8 @@
         { r: 255, g: 224, b: 176 },
         { r: 196, g: 255, b: 236 },
     ];
-    const METEOR_MIN = 15000;
-    const METEOR_MAX = 30000;
+    const METEOR_MIN = 5000;
+    const METEOR_MAX = 10000;
     const METEOR_POINTS = 500;
     const METEOR_TINTS = [
         { r: 168, g: 128, b: 92 },
@@ -732,7 +734,7 @@
     function makeComet() {
         const { x, y, angle } = spawnFromEdge(90);
         const near = 0.28 + 0.72 * Math.random();
-        const speed = rand(99, 288) * (0.7 + 0.5 * near);
+        const speed = rand(COMET_SPEED_MIN, COMET_SPEED_MAX) * (0.7 + 0.5 * near);
         return {
             x,
             y,
@@ -749,7 +751,9 @@
     function makeMeteor() {
         const { x, y, angle } = spawnFromEdge(90);
         const near = 0.28 + 0.72 * Math.random();
-        const speed = rand(99, 288) * (0.7 + 0.5 * near);
+        const size = rand(0.55, 2.35);
+        const r = 24 * size;
+        const speed = rand(COMET_SPEED_MIN * 0.2, COMET_SPEED_MAX * 1.4);
         const lumps = [];
         const count = 6 + Math.floor(Math.random() * 3);
         for (let i = 0; i < count; i += 1) lumps.push(0.7 + Math.random() * 0.42);
@@ -761,8 +765,8 @@
             angle,
             spin: rand(0, Math.PI * 2),
             spinRate: rand(-2.4, 2.4),
-            r: 11 + 20 * near,
-            tail: 70 + 140 * near,
+            r,
+            tail: r * 6.5,
             near,
             lumps,
             tint: pick(METEOR_TINTS),

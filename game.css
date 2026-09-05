@@ -1090,10 +1090,10 @@ body.home {
     }
 
     .minimap-stage {
-        top: auto;
+        top: max(12px, env(safe-area-inset-top));
         right: max(12px, env(safe-area-inset-right));
         left: auto;
-        bottom: max(16px, env(safe-area-inset-bottom));
+        bottom: auto;
         width: 108px;
         height: 108px;
         border-radius: 10px;

@@ -26,7 +26,7 @@ body {
     height: 100%;
 }
 
-.hud {
+.hud-stats {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));
     left: max(16px, env(safe-area-inset-left));
@@ -164,7 +164,8 @@ body {
 
 .world-sizes,
 .palette-choices,
-.pulse-choices {
+.pulse-choices,
+.fullscreen-choices {
     display: flex;
     gap: 12px;
     margin-top: 12px;
@@ -172,7 +173,8 @@ body {
 
 .world-btn,
 .palette-btn,
-.pulse-btn {
+.pulse-btn,
+.fullscreen-btn {
     flex: 1;
     min-height: 72px;
     border-radius: 16px;
@@ -187,14 +189,16 @@ body {
 }
 
 .palette-btn,
-.pulse-btn {
+.pulse-btn,
+.fullscreen-btn {
     text-transform: none;
     font-size: 18px;
 }
 
 .world-btn.is-on,
 .palette-btn.is-on,
-.pulse-btn.is-on {
+.pulse-btn.is-on,
+.fullscreen-btn.is-on {
     background: rgba(79, 124, 255, 0.42);
     border-color: rgba(220, 235, 255, 0.55);
 }
@@ -489,8 +493,61 @@ button {
 }
 
 @media (max-width: 700px) {
-    .hud {
-        flex-wrap: wrap;
-        padding-top: 52px;
+    .hud-stats {
+        left: 50%;
+        right: auto;
+        width: max-content;
+        transform: translateX(-50%);
+        justify-content: center;
+        gap: 6px;
+        z-index: 4;
+    }
+
+    .timer-panel {
+        position: static;
+        left: auto;
+        transform: none;
+        min-width: 0;
+    }
+
+    .panel {
+        padding: 6px 8px;
+        min-width: 0;
+        border-radius: 12px;
+    }
+
+    .label {
+        font-size: 8px;
+    }
+
+    .value {
+        font-size: 16px;
+    }
+
+    .settings-btn {
+        top: max(12px, env(safe-area-inset-top));
+        left: max(12px, env(safe-area-inset-left));
+        right: auto;
+    }
+
+    .minimap {
+        top: max(60px, calc(env(safe-area-inset-top) + 52px));
+        left: max(12px, env(safe-area-inset-left));
+        right: auto;
+        bottom: auto;
+        width: 108px;
+        height: 108px;
+        border-radius: 10px;
+    }
+
+    .boost-btn {
+        position: fixed;
+        right: max(12px, env(safe-area-inset-right));
+        bottom: max(16px, env(safe-area-inset-bottom));
+        margin: 0;
+    }
+
+    .coords {
+        font-size: 10px;
     }
 }

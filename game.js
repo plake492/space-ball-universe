@@ -11,6 +11,7 @@
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
     const COMPACT_UI = "(max-width: 1024px)";
+    const MOBILE_UI = "(max-width: 700px)";
     const COMPACT_STICK = 140 / 220;
     const STICK_PIP = 96;
     const MIN_BALL = 25;
@@ -168,12 +169,18 @@
         return window.matchMedia(COMPACT_UI).matches;
     }
 
+    function isMobileUi() {
+        return window.matchMedia(MOBILE_UI).matches;
+    }
+
     function stickScale() {
         return isCompactUi() ? COMPACT_STICK : 1;
     }
 
     function minimapSize() {
-        return isCompactUi() ? MINIMAP_SIZE * 0.5 : MINIMAP_SIZE;
+        if (isMobileUi()) return MINIMAP_SIZE * 0.5 * 0.9;
+        if (isCompactUi()) return MINIMAP_SIZE * 0.5;
+        return MINIMAP_SIZE;
     }
 
     function minimapWorldScale() {
@@ -317,6 +324,40 @@
         for (const button of document.querySelectorAll(".pulse-btn")) {
             button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
         }
+        const fullscreenOn = isFullscreen();
+        for (const button of document.querySelectorAll(".fullscreen-btn")) {
+            button.classList.toggle("is-on", (button.dataset.fullscreen === "on") === fullscreenOn);
+        }
+    }
+
+    function fullscreenElement() {
+        return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    function isFullscreen() {
+        return Boolean(fullscreenElement());
+    }
+
+    function requestPageFullscreen() {
+        const root = document.documentElement;
+        if (root.requestFullscreen) return root.requestFullscreen();
+        if (root.webkitRequestFullscreen) return root.webkitRequestFullscreen();
+        return Promise.reject(new Error("Fullscreen is not available"));
+    }
+
+    function exitPageFullscreen() {
+        if (document.exitFullscreen) return document.exitFullscreen();
+        if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+        return Promise.resolve();
+    }
+
+    function setFullscreen(on) {
+        const action = on && !isFullscreen()
+            ? requestPageFullscreen()
+            : !on && isFullscreen()
+                ? exitPageFullscreen()
+                : Promise.resolve();
+        Promise.resolve(action).catch(() => {}).finally(updateHud);
     }
 
     function maybeWin() {
@@ -1073,6 +1114,19 @@
                 updateHud();
             });
         }
+
+        for (const button of document.querySelectorAll(".fullscreen-btn")) {
+            button.addEventListener("click", () => {
+                setFullscreen(button.dataset.fullscreen === "on");
+            });
+        }
+
+        const onFullscreenChange = () => {
+            resize();
+            updateHud();
+        };
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", onFullscreenChange);
 
         for (const button of document.querySelectorAll(".palette-btn")) {
             button.addEventListener("click", () => {

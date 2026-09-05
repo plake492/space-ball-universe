@@ -453,8 +453,9 @@ body.board-open {
 
 .minimap {
     position: fixed;
+    top: max(20px, env(safe-area-inset-top));
     right: max(20px, env(safe-area-inset-right));
-    bottom: max(24px, env(safe-area-inset-bottom));
+    bottom: auto;
     width: 240px;
     height: 240px;
     z-index: 3;
@@ -469,12 +470,14 @@ body.board-open {
 
 .controls {
     position: fixed;
-    left: calc(max(20px, env(safe-area-inset-left)) + var(--control-inset-x));
-    bottom: calc(max(24px, env(safe-area-inset-bottom)) + var(--control-inset-y));
+    right: max(16px, env(safe-area-inset-right));
+    left: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
     display: flex;
     align-items: flex-end;
     gap: 14px;
     z-index: 3;
+    opacity: 0.5;
 }
 
 .joystick {
@@ -965,7 +968,9 @@ body.home {
     .controls {
         gap: 10px;
         left: calc(max(12px, env(safe-area-inset-left)) + var(--control-inset-x));
+        right: auto;
         bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--control-inset-y));
+        opacity: 1;
     }
 
     .boost-btn {

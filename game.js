@@ -80,7 +80,7 @@
         ],
     };
     const PALETTE_NAMES = Object.keys(PALETTES);
-    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo"];
+    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.png",
         cat: "public/images/ships/cat.png",
@@ -88,6 +88,7 @@
         cube: "public/images/ships/cube.png",
         "hello-kitty": "public/images/ships/hello-kitty.png",
         ufo: "public/images/ships/ufo.png",
+        harlie: "public/images/ships/harlie.png",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
     const SHIP_COST_START = 5000;

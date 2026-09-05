@@ -103,6 +103,74 @@
         return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 100;
     }
 
+    function hash2(x, y) {
+        const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+        return n - Math.floor(n);
+    }
+
+    function paintHomeSky() {
+        const canvas = document.getElementById("home-sky");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const view = document.documentElement;
+        const width = view.clientWidth || window.innerWidth;
+        const height = view.clientHeight || window.innerHeight;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const sky = ctx.createLinearGradient(0, 0, 0, height);
+        sky.addColorStop(0, "#050217");
+        sky.addColorStop(0.55, "#0a0830");
+        sky.addColorStop(1, "#07051c");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, width, height);
+
+        if (state.nebula) {
+            const washes = [
+                { x: width * 0.18, y: height * 0.22, r: Math.max(width, height) * 0.55, color: "90, 40, 140", a: 0.22 },
+                { x: width * 0.82, y: height * 0.7, r: Math.max(width, height) * 0.48, color: "20, 90, 170", a: 0.16 },
+                { x: width * 0.62, y: height * 0.18, r: Math.max(width, height) * 0.32, color: "180, 60, 130", a: 0.1 },
+            ];
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            for (const wash of washes) {
+                const g = ctx.createRadialGradient(wash.x, wash.y, 0, wash.x, wash.y, wash.r);
+                g.addColorStop(0, `rgba(${wash.color}, ${wash.a})`);
+                g.addColorStop(0.45, `rgba(${wash.color}, ${wash.a * 0.35})`);
+                g.addColorStop(1, `rgba(${wash.color}, 0)`);
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(wash.x, wash.y, wash.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        const cell = 72;
+        const cols = Math.ceil(width / cell) + 1;
+        const rows = Math.ceil(height / cell) + 1;
+        for (let gy = 0; gy < rows; gy += 1) {
+            for (let gx = 0; gx < cols; gx += 1) {
+                const count = 1 + Math.floor(hash2(gx + 3.1, gy + 8.4) * 2);
+                for (let i = 0; i < count; i += 1) {
+                    const x = gx * cell + hash2(gx + i * 19.1, gy + 7.3) * cell;
+                    const y = gy * cell + hash2(gx + 4.8, gy + i * 13.7) * cell;
+                    const twinkle = 0.35 + hash2(gx * 3.1, gy + i) * 0.65;
+                    const size = 0.55 + hash2(i + gx, gy * 2.2) * 1.7;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
     function clampZoom(value) {
         const n = Number(value);
         if (!Number.isFinite(n)) return 1;
@@ -514,7 +582,10 @@
 
     loadSettings();
     fillShipsModal();
+    paintHomeSky();
     updateHud();
+    window.addEventListener("resize", paintHomeSky);
+    window.addEventListener("orientationchange", paintHomeSky);
 
     document.getElementById("home-continue").addEventListener("click", () => {
         if (!canContinue()) return;
@@ -641,6 +712,7 @@
         button.addEventListener("click", () => {
             state.nebula = button.dataset.nebula === "on";
             saveSettings();
+            paintHomeSky();
             updateHud();
         });
     }

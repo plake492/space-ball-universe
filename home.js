@@ -22,6 +22,19 @@
     const NAME_MAX = 20;
     const PALETTE_NAMES = ["rainbow", "space", "dark"];
     const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie"];
+    const SHIP_NAMES = {
+        classic: "Classic",
+        "ship-1": "Crew",
+        cat: "Cat",
+        wolf: "Wolf",
+        cube: "Cube",
+        "hello-kitty": "Hello Kitty",
+        ufo: "UFO",
+        harlie: "Harlie",
+        selah: "Selah",
+        guitar: "Guitar",
+        "selah-harlie": "Selah Harlie",
+    };
     const SHIP_COST_START = 5000;
     const SHIP_COST_GROW = 1.5;
 
@@ -42,6 +55,8 @@
     const homeSub = document.getElementById("home-sub");
     const homeUser = document.getElementById("home-user");
     const homeLifetime = document.getElementById("home-lifetime");
+    const homeShips = document.getElementById("home-ships");
+    const shipsOverlay = document.getElementById("ships-overlay");
     const homeDiffBalls = document.getElementById("home-diff-balls");
     const homeDiffGoal = document.getElementById("home-diff-goal");
     const homeDiffWorld = document.getElementById("home-diff-world");
@@ -315,6 +330,7 @@
         if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         if (homeUser) homeUser.textContent = state.name || "Pilot";
         if (homeLifetime) homeLifetime.textContent = state.lifetime.toLocaleString();
+        if (homeShips) homeShips.textContent = `Ships ${SHIP_NAMES[state.ship] || "Classic"}`;
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
         goalSlider.min = String(GOAL_MIN);
@@ -424,7 +440,19 @@
         Promise.resolve(action).catch(() => {}).finally(updateHud);
     }
 
+    function fillShipsModal() {
+        const dest = document.getElementById("ships-choices");
+        const source = document.querySelector("#settings-menu .ship-choices");
+        if (!dest || !source || dest.childElementCount) return;
+        dest.replaceChildren(...[...source.querySelectorAll(".ship-btn")].map((btn) => btn.cloneNode(true)));
+    }
+
+    function setShipsOpen(open) {
+        if (shipsOverlay) shipsOverlay.classList.toggle("hidden", !open);
+    }
+
     loadSettings();
+    fillShipsModal();
     updateHud();
 
     document.getElementById("home-continue").addEventListener("click", () => {
@@ -449,6 +477,9 @@
     const resetOverlay = document.getElementById("reset-overlay");
     const openReset = () => resetOverlay.classList.remove("hidden");
     document.getElementById("home-reset").addEventListener("click", openReset);
+    if (homeShips) homeShips.addEventListener("click", () => setShipsOpen(true));
+    const shipsClose = document.getElementById("ships-close");
+    if (shipsClose) shipsClose.addEventListener("click", () => setShipsOpen(false));
     document.getElementById("settings-reset").addEventListener("click", openReset);
     document.getElementById("reset-cancel").addEventListener("click", () => resetOverlay.classList.add("hidden"));
     document.getElementById("reset-confirm").addEventListener("click", () => {
@@ -579,6 +610,7 @@
             state.ship = next;
             saveSettings();
             updateHud();
+            if (button.closest("#ships-overlay")) setShipsOpen(false);
         });
     }
     for (const button of document.querySelectorAll(".fullscreen-btn")) {

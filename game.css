@@ -1190,22 +1190,53 @@ body.home {
     border-color: rgba(255, 190, 190, 0.35);
 }
 
-.home-reset {
+.home-corner {
     position: fixed;
     right: max(16px, env(safe-area-inset-right));
     bottom: max(16px, env(safe-area-inset-bottom));
     z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.home-reset,
+.home-ships {
     min-height: 44px;
     padding: 10px 16px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 190, 190, 0.35);
-    background: rgba(255, 90, 90, 0.42);
     color: #fff;
     font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.05em;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+}
+
+.home-reset {
+    border: 1px solid rgba(255, 190, 190, 0.35);
+    background: rgba(255, 90, 90, 0.42);
+}
+
+.home-ships {
+    border: 1px solid rgba(170, 200, 255, 0.28);
+    background: rgba(10, 16, 36, 0.72);
+}
+
+.ships-card {
+    width: min(640px, calc(100vw - 32px));
+    text-align: left;
+}
+
+.ships-card h1 {
+    margin-bottom: 18px;
+}
+
+.ships-card .ship-choices {
+    margin-top: 0;
+    max-height: min(58vh, 440px);
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 @media (max-width: 1440px) {

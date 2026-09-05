@@ -66,7 +66,10 @@
             </div>
         </div>
     </main>
-    <button type="button" class="home-reset" id="home-reset">Reset progress</button>
+    <div class="home-corner">
+        <button type="button" class="home-reset" id="home-reset">Reset progress</button>
+        <button type="button" class="home-ships" id="home-ships">Ships Classic</button>
+    </div>
 
     <div class="settings-overlay hidden" id="settings-menu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="settings-sheet">
@@ -229,6 +232,17 @@
             <div class="settings-actions">
                 <button type="button" class="settings-continue" id="settings-continue">Done</button>
             </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="ships-overlay" role="dialog" aria-modal="true" aria-labelledby="ships-title">
+        <div class="win-card ships-card">
+            <div class="board-head">
+                <span></span>
+                <button type="button" class="board-close" id="ships-close" aria-label="Close ships">×</button>
+            </div>
+            <h1 id="ships-title">SHIPS</h1>
+            <div class="ship-choices" id="ships-choices" role="group" aria-label="Ship"></div>
         </div>
     </div>
 

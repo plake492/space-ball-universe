@@ -14,7 +14,7 @@
     const BOARD_MAX = 25;
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
-    const MINIMAP_GROW = 1.3;
+    const MINIMAP_GROW = 1.2;
     const COMPACT_UI = "(max-width: 1440px)";
     const COMPACT_STICK = 140 / 220;
     const CONTROL_GROW = 0.6;

@@ -36,7 +36,7 @@
     ];
     const MAX_BALL = BALL_TYPES[BALL_TYPES.length - 1].size;
     const SPIKE_TYPES = BALL_TYPES.slice(-2);
-    const SPIKE_CHANCE = 0.2;
+    const SPIKE_RATE = 0.15;
     const SPIKE_REACH = 1.4;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
@@ -660,40 +660,43 @@
         spawnNebulae();
     }
 
-    function spawnBalls(count) {
-        for (let i = 0; i < count; i += 1) {
-            const spiked = Math.random() < SPIKE_CHANCE;
-            const type = spiked ? pick(SPIKE_TYPES) : pick(BALL_TYPES);
-            const size = type.size;
-            const r = size / 2;
-            const minDist = SHIP_RADIUS + r + SPAWN_CLEARANCE;
-            let x = 0;
-            let y = 0;
-            let attempts = 0;
-            do {
-                x = rand(MAX_BALL, state.world - MAX_BALL);
-                y = rand(MAX_BALL, state.world - MAX_BALL);
-                attempts += 1;
-            } while (
-                (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r)) &&
-                attempts < 200
-            );
+    function placeBall(spiked) {
+        const type = spiked ? pick(SPIKE_TYPES) : pick(BALL_TYPES);
+        const size = type.size;
+        const r = size / 2;
+        const minDist = SHIP_RADIUS + r + SPAWN_CLEARANCE;
+        let x = 0;
+        let y = 0;
+        let attempts = 0;
+        do {
+            x = rand(MAX_BALL, state.world - MAX_BALL);
+            y = rand(MAX_BALL, state.world - MAX_BALL);
+            attempts += 1;
+        } while (
+            (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r)) &&
+            attempts < 200
+        );
 
-            state.balls.push({
-                x,
-                y,
-                r,
-                points: type.points,
-                color: pick(PALETTES[state.palette] || PALETTES.rainbow),
-                pulseMs: rand(1000, 5000),
-                pulseOffset: rand(0, Math.PI * 2),
-                hasRings: !spiked && Math.random() < 0.28,
-                ringTilt: rand(-0.75, 0.75),
-                hasSpikes: spiked,
-                spikeCount: 10 + Math.floor(Math.random() * 5),
-                spikeSpin: rand(0, Math.PI * 2),
-            });
-        }
+        state.balls.push({
+            x,
+            y,
+            r,
+            points: type.points,
+            color: pick(PALETTES[state.palette] || PALETTES.rainbow),
+            pulseMs: rand(1000, 5000),
+            pulseOffset: rand(0, Math.PI * 2),
+            hasRings: !spiked && Math.random() < 0.28,
+            ringTilt: rand(-0.75, 0.75),
+            hasSpikes: spiked,
+            spikeCount: 10 + Math.floor(Math.random() * 5),
+            spikeSpin: rand(0, Math.PI * 2),
+        });
+    }
+
+    function spawnBalls(count) {
+        for (let i = 0; i < count; i += 1) placeBall(false);
+        const spikes = Math.round(count * SPIKE_RATE);
+        for (let i = 0; i < spikes; i += 1) placeBall(true);
     }
 
     function formatBoardDate(at) {

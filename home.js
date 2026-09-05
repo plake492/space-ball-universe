@@ -112,6 +112,14 @@
     }
 
     function applyDifficulty(id) {
+        if (id === "custom") {
+            state.difficulty = "custom";
+            saveSettings();
+            updateHud();
+            showSettingsPanel("game");
+            setMenuOpen(true);
+            return;
+        }
         const preset = DIFFICULTIES[id];
         if (!preset) return;
         state.difficulty = id;
@@ -151,7 +159,9 @@
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
             state.ship = shipUnlocked(wanted) ? wanted : "classic";
             state.name = normalizeName(data.name);
-            if (DIFFICULTIES[data.difficulty]) {
+            if (data.difficulty === "custom") {
+                state.difficulty = "custom";
+            } else if (DIFFICULTIES[data.difficulty]) {
                 const preset = DIFFICULTIES[data.difficulty];
                 state.difficulty = data.difficulty;
                 state.world = preset.world;
@@ -426,7 +436,7 @@
     ballsSlider.addEventListener("change", () => {
         state.ballCount = Number(ballsSlider.value);
         state.goal = clampGoal(state.goal);
-        state.difficulty = matchingDifficulty();
+        state.difficulty = "custom";
         saveSettings();
         updateHud();
     });
@@ -435,7 +445,7 @@
     });
     goalSlider.addEventListener("change", () => {
         state.goal = clampGoal(Number(goalSlider.value));
-        state.difficulty = matchingDifficulty();
+        state.difficulty = "custom";
         saveSettings();
         updateHud();
     });
@@ -448,7 +458,7 @@
             const next = Number(button.dataset.world);
             if (!WORLD_SIZES.includes(next) || next === state.world) return;
             state.world = next;
-            state.difficulty = matchingDifficulty();
+            state.difficulty = "custom";
             saveSettings();
             updateHud();
         });

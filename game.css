@@ -1073,6 +1073,10 @@ body.home {
     flex: 1 1 calc(33.333% - 8px);
 }
 
+.home-diffs .home-diff-custom {
+    flex: 1 1 100%;
+}
+
 .home-diff-rules {
     display: flex;
     justify-content: space-between;

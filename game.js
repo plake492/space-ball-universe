@@ -190,8 +190,8 @@
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
             const ship = shipUnlocked(wanted, lifetime, reqShips) ? wanted : "classic";
             const name = normalizeName(data.name);
-            const difficulty = DIFFICULTIES[data.difficulty] ? data.difficulty : "";
-            if (difficulty) {
+            const difficulty = data.difficulty === "custom" || DIFFICULTIES[data.difficulty] ? data.difficulty : "";
+            if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
                     world: preset.world,
@@ -762,6 +762,14 @@
     }
 
     function applyDifficulty(id) {
+        if (id === "custom") {
+            state.difficulty = "custom";
+            saveSettings();
+            updateHud();
+            showSettingsPanel("game");
+            if (!state.menuOpen) openMenu();
+            return;
+        }
         const preset = DIFFICULTIES[id];
         if (!preset) return;
         const restart = preset.world !== state.world || preset.ballCount !== state.ballCount;
@@ -2080,7 +2088,7 @@
             if (next === state.ballCount) return;
             state.ballCount = next;
             state.goal = clampGoal(state.goal);
-            state.difficulty = matchingDifficulty();
+            state.difficulty = "custom";
             saveSettings();
             restartGame();
         });
@@ -2096,7 +2104,7 @@
                 return;
             }
             state.goal = next;
-            state.difficulty = matchingDifficulty();
+            state.difficulty = "custom";
             saveSettings();
             updateHud();
             maybeWin();
@@ -2111,7 +2119,7 @@
                 const next = Number(button.dataset.world);
                 if (next === state.world) return;
                 state.world = next;
-                state.difficulty = matchingDifficulty();
+                state.difficulty = "custom";
                 saveSettings();
                 restartGame();
             });

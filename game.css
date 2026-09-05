@@ -566,7 +566,9 @@ body.board-open {
     left: max(16px, env(safe-area-inset-left));
     right: auto;
     bottom: max(16px, env(safe-area-inset-bottom));
+    width: max-content;
     display: flex;
+    justify-content: flex-start;
     align-items: flex-end;
     gap: 14px;
     z-index: 8;
@@ -589,10 +591,13 @@ body.board-open {
 }
 
 .boost-btn {
+    position: static;
+    inset: auto;
     touch-action: none;
     width: calc(76px * var(--control-grow));
     height: calc(76px * var(--control-grow));
     margin-bottom: 8px;
+    flex-shrink: 0;
     border-radius: 50%;
     border: 1px solid rgba(220, 235, 255, 0.35);
     background: rgba(10, 16, 36, 0.82);
@@ -1103,11 +1108,14 @@ body.home {
         left: max(12px, env(safe-area-inset-left));
         right: auto;
         bottom: max(16px, env(safe-area-inset-bottom));
+        width: max-content;
+        justify-content: flex-start;
         opacity: 1;
     }
 
     .boost-btn {
         position: static;
+        inset: auto;
         right: auto;
         bottom: auto;
     }

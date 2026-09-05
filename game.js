@@ -191,6 +191,8 @@
                 y,
                 r,
                 color: pick(PALETTES[state.palette] || PALETTES.rainbow),
+                pulseMs: rand(3000, 10000),
+                pulseOffset: rand(0, Math.PI * 2),
             });
         }
     }
@@ -387,7 +389,12 @@
         ctx.restore();
     }
 
-    function drawBall(ball, cam) {
+    function ballPulse(ball, now) {
+        const wave = 0.5 + 0.5 * Math.sin((now / ball.pulseMs) * Math.PI * 2 + ball.pulseOffset);
+        return 0.45 + 0.55 * wave;
+    }
+
+    function drawBall(ball, cam, now) {
         const x = ball.x - cam.x;
         const y = ball.y - cam.y;
         if (
@@ -399,9 +406,11 @@
             return;
         }
 
+        const pulse = ballPulse(ball, now);
         ctx.save();
+        ctx.globalAlpha = pulse;
         ctx.shadowColor = ball.color;
-        ctx.shadowBlur = 28;
+        ctx.shadowBlur = 14 + 22 * pulse;
         const glow = ctx.createRadialGradient(
             x - ball.r * 0.28,
             y - ball.r * 0.3,
@@ -506,7 +515,7 @@
         };
     }
 
-    function drawMinimap() {
+    function drawMinimap(now) {
         const size = MINIMAP_SIZE;
         miniCtx.clearRect(0, 0, size, size);
         miniCtx.save();
@@ -530,10 +539,12 @@
             const p = toMinimap(ball.x, ball.y);
             const r = Math.max(2.2, ball.r * MINIMAP_SCALE);
             if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
+            miniCtx.globalAlpha = ballPulse(ball, now);
             miniCtx.fillStyle = ball.color;
             miniCtx.beginPath();
             miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
             miniCtx.fill();
+            miniCtx.globalAlpha = 1;
         }
 
         const cx = size / 2;
@@ -570,10 +581,10 @@
         const cam = camera();
 
         drawSpace(cam);
-        for (const ball of state.balls) drawBall(ball, cam);
+        for (const ball of state.balls) drawBall(ball, cam, now);
         drawPops(cam, dt);
         drawShip(moving);
-        drawMinimap();
+        drawMinimap(now);
         updateTimer(now);
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
 

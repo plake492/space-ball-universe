@@ -16,8 +16,14 @@
     const SCALE_VMIN_START = 320;
     const SCALE_VMIN_FULL = 768;
     const STICK_PIP = 96;
-    const MIN_BALL = 25;
-    const MAX_BALL = 150;
+    const BALL_TYPES = [
+        { size: 32, points: 500 },
+        { size: 56, points: 400 },
+        { size: 80, points: 300 },
+        { size: 110, points: 200 },
+        { size: 150, points: 100 },
+    ];
+    const MAX_BALL = BALL_TYPES[BALL_TYPES.length - 1].size;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SPAWN_CLEARANCE = 15;
@@ -74,6 +80,7 @@
     const miniCtx = minimap.getContext("2d");
     const foundEl = document.getElementById("found-count");
     const goalEl = document.getElementById("goal-count");
+    const scoreEl = document.getElementById("play-score");
     const coordsEl = document.getElementById("coords");
     const timerEl = document.getElementById("play-timer");
     const ballsSlider = document.getElementById("balls-slider");
@@ -149,6 +156,7 @@
         balls: [],
         pops: [],
         found: 0,
+        score: 0,
         ballCount: saved.ballCount,
         goal: saved.goal,
         palette: saved.palette,
@@ -248,7 +256,8 @@
 
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) {
-            const size = rand(MIN_BALL, MAX_BALL);
+            const type = pick(BALL_TYPES);
+            const size = type.size;
             const r = size / 2;
             const minDist = SHIP_RADIUS + r + SPAWN_CLEARANCE;
             let x = 0;
@@ -267,6 +276,7 @@
                 x,
                 y,
                 r,
+                points: type.points,
                 color: pick(PALETTES[state.palette] || PALETTES.rainbow),
                 pulseMs: rand(1000, 5000),
                 pulseOffset: rand(0, Math.PI * 2),
@@ -333,6 +343,7 @@
 
     function updateHud() {
         foundEl.textContent = String(state.found);
+        scoreEl.textContent = state.score.toLocaleString();
         goalEl.textContent = String(state.goal);
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
@@ -393,7 +404,7 @@
         keys.clear();
         resetStick();
         if (state.menuOpen) closeMenu();
-        winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(playTime(performance.now()))}`;
+        winMessage.textContent = `Goal ${state.goal} · ${state.score.toLocaleString()} · ${formatPlayTime(playTime(performance.now()))}`;
         winOverlay.classList.remove("hidden");
     }
 
@@ -404,6 +415,7 @@
             if (Math.hypot(ball.x - state.shipX, ball.y - state.shipY) <= reach) {
                 state.balls.splice(i, 1);
                 state.found += 1;
+                state.score += ball.points || 0;
                 state.pops.push({
                     x: ball.x,
                     y: ball.y,
@@ -1073,6 +1085,7 @@
         state.balls = [];
         state.pops = [];
         state.found = 0;
+        state.score = 0;
         state.won = false;
         keys.clear();
         resetStick();

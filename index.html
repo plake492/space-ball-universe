@@ -22,8 +22,11 @@
     <canvas id="game" aria-label="Space hunt play area"></canvas>
 
     <section class="panel hud-stats" aria-live="polite" aria-label="Score and time">
-        <p class="value" aria-label="Found"><span id="found-count">0</span> / <span id="goal-count">75</span></p>
-        <p class="value hud-timer" id="play-timer" aria-label="Play time">0:00</p>
+        <div class="hud-stats-row">
+            <p class="value" aria-label="Found"><span id="found-count">0</span> / <span id="goal-count">75</span></p>
+            <p class="value hud-timer" id="play-timer" aria-label="Play time">0:00</p>
+        </div>
+        <p class="hud-score" id="play-score" aria-label="Score">0</p>
     </section>
 
     <button type="button" class="settings-btn" id="open-settings" aria-label="Settings">

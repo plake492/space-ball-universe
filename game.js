@@ -658,7 +658,10 @@
         requestAnimationFrame(frame);
     }
 
-    function setBoost(on) {
+    const boostHold = { pointer: false, space: false };
+
+    function syncBoost() {
+        const on = !state.menuOpen && !state.won && (boostHold.pointer || boostHold.space);
         state.boost = on;
         const button = document.getElementById("boost-btn");
         button.classList.toggle("is-on", on);
@@ -670,7 +673,8 @@
             if (state.menuOpen || state.won) return;
             if (event.key === " " || event.code === "Space") {
                 event.preventDefault();
-                if (!event.repeat) setBoost(!state.boost);
+                boostHold.space = true;
+                syncBoost();
                 return;
             }
             keys.add(event.key.toLowerCase());
@@ -679,9 +683,18 @@
             }
         });
         window.addEventListener("keyup", (event) => {
+            if (event.key === " " || event.code === "Space") {
+                boostHold.space = false;
+                syncBoost();
+            }
             keys.delete(event.key.toLowerCase());
         });
-        window.addEventListener("blur", () => keys.clear());
+        window.addEventListener("blur", () => {
+            keys.clear();
+            boostHold.space = false;
+            boostHold.pointer = false;
+            syncBoost();
+        });
     }
 
     function pickSpeedRing(dist) {
@@ -822,6 +835,7 @@
         keys.clear();
         resetStick();
         settingsMenu.classList.remove("hidden");
+        syncBoost();
     }
 
     function closeMenu() {
@@ -834,10 +848,23 @@
     function bindHud() {
         document.getElementById("open-settings").addEventListener("click", openMenu);
 
-        document.getElementById("boost-btn").addEventListener("click", () => {
+        const boostBtn = document.getElementById("boost-btn");
+        boostBtn.addEventListener("pointerdown", (event) => {
             if (state.menuOpen || state.won) return;
-            setBoost(!state.boost);
+            event.preventDefault();
+            boostHold.pointer = true;
+            boostBtn.setPointerCapture(event.pointerId);
+            syncBoost();
         });
+        const releaseBoost = (event) => {
+            if (event.pointerId != null) {
+                try { boostBtn.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+            }
+            boostHold.pointer = false;
+            syncBoost();
+        };
+        boostBtn.addEventListener("pointerup", releaseBoost);
+        boostBtn.addEventListener("pointercancel", releaseBoost);
 
         ballsSlider.addEventListener("input", () => {
             ballsSliderValue.textContent = ballsSlider.value;

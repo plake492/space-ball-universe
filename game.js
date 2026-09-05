@@ -1695,6 +1695,15 @@
             openBoard("settings");
         });
 
+        const homeBtn = document.getElementById("settings-home");
+        if (homeBtn) {
+            homeBtn.addEventListener("click", () => {
+                savePlay();
+                saveSettings();
+                location.href = "./index.html";
+            });
+        }
+
         document.getElementById("settings-restart").addEventListener("click", () => {
             restartGame();
             closeMenu();
@@ -1750,6 +1759,14 @@
     }
 
     function restorePlay() {
+        const boot = new URLSearchParams(location.search).get("mode");
+        if (boot) history.replaceState({}, "", location.pathname);
+
+        if (boot === "new") {
+            restartGame();
+            return;
+        }
+
         const play = loadPlay();
         if (!play) {
             spawnBalls(state.ballCount);
@@ -1773,6 +1790,10 @@
             if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
             winMessage.textContent = `Goal ${state.goal} · ${formatPlayTime(play.elapsed)}`;
             winOverlay.classList.remove("hidden");
+            return;
+        }
+        if (boot === "continue") {
+            timer.runningSince = play.won ? null : performance.now();
             return;
         }
         if (playIsActive(play)) {

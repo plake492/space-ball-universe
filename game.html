@@ -9,23 +9,44 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#050217">
     <meta name="description" content="Fly through space and collect glowing balls.">
-    <title>Harlie Space Hunt</title>
+    <title>Play · Harlie Space Hunt</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="192x192" href="public/icons/icon-192.png">
     <link rel="apple-touch-icon" href="public/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="game.css">
 </head>
-<body class="home">
-    <main class="home-screen">
-        <h1 class="home-title">SPACE HUNT</h1>
-        <p class="home-sub" id="home-sub">Ready to fly.</p>
-        <div class="home-actions">
-            <button type="button" class="home-btn home-continue" id="home-continue" disabled>Continue</button>
-            <button type="button" class="home-btn home-new" id="home-new">New game</button>
-            <button type="button" class="home-btn" id="home-settings">Settings</button>
-            <button type="button" class="home-btn" id="home-board">Leaderboard</button>
+<body>
+    <canvas id="game" aria-label="Space hunt play area"></canvas>
+
+    <section class="panel hud-stats" aria-live="polite" aria-label="Score and time">
+        <div class="hud-stats-row">
+            <p class="value" aria-label="Found"><span id="found-count">0</span> / <span id="goal-count">75</span></p>
+            <p class="value hud-score" id="play-score" aria-label="Score">0</p>
+            <p class="value hud-timer" id="play-timer" aria-label="Play time">0:00</p>
         </div>
-    </main>
+    </section>
+
+    <button type="button" class="settings-btn" id="open-settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.81 8.48a.5.5 0 0 0 .12.64L4.96 10.7c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.25.12.54.02.68-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/>
+        </svg>
+    </button>
+
+    <p class="coords" id="coords">0, 0</p>
+
+    <div class="controls">
+        <div class="joystick" id="joystick" role="application" aria-label="Ship joystick">
+            <div class="joystick-base">
+                <span class="joystick-ring" data-ring="slow"></span>
+                <span class="joystick-ring" data-ring="medium"></span>
+                <span class="joystick-ring" data-ring="fast"></span>
+                <div class="joystick-knob" id="joystick-knob"></div>
+            </div>
+        </div>
+        <button type="button" class="boost-btn" id="boost-btn" aria-pressed="false" aria-label="Hold to double ship speed">2×</button>
+    </div>
+
+    <canvas id="minimap" class="minimap" aria-label="Minimap" role="button" aria-pressed="false"></canvas>
 
     <div class="settings-overlay hidden" id="settings-menu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="settings-sheet">
@@ -158,7 +179,20 @@
             </div>
 
             <div class="settings-actions">
-                <button type="button" class="settings-continue" id="settings-continue">Done</button>
+                <button type="button" class="settings-home" id="settings-home">Home</button>
+                <button type="button" class="settings-restart" id="settings-restart">Restart</button>
+                <button type="button" class="settings-continue" id="settings-continue">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="resume-overlay" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+        <div class="win-card resume-card">
+            <h1 id="resume-title">CONTINUE?</h1>
+            <p id="resume-message">A game is in progress.</p>
+            <div class="resume-actions">
+                <button type="button" class="resume-new" id="resume-new">New game</button>
+                <button type="button" class="resume-continue" id="resume-continue">Continue</button>
             </div>
         </div>
     </div>
@@ -184,6 +218,18 @@
         </div>
     </div>
 
-    <script src="home.js"></script>
+    <div class="overlay hidden" id="win-overlay">
+        <div class="win-card">
+            <h1>YOU WON</h1>
+            <p class="win-score" id="win-score">0</p>
+            <p id="win-message">You reached the goal.</p>
+            <div class="win-actions">
+                <button type="button" id="win-board">Leaderboard</button>
+                <button type="button" id="win-restart">Restart</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
 </body>
 </html>

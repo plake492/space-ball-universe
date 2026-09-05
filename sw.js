@@ -1,7 +1,9 @@
-const CACHE = "harlie-space-v25";
+const CACHE = "harlie-space-v26";
 const ASSETS = [
     "./",
     "./index.html",
+    "./home.js",
+    "./game.html",
     "./game.css",
     "./public/fonts/SupremeSpike-KVO8D.otf",
     "./game.js",

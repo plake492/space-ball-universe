@@ -377,6 +377,7 @@ body.board-open {
 
 .settings-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
     margin-top: 16px;
     flex-shrink: 0;
@@ -389,6 +390,13 @@ body.board-open {
     color: #fff;
     font-size: 20px;
     font-weight: 700;
+}
+
+.settings-home {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(220, 235, 255, 0.32);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .settings-restart {
@@ -804,6 +812,73 @@ button {
     cursor: pointer;
 }
 
+body.home {
+    overflow: auto;
+    touch-action: pan-y;
+}
+
+.home-screen {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: max(28px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+}
+
+.home-title {
+    margin: 0;
+    font-size: clamp(42px, 8vw, 72px);
+    letter-spacing: 0.12em;
+    text-align: center;
+    color: #e8f6ff;
+    text-shadow: 0 0 18px rgba(90, 210, 255, 0.7);
+}
+
+.home-sub {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 0.06em;
+    color: #c9d6f5;
+    text-align: center;
+}
+
+.home-actions {
+    display: flex;
+    flex-direction: column;
+    width: min(420px, 100%);
+    gap: 12px;
+}
+
+.home-btn {
+    min-height: 64px;
+    border-radius: 16px;
+    border: 1px solid rgba(220, 235, 255, 0.32);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.home-continue {
+    background: rgba(79, 124, 255, 0.48);
+    border-color: rgba(190, 215, 255, 0.4);
+}
+
+.home-continue:disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+
+.home-new {
+    background: rgba(255, 90, 90, 0.42);
+    border-color: rgba(255, 190, 190, 0.35);
+}
+
 @media (max-width: 1440px) {
     .hud-stats {
         top: max(12px, env(safe-area-inset-top));
@@ -1000,5 +1075,17 @@ button {
     .board-row {
         font-size: 12px;
     }
-}
+
+    .home-title {
+        font-size: clamp(36px, 9vw, 52px);
+    }
+
+    .home-actions {
+        gap: 10px;
+    }
+
+    .home-btn {
+        min-height: 52px;
+        font-size: 18px;
+    }
 }

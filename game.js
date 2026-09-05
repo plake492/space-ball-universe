@@ -1391,21 +1391,6 @@
         miniCtx.lineWidth = Math.max(1, 2 * mark);
         miniCtx.strokeRect(origin.x, origin.y, worldPx, worldPx);
 
-        for (const hole of state.holes) {
-            const p = toMinimap(hole.x, hole.y, size, scale);
-            const r = Math.max(3 * mark, hole.r * scale);
-            if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
-            miniCtx.fillStyle = "#000000";
-            miniCtx.beginPath();
-            miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
-            miniCtx.fill();
-            miniCtx.strokeStyle = "rgba(255, 150, 60, 0.85)";
-            miniCtx.lineWidth = Math.max(1, 1.4 * mark);
-            miniCtx.beginPath();
-            miniCtx.ellipse(p.x, p.y, r * 1.85, Math.max(1.2 * mark, r * 0.28), 0, 0, Math.PI * 2);
-            miniCtx.stroke();
-        }
-
         for (const ball of state.balls) {
             const p = toMinimap(ball.x, ball.y, size, scale);
             const r = Math.max(2.2 * mark, ball.r * scale);

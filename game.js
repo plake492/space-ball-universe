@@ -193,6 +193,8 @@
                 color: pick(PALETTES[state.palette] || PALETTES.rainbow),
                 pulseMs: rand(1000, 5000),
                 pulseOffset: rand(0, Math.PI * 2),
+                hasRings: Math.random() < 0.28,
+                ringTilt: rand(-0.75, 0.75),
             });
         }
     }
@@ -363,33 +365,10 @@
                     const y = gy * cell + hy * cell - cam.y;
                     const twinkle = 0.45 + hash2(gx * 3.1, gy + i) * 0.55;
                     const size = 0.6 + hash2(i + gx, gy * 2.2) * 1.8;
-                    const hasRings = hash2(gx * 8.4, gy + i * 21) > 0.88;
-
-                    if (hasRings) {
-                        const body = 1.6 + hash2(i, gx) * 2.4;
-                        const tilt = hash2(gx, i * 3.3) * Math.PI;
-                        const rx = body * (2.3 + hash2(gy, i) * 1.6);
-                        const ry = rx * (0.2 + hash2(i * 2.1, gx) * 0.14);
-                        ctx.strokeStyle = `rgba(220, 186, 120, ${0.28 + twinkle * 0.4})`;
-                        ctx.lineWidth = 1.1 + hash2(gx + i, gy) * 1.3;
-                        ctx.beginPath();
-                        ctx.ellipse(x, y, rx, ry, tilt, 0, Math.PI * 2);
-                        ctx.stroke();
-                        ctx.strokeStyle = `rgba(170, 140, 80, ${0.18 + twinkle * 0.22})`;
-                        ctx.lineWidth = 0.7;
-                        ctx.beginPath();
-                        ctx.ellipse(x, y, rx * 0.7, ry * 0.7, tilt, 0, Math.PI * 2);
-                        ctx.stroke();
-                        ctx.fillStyle = `rgba(255, 228, 186, ${twinkle})`;
-                        ctx.beginPath();
-                        ctx.arc(x, y, body, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else {
-                        ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
-                        ctx.beginPath();
-                        ctx.arc(x, y, size, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
+                    ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
                 }
             }
         }
@@ -421,15 +400,70 @@
         return 0.06 + 0.94 * wave;
     }
 
+    function hexToRgb(hex) {
+        const n = hex.replace("#", "");
+        return {
+            r: parseInt(n.slice(0, 2), 16),
+            g: parseInt(n.slice(2, 4), 16),
+            b: parseInt(n.slice(4, 6), 16),
+        };
+    }
+
+    function shadeColor(hex, scale) {
+        const c = hexToRgb(hex);
+        return `rgb(${Math.max(0, Math.min(255, Math.round(c.r * scale)))}, ${Math.max(0, Math.min(255, Math.round(c.g * scale)))}, ${Math.max(0, Math.min(255, Math.round(c.b * scale)))})`;
+    }
+
+    function drawBallRings(x, y, ball, pulse) {
+        const rx = ball.r * 1.85;
+        const ry = ball.r * 0.36;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(ball.ringTilt);
+        ctx.strokeStyle = shadeColor(ball.color, 0.82);
+        ctx.globalAlpha = 0.45 + 0.4 * pulse;
+        ctx.lineWidth = Math.max(2, ball.r * 0.14);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(1.2, ball.r * 0.07);
+        ctx.globalAlpha = 0.28 + 0.3 * pulse;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx * 0.72, ry * 0.72, 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawBallRingsFront(x, y, ball, pulse) {
+        const rx = ball.r * 1.85;
+        const ry = ball.r * 0.36;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(ball.ringTilt);
+        ctx.strokeStyle = shadeColor(ball.color, 0.95);
+        ctx.globalAlpha = 0.5 + 0.4 * pulse;
+        ctx.lineWidth = Math.max(2, ball.r * 0.14);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(1.2, ball.r * 0.07);
+        ctx.globalAlpha = 0.32 + 0.3 * pulse;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx * 0.72, ry * 0.72, 0, 0, Math.PI);
+        ctx.stroke();
+        ctx.restore();
+    }
+
     function drawBall(ball, cam, now) {
+        if (ball.hasRings == null) {
+            ball.hasRings = Math.random() < 0.28;
+            ball.ringTilt = rand(-0.75, 0.75);
+        }
+
         const x = ball.x - cam.x;
         const y = ball.y - cam.y;
-        if (
-            x < -ball.r - 20 ||
-            y < -ball.r - 20 ||
-            x > state.width + ball.r + 20 ||
-            y > state.height + ball.r + 20
-        ) {
+        const reach = ball.hasRings ? ball.r * 2.1 : ball.r + 20;
+        if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) {
             return;
         }
 
@@ -437,23 +471,21 @@
         ctx.save();
         ctx.globalAlpha = pulse;
         ctx.shadowColor = ball.color;
-        ctx.shadowBlur = 14 + 22 * pulse;
-        const glow = ctx.createRadialGradient(
-            x - ball.r * 0.28,
-            y - ball.r * 0.3,
-            ball.r * 0.08,
-            x,
-            y,
-            ball.r
-        );
-        glow.addColorStop(0, "#fff8");
-        glow.addColorStop(0.18, "#fff6");
-        glow.addColorStop(0.45, ball.color);
-        glow.addColorStop(1, "#0006");
+        ctx.shadowBlur = 10 + 16 * pulse;
+
+        if (ball.hasRings) drawBallRings(x, y, ball, pulse);
+
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, ball.r);
+        glow.addColorStop(0, shadeColor(ball.color, 1.28));
+        glow.addColorStop(0.4, ball.color);
+        glow.addColorStop(0.78, shadeColor(ball.color, 0.55));
+        glow.addColorStop(1, shadeColor(ball.color, 0.22));
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(x, y, ball.r, 0, Math.PI * 2);
         ctx.fill();
+
+        if (ball.hasRings) drawBallRingsFront(x, y, ball, pulse);
         ctx.restore();
     }
 

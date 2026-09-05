@@ -309,12 +309,15 @@
         const type = ballTypeFor(ball);
         const r = type ? type.size / 2 : Number(ball.r);
         if (!Number.isFinite(r) || r <= 0) return null;
-        return {
+        return ensurePlanetLook({
             x: Number(ball.x),
             y: Number(ball.y),
             r,
             points: type ? type.points : Math.max(100, Number(ball.points) || 100),
             color: typeof ball.color === "string" ? ball.color : "#007aff",
+            paints: sanitizePaints(ball.paints),
+            litX: Number.isFinite(Number(ball.litX)) ? Math.max(-0.6, Math.min(0.6, Number(ball.litX))) : undefined,
+            litY: Number.isFinite(Number(ball.litY)) ? Math.max(-0.6, Math.min(0.6, Number(ball.litY))) : undefined,
             pulseMs: Number(ball.pulseMs) || rand(1000, 5000),
             pulseOffset: Number(ball.pulseOffset) || rand(0, Math.PI * 2),
             hasRings: Boolean(ball.hasRings) && !ball.hasSpikes,
@@ -322,7 +325,7 @@
             hasSpikes: Boolean(ball.hasSpikes),
             spikeCount: Math.max(8, Math.min(16, Math.round(Number(ball.spikeCount) || 12))),
             spikeSpin: Number.isFinite(Number(ball.spikeSpin)) ? Number(ball.spikeSpin) : 0,
-        };
+        });
     }
 
     function savePlay() {
@@ -340,6 +343,9 @@
                     r: ball.r,
                     points: ball.points,
                     color: ball.color,
+                    paints: sanitizePaints(ball.paints),
+                    litX: ball.litX,
+                    litY: ball.litY,
                     pulseMs: ball.pulseMs,
                     pulseOffset: ball.pulseOffset,
                     hasRings: ball.hasRings,
@@ -367,6 +373,9 @@
                     r: ball.r,
                     points: ball.points,
                     color: ball.color,
+                    paints: sanitizePaints(ball.paints),
+                    litX: ball.litX,
+                    litY: ball.litY,
                     pulseMs: ball.pulseMs,
                     pulseOffset: ball.pulseOffset,
                     hasRings: ball.hasRings,
@@ -978,7 +987,7 @@
             y,
             r,
             points: type.points,
-            color: pick(PALETTES[state.palette] || PALETTES.rainbow),
+            ...planetLook(),
             pulseMs: rand(1000, 5000),
             pulseOffset: rand(0, Math.PI * 2),
             hasRings: !spiked && Math.random() < 0.28,
@@ -1450,6 +1459,9 @@
                     r: ball.r,
                     points: ball.points,
                     color: ball.color,
+                    paints: sanitizePaints(ball.paints),
+                    litX: ball.litX,
+                    litY: ball.litY,
                     pulseMs: ball.pulseMs,
                     pulseOffset: ball.pulseOffset,
                     hasRings: ball.hasRings,
@@ -1931,13 +1943,136 @@
         return 0.06 + 0.94 * wave;
     }
 
+    function isHex(value) {
+        return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+    }
+
+    function sanitizePaints(paints) {
+        if (!Array.isArray(paints)) return [];
+        return paints.filter(isHex).slice(0, 3);
+    }
+
     function hexToRgb(hex) {
-        const n = hex.replace("#", "");
+        const n = String(hex || "").replace("#", "");
         return {
-            r: parseInt(n.slice(0, 2), 16),
-            g: parseInt(n.slice(2, 4), 16),
-            b: parseInt(n.slice(4, 6), 16),
+            r: parseInt(n.slice(0, 2), 16) || 0,
+            g: parseInt(n.slice(2, 4), 16) || 0,
+            b: parseInt(n.slice(4, 6), 16) || 0,
         };
+    }
+
+    function rgbToHex(r, g, b) {
+        const byte = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+        return `#${byte(r)}${byte(g)}${byte(b)}`;
+    }
+
+    function rgbToHsl(r, g, b) {
+        const rr = r / 255;
+        const gg = g / 255;
+        const bb = b / 255;
+        const max = Math.max(rr, gg, bb);
+        const min = Math.min(rr, gg, bb);
+        const l = (max + min) / 2;
+        if (max === min) return { h: 0, s: 0, l: l * 100 };
+        const d = max - min;
+        const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        let h = 0;
+        if (max === rr) h = (gg - bb) / d + (gg < bb ? 6 : 0);
+        else if (max === gg) h = (bb - rr) / d + 2;
+        else h = (rr - gg) / d + 4;
+        return { h: h * 60, s: s * 100, l: l * 100 };
+    }
+
+    function hslToRgb(h, s, l) {
+        const hh = ((h % 360) + 360) % 360 / 360;
+        const ss = Math.max(0, Math.min(100, s)) / 100;
+        const ll = Math.max(0, Math.min(100, l)) / 100;
+        if (ss === 0) {
+            const v = ll * 255;
+            return { r: v, g: v, b: v };
+        }
+        const hue2rgb = (p, q, t) => {
+            let tt = t;
+            if (tt < 0) tt += 1;
+            if (tt > 1) tt -= 1;
+            if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+            if (tt < 1 / 2) return q;
+            if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+            return p;
+        };
+        const q = ll < 0.5 ? ll * (1 + ss) : ll + ss - ll * ss;
+        const p = 2 * ll - q;
+        return {
+            r: hue2rgb(p, q, hh + 1 / 3) * 255,
+            g: hue2rgb(p, q, hh) * 255,
+            b: hue2rgb(p, q, hh - 1 / 3) * 255,
+        };
+    }
+
+    function driftHex(hex) {
+        const { r, g, b } = hexToRgb(hex);
+        let { h, s, l } = rgbToHsl(r, g, b);
+        if (s < 10) {
+            h = s < 4 ? rand(0, 360) : h + rand(-50, 50);
+            s = Math.max(0, Math.min(22, s + rand(3, 14)));
+        } else {
+            h += rand(-18, 18);
+            s = Math.max(14, Math.min(100, s + rand(-12, 12)));
+        }
+        l = Math.max(8, Math.min(90, l + rand(-11, 11)));
+        const next = hslToRgb(h, s, l);
+        return rgbToHex(next.r, next.g, next.b);
+    }
+
+    function nudgeLight(hex, delta) {
+        const { r, g, b } = hexToRgb(hex);
+        const hsl = rgbToHsl(r, g, b);
+        const next = hslToRgb(hsl.h, hsl.s, Math.max(6, Math.min(94, hsl.l + delta)));
+        return rgbToHex(next.r, next.g, next.b);
+    }
+
+    function planetLook(seedColor) {
+        const palette = PALETTES[state.palette] || PALETTES.rainbow;
+        const count = Math.random() < 0.3 ? 2 : 3;
+        const bases = [];
+        const used = new Set();
+        if (isHex(seedColor)) {
+            bases.push(seedColor);
+            used.add(seedColor.toLowerCase());
+        }
+        const pool = palette.filter((hex) => !used.has(hex.toLowerCase()));
+        while (bases.length < count && pool.length) {
+            bases.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+        }
+        while (bases.length < 2) bases.push(pick(palette));
+        const paints = bases.map((hex, i) => {
+            const drifted = driftHex(hex);
+            if (i === 0) return nudgeLight(drifted, rand(8, 18));
+            if (i === bases.length - 1) return nudgeLight(drifted, rand(-20, -8));
+            return drifted;
+        });
+        return {
+            color: paints[Math.min(1, paints.length - 1)],
+            paints,
+            litX: rand(-0.42, 0.14),
+            litY: rand(-0.46, 0.1),
+        };
+    }
+
+    function ensurePlanetLook(ball) {
+        if (!ball) return ball;
+        const paints = sanitizePaints(ball.paints);
+        if (
+            paints.length >= 2
+            && Number.isFinite(ball.litX)
+            && Number.isFinite(ball.litY)
+            && isHex(ball.color)
+        ) {
+            ball.paints = paints;
+            return ball;
+        }
+        Object.assign(ball, planetLook(isHex(ball.color) ? ball.color : null));
+        return ball;
     }
 
     function shadeColor(hex, scale) {
@@ -1951,7 +2086,7 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(ball.ringTilt);
-        ctx.strokeStyle = shadeColor(ball.color, 0.82);
+        ctx.strokeStyle = ball.paints?.[1] || shadeColor(ball.color, 0.82);
         ctx.globalAlpha = 0.45 + 0.4 * pulse;
         ctx.lineWidth = Math.max(2, ball.r * 0.14);
         ctx.beginPath();
@@ -1979,9 +2114,10 @@
             ctx.save();
             ctx.rotate(a);
             const g = ctx.createLinearGradient(root, 0, tip, 0);
-            g.addColorStop(0, shadeColor(ball.color, 0.7));
-            g.addColorStop(0.62, shadeColor(ball.color, 0.92));
-            g.addColorStop(1, shadeColor(ball.color, 0.82));
+            const paints = ball.paints || [ball.color];
+            g.addColorStop(0, paints[0] || shadeColor(ball.color, 0.7));
+            g.addColorStop(0.62, paints[1] || shadeColor(ball.color, 0.92));
+            g.addColorStop(1, paints[2] || paints[1] || shadeColor(ball.color, 0.82));
             ctx.fillStyle = g;
             ctx.beginPath();
             ctx.moveTo(root, -half);
@@ -2000,7 +2136,7 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(ball.ringTilt);
-        ctx.strokeStyle = shadeColor(ball.color, 0.95);
+        ctx.strokeStyle = ball.paints?.[0] || shadeColor(ball.color, 0.95);
         ctx.globalAlpha = 0.5 + 0.4 * pulse;
         ctx.lineWidth = Math.max(2, ball.r * 0.14);
         ctx.beginPath();
@@ -2027,6 +2163,8 @@
             return;
         }
 
+        ensurePlanetLook(ball);
+        const paints = ball.paints;
         const pulse = ball.hasSpikes ? 1 : ballPulse(ball, now);
         ctx.save();
         ctx.globalAlpha = pulse;
@@ -2038,16 +2176,22 @@
         if (ball.hasRings) drawBallRings(x, y, ball, pulse);
         if (ball.hasSpikes) drawBallSpikes(x, y, ball);
 
-        const fill = ctx.createRadialGradient(x, y, 0, x, y, ball.r);
+        const ox = ball.r * (Number.isFinite(ball.litX) ? ball.litX : -0.28);
+        const oy = ball.r * (Number.isFinite(ball.litY) ? ball.litY : -0.32);
+        const fill = ctx.createRadialGradient(x + ox, y + oy, ball.r * 0.06, x, y, ball.r);
         if (ball.hasSpikes) {
-            fill.addColorStop(0, shadeColor(ball.color, 1.08));
-            fill.addColorStop(0.45, ball.color);
-            fill.addColorStop(1, shadeColor(ball.color, 0.82));
+            fill.addColorStop(0, paints[0]);
+            fill.addColorStop(0.48, paints[1] || ball.color);
+            fill.addColorStop(1, paints[2] || nudgeLight(paints[1] || ball.color, -12));
         } else {
-            fill.addColorStop(0, shadeColor(ball.color, 1.28));
-            fill.addColorStop(0.4, ball.color);
-            fill.addColorStop(0.78, shadeColor(ball.color, 0.55));
-            fill.addColorStop(1, shadeColor(ball.color, 0.22));
+            fill.addColorStop(0, paints[0]);
+            if (paints.length > 2) {
+                fill.addColorStop(0.36, paints[1]);
+                fill.addColorStop(0.74, paints[2]);
+            } else {
+                fill.addColorStop(0.46, paints[1]);
+            }
+            fill.addColorStop(1, nudgeLight(paints[paints.length - 1], -18));
         }
         ctx.fillStyle = fill;
         ctx.beginPath();
@@ -3238,8 +3382,8 @@
                 const next = button.dataset.palette;
                 if (!PALETTES[next] || next === state.palette) return;
                 state.palette = next;
-                const colors = PALETTES[next];
-                for (const ball of state.balls) ball.color = pick(colors);
+                for (const ball of state.balls) Object.assign(ball, planetLook());
+                for (const ball of state.taken) Object.assign(ball, planetLook());
                 saveSettings();
                 savePlay();
                 updateHud();

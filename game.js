@@ -752,11 +752,11 @@
         const { x, y, angle } = spawnFromEdge(90);
         const near = 0.28 + 0.72 * Math.random();
         const size = rand(0.55, 2.35);
-        const r = 24 * size;
+        const r = 38 * size;
         const speed = rand(COMET_SPEED_MIN * 0.2, COMET_SPEED_MAX * 1.4);
         const lumps = [];
         const count = 6 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < count; i += 1) lumps.push(0.7 + Math.random() * 0.42);
+        for (let i = 0; i < count; i += 1) lumps.push(0.86 + Math.random() * 0.28);
         return {
             x,
             y,
@@ -2029,16 +2029,17 @@
             ctx.translate(x, y);
             ctx.rotate(meteor.angle);
             ctx.globalCompositeOperation = "lighter";
-            const streak = ctx.createLinearGradient(-meteor.tail, 0, meteor.r, 0);
+            const streak = ctx.createLinearGradient(-meteor.tail, 0, 0, 0);
             streak.addColorStop(0, "rgba(255, 80, 20, 0)");
             streak.addColorStop(0.55, `rgba(255, 110, 32, ${0.12 * a})`);
             streak.addColorStop(0.86, `rgba(255, 176, 64, ${0.38 * a})`);
-            streak.addColorStop(1, `rgba(255, 230, 160, ${0.62 * a})`);
+            streak.addColorStop(1, `rgba(255, 230, 160, ${0.55 * a})`);
             ctx.fillStyle = streak;
             ctx.beginPath();
             ctx.moveTo(-meteor.tail, 0);
-            ctx.lineTo(meteor.r * 0.2, meteor.r * 0.95);
-            ctx.lineTo(meteor.r * 0.2, -meteor.r * 0.95);
+            ctx.lineTo(-meteor.r * 0.35, meteor.r * 0.42);
+            ctx.lineTo(-meteor.r * 0.08, 0);
+            ctx.lineTo(-meteor.r * 0.35, -meteor.r * 0.42);
             ctx.closePath();
             ctx.fill();
             ctx.globalCompositeOperation = "source-over";

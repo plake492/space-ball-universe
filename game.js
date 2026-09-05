@@ -356,6 +356,7 @@
         shipY: saved.world / 2,
         heading: -Math.PI / 2,
         balls: [],
+        holes: [],
         pops: [],
         floaters: [],
         found: 0,
@@ -508,6 +509,49 @@
         return false;
     }
 
+    function tooCloseToHoles(x, y, r) {
+        for (const hole of state.holes) {
+            if (Math.hypot(x - hole.x, y - hole.y) < r + hole.r + 80) return true;
+        }
+        return false;
+    }
+
+    function holeCount() {
+        if (state.world >= 20000) return 6;
+        if (state.world >= 15000) return 4;
+        if (state.world >= 10000) return 3;
+        return 2;
+    }
+
+    function spawnHoles() {
+        state.holes = [];
+        const count = holeCount();
+        const sizes = [160, 220, 300, 380];
+        const pad = 520;
+        for (let i = 0; i < count; i += 1) {
+            const r = pick(sizes);
+            const minShip = r + 720;
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = rand(pad, state.world - pad);
+                y = rand(pad, state.world - pad);
+                attempts += 1;
+            } while (
+                (Math.hypot(x - state.shipX, y - state.shipY) < minShip || tooCloseToHoles(x, y, r * 1.6)) &&
+                attempts < 240
+            );
+            state.holes.push({
+                x,
+                y,
+                r,
+                angle: rand(-0.4, 0.4),
+                spin: rand(0, Math.PI * 2),
+            });
+        }
+    }
+
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) {
             const type = pick(BALL_TYPES);
@@ -522,7 +566,7 @@
                 y = rand(MAX_BALL, state.world - MAX_BALL);
                 attempts += 1;
             } while (
-                (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r)) &&
+                (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r)) &&
                 attempts < 200
             );
 
@@ -974,6 +1018,110 @@
         ctx.restore();
     }
 
+    function holeDiskGradient(r, spin, alpha) {
+        const shift = Math.sin(spin) * r * 0.18;
+        const g = ctx.createLinearGradient(-r * 2.8 + shift, 0, r * 2.8 + shift, 0);
+        g.addColorStop(0, `rgba(48, 16, 6, ${0.12 * alpha})`);
+        g.addColorStop(0.2, `rgba(255, 78, 12, ${0.5 * alpha})`);
+        g.addColorStop(0.4, `rgba(255, 196, 120, ${0.92 * alpha})`);
+        g.addColorStop(0.5, `rgba(255, 248, 220, ${alpha})`);
+        g.addColorStop(0.58, `rgba(168, 214, 255, ${0.88 * alpha})`);
+        g.addColorStop(0.76, `rgba(255, 118, 32, ${0.48 * alpha})`);
+        g.addColorStop(1, `rgba(32, 10, 4, ${0.1 * alpha})`);
+        return g;
+    }
+
+    function drawHole(hole, cam, now) {
+        const x = hole.x - cam.x;
+        const y = hole.y - cam.y;
+        const r = hole.r;
+        const reach = r * 3.4;
+        if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) return;
+
+        const spin = now * 0.0001 + hole.spin;
+        const rx = r * 2.7;
+        const ry = r * 0.34;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(hole.angle);
+
+        const warp = ctx.createRadialGradient(0, 0, r * 0.35, 0, 0, r * 3.2);
+        warp.addColorStop(0, "rgba(0, 0, 0, 0.62)");
+        warp.addColorStop(0.42, "rgba(10, 4, 18, 0.22)");
+        warp.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = warp;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 3.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-rx - r, -r * 3, rx * 2 + r * 2, r * 3);
+        ctx.clip();
+        ctx.strokeStyle = holeDiskGradient(r, spin, 0.55);
+        ctx.lineWidth = r * 0.62;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = holeDiskGradient(r, spin, 0.32);
+        ctx.lineWidth = r * 0.2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx * 1.18, ry * 1.22, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.strokeStyle = holeDiskGradient(r, spin, 0.78);
+        ctx.lineWidth = r * 0.34;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.08, r * 1.02, 0, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.stroke();
+        ctx.strokeStyle = holeDiskGradient(r, spin, 0.45);
+        ctx.lineWidth = r * 0.16;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.22, r * 1.14, 0, Math.PI * 1.12, Math.PI * 1.88);
+        ctx.stroke();
+
+        const photon = ctx.createRadialGradient(0, 0, r * 0.9, 0, 0, r * 1.2);
+        photon.addColorStop(0, "#000000");
+        photon.addColorStop(0.74, "#000000");
+        photon.addColorStop(0.88, "rgba(255, 206, 140, 0.95)");
+        photon.addColorStop(1, "rgba(255, 130, 40, 0)");
+        ctx.fillStyle = photon;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-rx - r, 0, rx * 2 + r * 2, r * 3);
+        ctx.clip();
+        ctx.strokeStyle = holeDiskGradient(r, spin, 1);
+        ctx.lineWidth = r * 0.7;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = holeDiskGradient(r, spin, 0.62);
+        ctx.lineWidth = r * 0.22;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx * 1.18, ry * 1.22, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.strokeStyle = holeDiskGradient(r, spin, 0.38);
+        ctx.lineWidth = r * 0.2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.1, r * 0.98, 0, Math.PI * 0.08, Math.PI * 0.92);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
     function ballPulse(ball, now) {
         if (!state.pulse) return 1;
         if (!ball.pulseMs || ball.pulseMs < 1000 || ball.pulseMs > 5000) {
@@ -1210,6 +1358,10 @@
         drawBorder(cam);
     }
 
+    function drawHoles(cam, now) {
+        for (const hole of state.holes) drawHole(hole, cam, now);
+    }
+
     function toMinimap(worldX, worldY, size, scale) {
         return {
             x: size / 2 + (worldX - state.shipX) * scale,
@@ -1238,6 +1390,21 @@
         miniCtx.strokeStyle = "#000000";
         miniCtx.lineWidth = Math.max(1, 2 * mark);
         miniCtx.strokeRect(origin.x, origin.y, worldPx, worldPx);
+
+        for (const hole of state.holes) {
+            const p = toMinimap(hole.x, hole.y, size, scale);
+            const r = Math.max(3 * mark, hole.r * scale);
+            if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
+            miniCtx.fillStyle = "#000000";
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.strokeStyle = "rgba(255, 150, 60, 0.85)";
+            miniCtx.lineWidth = Math.max(1, 1.4 * mark);
+            miniCtx.beginPath();
+            miniCtx.ellipse(p.x, p.y, r * 1.85, Math.max(1.2 * mark, r * 0.28), 0, 0, Math.PI * 2);
+            miniCtx.stroke();
+        }
 
         for (const ball of state.balls) {
             const p = toMinimap(ball.x, ball.y, size, scale);
@@ -1288,6 +1455,7 @@
         const cam = camera();
 
         drawSpace(cam);
+        drawHoles(cam, now);
         for (const ball of state.balls) drawBall(ball, cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
@@ -1471,6 +1639,7 @@
         state.heading = -Math.PI / 2;
         state.speed = 0;
         state.balls = [];
+        state.holes = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;
@@ -1482,6 +1651,7 @@
         winOverlay.classList.add("hidden");
         closeBoard();
         closeResume(false);
+        spawnHoles();
         spawnBalls(state.ballCount);
         resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
         updateHud();
@@ -1828,6 +1998,7 @@
 
         const play = loadPlay();
         if (!play) {
+            spawnHoles();
             spawnBalls(state.ballCount);
             return;
         }
@@ -1844,6 +2015,7 @@
         timer.elapsed = play.elapsed;
         timer.runningSince = null;
         shownSecond = -1;
+        spawnHoles();
         if (play.won) {
             recordWinScore();
             if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();

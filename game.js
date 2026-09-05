@@ -30,8 +30,11 @@
     const goalStepperEl = document.getElementById("goal-stepper");
     const ballsLeftEl = document.getElementById("balls-left");
     const coordsEl = document.getElementById("coords");
+    const timerEl = document.getElementById("play-timer");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
+    const playStartedAt = performance.now();
+    let shownSecond = -1;
 
     const keys = new Set();
     const stick = { vx: 0, vy: 0, dir: "", speed: 0, ring: "" };
@@ -123,6 +126,25 @@
 
     function remaining() {
         return state.balls.length;
+    }
+
+    function formatPlayTime(ms) {
+        const total = Math.floor(ms / 1000);
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        const sec = String(seconds).padStart(2, "0");
+        if (hours > 0) {
+            return `${hours}:${String(minutes).padStart(2, "0")}:${sec}`;
+        }
+        return `${minutes}:${sec}`;
+    }
+
+    function updateTimer(now) {
+        const sec = Math.floor((now - playStartedAt) / 1000);
+        if (sec === shownSecond) return;
+        shownSecond = sec;
+        timerEl.textContent = formatPlayTime(now - playStartedAt);
     }
 
     function updateHud() {
@@ -426,6 +448,7 @@
         drawPops(cam, dt);
         drawShip(moving);
         drawMinimap();
+        updateTimer(now);
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
 
         requestAnimationFrame(frame);

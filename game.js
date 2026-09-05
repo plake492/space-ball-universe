@@ -1583,7 +1583,7 @@
 
         for (const ball of state.balls) {
             const p = toMinimap(ball.x, ball.y, size, scale);
-            const r = Math.max(ball.hasSpikes ? 3.4 * mark : 2.2 * mark, ball.r * scale);
+            const r = Math.max(ball.hasSpikes ? 3.4 * mark : 2.2 * mark, ball.r * scale) * (ball.hasSpikes ? 0.67 : 1);
             const reach = ball.hasSpikes ? r * 1.9 : r;
             if (p.x < -reach || p.y < -reach || p.x > size + reach || p.y > size + reach) continue;
             miniCtx.globalAlpha = ballPulse(ball, now);

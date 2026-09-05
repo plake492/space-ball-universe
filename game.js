@@ -11,6 +11,7 @@
     const PLAY_KEY = "harlie-space-play";
     const MINIMAP_SIZE = 240;
     const MINIMAP_SCALE = 0.1;
+    const MINIMAP_GROW = 1.2;
     const COMPACT_UI = "(max-width: 1440px)";
     const COMPACT_STICK = 140 / 220;
     const CONTROL_GROW = 0.6;
@@ -277,6 +278,7 @@
         won: false,
         menuOpen: false,
         resumeOpen: false,
+        minimapLarge: false,
         width: 0,
         height: 0,
         dpr: 1,
@@ -318,12 +320,16 @@
         return base * (1 + CONTROL_GROW * controlT());
     }
 
-    function minimapSize() {
+    function minimapBaseSize() {
         return isCompactUi() ? MINIMAP_SIZE * 0.5 * 0.9 : MINIMAP_SIZE;
     }
 
+    function minimapSize() {
+        return minimapBaseSize() * (state.minimapLarge ? MINIMAP_GROW : 1);
+    }
+
     function minimapWorldScale() {
-        return MINIMAP_SCALE * (minimapSize() / MINIMAP_SIZE);
+        return MINIMAP_SCALE * (minimapBaseSize() / MINIMAP_SIZE);
     }
 
     function scaledRings() {
@@ -1330,6 +1336,13 @@
 
     function bindHud() {
         document.getElementById("open-settings").addEventListener("click", openMenu);
+
+        minimap.addEventListener("click", () => {
+            state.minimapLarge = !state.minimapLarge;
+            minimap.setAttribute("aria-pressed", state.minimapLarge ? "true" : "false");
+            minimap.setAttribute("aria-label", state.minimapLarge ? "Minimap, tap to shrink" : "Minimap, tap to expand");
+            resize();
+        });
 
         const boostBtn = document.getElementById("boost-btn");
         boostBtn.addEventListener("pointerdown", (event) => {

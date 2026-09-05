@@ -90,7 +90,7 @@
         ufo: "public/images/ships/ufo.png",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
-    const SHIP_COST = 2000;
+    const SHIP_COST = 5000;
     const shipImages = {};
 
     const canvas = document.getElementById("game");

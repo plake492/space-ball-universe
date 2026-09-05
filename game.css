@@ -210,7 +210,8 @@ body.settings-open {
 .world-sizes,
 .palette-choices,
 .pulse-choices,
-.fullscreen-choices {
+.fullscreen-choices,
+.ship-choices {
     display: flex;
     gap: 12px;
     margin-top: 12px;
@@ -243,9 +244,32 @@ body.settings-open {
 .world-btn.is-on,
 .palette-btn.is-on,
 .pulse-btn.is-on,
-.fullscreen-btn.is-on {
+.fullscreen-btn.is-on,
+.ship-btn.is-on {
     background: rgba(79, 124, 255, 0.42);
     border-color: rgba(220, 235, 255, 0.55);
+}
+
+.ship-btn {
+    flex: 1;
+    min-height: 88px;
+    padding: 10px;
+    border-radius: 16px;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.ship-btn img,
+.ship-btn svg {
+    width: 86px;
+    height: 58px;
+    object-fit: contain;
+    pointer-events: none;
 }
 
 .settings-actions {
@@ -594,7 +618,8 @@ button {
     .world-sizes,
     .palette-choices,
     .pulse-choices,
-    .fullscreen-choices {
+    .fullscreen-choices,
+    .ship-choices {
         gap: 8px;
         margin-top: 8px;
     }
@@ -606,6 +631,18 @@ button {
         min-height: 40px;
         border-radius: 10px;
         font-size: 14px;
+    }
+
+    .ship-btn {
+        min-height: 64px;
+        padding: 8px;
+        border-radius: 10px;
+    }
+
+    .ship-btn img,
+    .ship-btn svg {
+        width: 64px;
+        height: 42px;
     }
 
     .palette-btn,

@@ -62,6 +62,11 @@
         ],
     };
     const PALETTE_NAMES = Object.keys(PALETTES);
+    const SHIP_IDS = ["classic", "ship-1"];
+    const SHIP_SRC = {
+        "ship-1": "public/images/ships/ship-1.png",
+    };
+    const shipImages = {};
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -113,9 +118,10 @@
             const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
             const pulse = data.pulse !== false;
-            return { world, ballCount, goal, palette, pulse };
+            const ship = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
+            return { world, ballCount, goal, palette, pulse, ship };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic" };
         }
     }
 
@@ -127,6 +133,7 @@
                 goal: state.goal,
                 palette: state.palette,
                 pulse: state.pulse,
+                ship: state.ship,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -146,6 +153,7 @@
         goal: saved.goal,
         palette: saved.palette,
         pulse: saved.pulse,
+        ship: saved.ship,
         boost: false,
         won: false,
         menuOpen: false,
@@ -338,6 +346,9 @@
         }
         for (const button of document.querySelectorAll(".pulse-btn")) {
             button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
+        }
+        for (const button of document.querySelectorAll(".ship-btn")) {
+            button.classList.toggle("is-on", button.dataset.ship === state.ship);
         }
         const fullscreenOn = isFullscreen();
         for (const button of document.querySelectorAll(".fullscreen-btn")) {
@@ -717,13 +728,18 @@
         }
     }
 
-    function drawShip(moving) {
-        const x = state.width / 2;
-        const y = state.height / 2;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(state.heading + Math.PI / 2);
+    function loadShipImage(id) {
+        const src = SHIP_SRC[id];
+        if (!src) return null;
+        if (shipImages[id]) return shipImages[id];
+        const img = new Image();
+        img.src = src;
+        shipImages[id] = img;
+        return img;
+    }
 
+    function drawClassicShip(moving) {
+        ctx.rotate(state.heading + Math.PI / 2);
         if (moving) {
             const flicker = 0.7 + Math.random() * 0.3;
             ctx.fillStyle = `rgba(120, 200, 255, ${flicker})`;
@@ -747,6 +763,33 @@
         ctx.beginPath();
         ctx.ellipse(0, -4, 5, 7, 0, 0, Math.PI * 2);
         ctx.fill();
+    }
+
+    function drawImageShip(img, moving) {
+        ctx.rotate(state.heading);
+        const width = 88;
+        const height = width * (img.naturalHeight / img.naturalWidth);
+        if (moving) {
+            const flicker = 0.7 + Math.random() * 0.3;
+            ctx.fillStyle = `rgba(120, 200, 255, ${flicker})`;
+            ctx.beginPath();
+            ctx.moveTo(-width / 2 + 10, -8);
+            ctx.lineTo(-width / 2 - 16 - Math.random() * 8, 0);
+            ctx.lineTo(-width / 2 + 10, 8);
+            ctx.fill();
+        }
+        ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    }
+
+    function drawShip(moving) {
+        ctx.save();
+        ctx.translate(state.width / 2, state.height / 2);
+        const img = state.ship !== "classic" ? loadShipImage(state.ship) : null;
+        if (img && img.complete && img.naturalWidth) {
+            drawImageShip(img, moving);
+        } else {
+            drawClassicShip(moving);
+        }
         ctx.restore();
     }
 
@@ -1157,6 +1200,17 @@
             });
         }
 
+        for (const button of document.querySelectorAll(".ship-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.ship;
+                if (!SHIP_IDS.includes(next) || next === state.ship) return;
+                state.ship = next;
+                loadShipImage(next);
+                saveSettings();
+                updateHud();
+            });
+        }
+
         document.getElementById("settings-restart").addEventListener("click", () => {
             restartGame();
             closeMenu();
@@ -1179,6 +1233,7 @@
         document.addEventListener("contextmenu", (event) => event.preventDefault());
     }
 
+    loadShipImage(state.ship);
     resize();
     spawnBalls(state.ballCount);
     updateHud();

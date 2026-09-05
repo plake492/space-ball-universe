@@ -59,6 +59,7 @@ body.board-open {
     pointer-events: none;
     z-index: 4;
     min-width: 0;
+    overflow: visible;
 }
 
 .hud-stats-row {
@@ -909,12 +910,14 @@ body.home {
     }
 
     .settings-btn {
-        top: max(12px, env(safe-area-inset-top));
-        left: max(12px, env(safe-area-inset-left));
-        right: auto;
+        position: absolute;
+        top: calc(50% + 10px);
+        left: auto;
+        right: calc(100% + 10px);
         width: 40px;
         height: 40px;
         border-radius: 12px;
+        transform: translateY(-50%);
     }
 
     .settings-btn svg {

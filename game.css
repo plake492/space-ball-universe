@@ -380,10 +380,15 @@ body.board-open {
 .palette-choices,
 .pulse-choices,
 .fullscreen-choices,
-.ship-choices {
+.ship-choices,
+.diff-choices {
     display: flex;
     gap: 12px;
     margin-top: 12px;
+}
+
+.diff-choices {
+    flex-wrap: wrap;
 }
 
 .ship-choices {
@@ -398,7 +403,8 @@ body.board-open {
 .palette-btn,
 .pulse-btn,
 .req-btn,
-.fullscreen-btn {
+.fullscreen-btn,
+.diff-btn {
     flex: 1;
     min-height: 72px;
     border-radius: 16px;
@@ -415,9 +421,16 @@ body.board-open {
 .palette-btn,
 .pulse-btn,
 .req-btn,
-.fullscreen-btn {
+.fullscreen-btn,
+.diff-btn {
     text-transform: none;
     font-size: 18px;
+}
+
+.diff-btn {
+    flex: 1 1 calc(33.333% - 8px);
+    min-height: 56px;
+    font-size: 16px;
 }
 
 .world-btn.is-on,
@@ -425,6 +438,7 @@ body.board-open {
 .pulse-btn.is-on,
 .req-btn.is-on,
 .fullscreen-btn.is-on,
+.diff-btn.is-on,
 .ship-btn.is-on {
     background: rgba(79, 124, 255, 0.42);
     border-color: rgba(220, 235, 255, 0.55);
@@ -1219,7 +1233,8 @@ body.home {
     .palette-choices,
     .pulse-choices,
     .fullscreen-choices,
-    .ship-choices {
+    .ship-choices,
+    .diff-choices {
         gap: 8px;
         margin-top: 8px;
     }
@@ -1228,7 +1243,8 @@ body.home {
     .palette-btn,
     .pulse-btn,
     .req-btn,
-    .fullscreen-btn {
+    .fullscreen-btn,
+    .diff-btn {
         min-height: 40px;
         border-radius: 10px;
         font-size: 14px;

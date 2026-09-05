@@ -7,6 +7,13 @@
     const BALLS_MAX = 250;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
+    const DIFFICULTIES = {
+        easy: { world: 5000, ballCount: 40, goal: 25 },
+        medium: { world: 10000, ballCount: 60, goal: 45 },
+        hard: { world: 15000, ballCount: 90, goal: 75 },
+        extra: { world: 20000, ballCount: 120, goal: 110 },
+        extreme: { world: 20000, ballCount: 150, goal: 150 },
+    };
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
@@ -724,6 +731,27 @@
         return snapStep(value, GOAL_MIN, Math.max(GOAL_MIN, state.ballCount), GOAL_STEP);
     }
 
+    function matchingDifficulty() {
+        for (const [id, preset] of Object.entries(DIFFICULTIES)) {
+            if (preset.world === state.world && preset.ballCount === state.ballCount && preset.goal === state.goal) {
+                return id;
+            }
+        }
+        return "";
+    }
+
+    function applyDifficulty(id) {
+        const preset = DIFFICULTIES[id];
+        if (!preset) return;
+        const restart = preset.world !== state.world || preset.ballCount !== state.ballCount;
+        state.world = preset.world;
+        state.ballCount = preset.ballCount;
+        state.goal = preset.goal;
+        saveSettings();
+        if (restart) restartGame();
+        else updateHud();
+    }
+
     function syncGoalSlider() {
         goalSlider.min = String(GOAL_MIN);
         goalSlider.max = String(state.ballCount);
@@ -744,6 +772,10 @@
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
         for (const button of document.querySelectorAll(".world-btn")) {
             button.classList.toggle("is-on", Number(button.dataset.world) === state.world);
+        }
+        const activeDiff = matchingDifficulty();
+        for (const button of document.querySelectorAll(".diff-btn")) {
+            button.classList.toggle("is-on", button.dataset.diff === activeDiff);
         }
         for (const button of document.querySelectorAll(".palette-btn")) {
             button.classList.toggle("is-on", button.dataset.palette === state.palette);
@@ -2045,6 +2077,10 @@
             updateHud();
             maybeWin();
         });
+
+        for (const button of document.querySelectorAll(".diff-btn")) {
+            button.addEventListener("click", () => applyDifficulty(button.dataset.diff));
+        }
 
         for (const button of document.querySelectorAll(".world-btn")) {
             button.addEventListener("click", () => {

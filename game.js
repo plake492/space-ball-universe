@@ -390,6 +390,10 @@
     }
 
     function ballPulse(ball, now) {
+        if (!ball.pulseMs) {
+            ball.pulseMs = rand(3000, 10000);
+            ball.pulseOffset = rand(0, Math.PI * 2);
+        }
         const wave = 0.5 + 0.5 * Math.sin((now / ball.pulseMs) * Math.PI * 2 + ball.pulseOffset);
         return 0.45 + 0.55 * wave;
     }

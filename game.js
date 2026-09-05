@@ -868,6 +868,7 @@
         }
         state.found = 0;
         state.score = 0;
+        resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
         flashSpikeBorder();
         playHit();
         updateHud();

@@ -211,6 +211,7 @@
             const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
             const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "space";
             const pulse = data.pulse === true;
+            const nebula = data.nebula !== false;
             const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             const reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -233,6 +234,7 @@
                     goal: preset.goal,
                     palette,
                     pulse,
+                    nebula,
                     ship,
                     name,
                     lifetime,
@@ -248,9 +250,9 @@
                     zoom,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
+            return { world, ballCount, goal, palette, pulse, nebula, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
         }
     }
 
@@ -262,6 +264,7 @@
                 goal: state.goal,
                 palette: state.palette,
                 pulse: state.pulse,
+                nebula: state.nebula,
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
@@ -509,6 +512,7 @@
         goal: saved.goal,
         palette: saved.palette,
         pulse: saved.pulse,
+        nebula: saved.nebula !== false,
         ship: saved.ship,
         name: saved.name,
         lifetime: saved.lifetime,
@@ -751,6 +755,7 @@
 
     function spawnNebulae() {
         state.nebulae = [];
+        if (!state.nebula) return;
         const count = nebulaCount();
         const sizes = [900, 1200, 1600, 2100];
         const pad = 480;
@@ -1158,6 +1163,9 @@
         }
         for (const button of document.querySelectorAll(".pulse-btn")) {
             button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
+        }
+        for (const button of document.querySelectorAll(".nebula-btn")) {
+            button.classList.toggle("is-on", (button.dataset.nebula === "on") === state.nebula);
         }
         for (const button of document.querySelectorAll(".req-btn")) {
             button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
@@ -2261,20 +2269,21 @@
         ctx.fillStyle = sky;
         ctx.fillRect(0, 0, cam.w, cam.h);
 
-        const nebula = ctx.createRadialGradient(
-            state.width * 0.7,
-            state.height * 0.25,
-            20,
-            state.width * 0.7,
-            state.height * 0.25,
-            Math.max(state.width, state.height) * 0.7
-        );
-        nebula.addColorStop(0, "rgba(90, 40, 140, 0.18)");
-        nebula.addColorStop(1, "rgba(0, 0, 0, 0)");
-        ctx.fillStyle = nebula;
-        ctx.fillRect(0, 0, cam.w, cam.h);
-
-        drawNebulae(cam);
+        if (state.nebula) {
+            const wash = ctx.createRadialGradient(
+                state.width * 0.7,
+                state.height * 0.25,
+                20,
+                state.width * 0.7,
+                state.height * 0.25,
+                Math.max(state.width, state.height) * 0.7
+            );
+            wash.addColorStop(0, "rgba(90, 40, 140, 0.18)");
+            wash.addColorStop(1, "rgba(0, 0, 0, 0)");
+            ctx.fillStyle = wash;
+            ctx.fillRect(0, 0, cam.w, cam.h);
+            drawNebulae(cam);
+        }
         drawStars(cam);
         drawBorder(cam);
     }
@@ -3079,6 +3088,17 @@
                 const next = button.dataset.pulse === "on";
                 if (next === state.pulse) return;
                 state.pulse = next;
+                saveSettings();
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".nebula-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.nebula === "on";
+                if (next === state.nebula) return;
+                state.nebula = next;
+                if (state.nebula && !state.nebulae.length) spawnNebulae();
                 saveSettings();
                 updateHud();
             });

@@ -73,6 +73,7 @@
         goal: START_GOAL,
         palette: "space",
         pulse: false,
+        nebula: true,
         ship: "classic",
         name: "",
         lifetime: 0,
@@ -198,6 +199,7 @@
             state.goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, state.ballCount, GOAL_STEP);
             state.palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "space";
             state.pulse = data.pulse === true;
+            state.nebula = data.nebula !== false;
             state.lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             state.reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -235,6 +237,7 @@
                 goal: state.goal,
                 palette: state.palette,
                 pulse: state.pulse,
+                nebula: state.nebula,
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
@@ -404,6 +407,9 @@
         }
         for (const button of document.querySelectorAll(".pulse-btn")) {
             button.classList.toggle("is-on", (button.dataset.pulse === "on") === state.pulse);
+        }
+        for (const button of document.querySelectorAll(".nebula-btn")) {
+            button.classList.toggle("is-on", (button.dataset.nebula === "on") === state.nebula);
         }
         for (const button of document.querySelectorAll(".req-btn")) {
             button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
@@ -627,6 +633,13 @@
     for (const button of document.querySelectorAll(".pulse-btn")) {
         button.addEventListener("click", () => {
             state.pulse = button.dataset.pulse === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".nebula-btn")) {
+        button.addEventListener("click", () => {
+            state.nebula = button.dataset.nebula === "on";
             saveSettings();
             updateHud();
         });

@@ -47,19 +47,22 @@ body.board-open {
     height: 100%;
 }
 
-.hud-stats {
+.hud-cluster {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
+    z-index: 4;
+    pointer-events: none;
+}
+
+.hud-stats {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0;
-    pointer-events: none;
-    z-index: 4;
     min-width: 0;
-    overflow: visible;
 }
 
 .hud-stats-row {
@@ -127,11 +130,15 @@ body.board-open {
     color: #eef3ff;
     display: grid;
     place-items: center;
+    line-height: 0;
+    flex-shrink: 0;
 }
 
 .settings-btn svg {
+    display: block;
     width: 28px;
     height: 28px;
+    overflow: visible;
 }
 
 .settings-overlay {
@@ -883,8 +890,11 @@ body.home {
 }
 
 @media (max-width: 1440px) {
-    .hud-stats {
+    .hud-cluster {
         top: max(12px, env(safe-area-inset-top));
+    }
+
+    .hud-stats {
         padding: 6px 10px;
         border-radius: 14px;
     }

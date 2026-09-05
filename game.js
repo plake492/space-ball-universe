@@ -15,15 +15,40 @@
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SPAWN_CLEARANCE = 15;
-    const RAINBOW = [
-        "#ff3b30",
-        "#ff9500",
-        "#ffcc00",
-        "#34c759",
-        "#007aff",
-        "#5856d6",
-        "#af52de",
-    ];
+    const PALETTES = {
+        rainbow: [
+            "#ff3b30",
+            "#ff9500",
+            "#ffcc00",
+            "#34c759",
+            "#007aff",
+            "#5856d6",
+            "#af52de",
+        ],
+        space: [
+            "#6a0dad",
+            "#9b4dff",
+            "#c1121f",
+            "#ff4d6d",
+            "#ff7b00",
+            "#ff9f43",
+            "#00e5ff",
+            "#4cc9f0",
+            "#b5179e",
+        ],
+        dark: [
+            "#141414",
+            "#1f1f1f",
+            "#2a2a2a",
+            "#383838",
+            "#4a4a4a",
+            "#5c5c5c",
+            "#6e6e6e",
+            "#808080",
+            "#969696",
+        ],
+    };
+    const PALETTE_NAMES = Object.keys(PALETTES);
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -74,9 +99,10 @@
             const world = WORLD_SIZES.includes(Number(data.world)) ? Number(data.world) : START_WORLD;
             const ballCount = snapStep(Number(data.ballCount) || START_BALLS, BALLS_MIN, BALLS_MAX, GOAL_STEP);
             const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
-            return { world, ballCount, goal };
+            const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
+            return { world, ballCount, goal, palette };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow" };
         }
     }
 
@@ -86,6 +112,7 @@
                 world: state.world,
                 ballCount: state.ballCount,
                 goal: state.goal,
+                palette: state.palette,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -103,6 +130,7 @@
         found: 0,
         ballCount: saved.ballCount,
         goal: saved.goal,
+        palette: saved.palette,
         won: false,
         menuOpen: false,
         width: 0,
@@ -162,7 +190,7 @@
                 x,
                 y,
                 r,
-                color: pick(RAINBOW),
+                color: pick(PALETTES[state.palette] || PALETTES.rainbow),
             });
         }
     }
@@ -237,6 +265,9 @@
         coordsEl.textContent = `${Math.round(state.shipX)}, ${Math.round(state.shipY)}`;
         for (const button of document.querySelectorAll(".world-btn")) {
             button.classList.toggle("is-on", Number(button.dataset.world) === state.world);
+        }
+        for (const button of document.querySelectorAll(".palette-btn")) {
+            button.classList.toggle("is-on", button.dataset.palette === state.palette);
         }
     }
 
@@ -749,6 +780,18 @@
                 state.world = next;
                 saveSettings();
                 restartGame();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".palette-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.palette;
+                if (!PALETTES[next] || next === state.palette) return;
+                state.palette = next;
+                const colors = PALETTES[next];
+                for (const ball of state.balls) ball.color = pick(colors);
+                saveSettings();
+                updateHud();
             });
         }
 

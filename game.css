@@ -159,13 +159,15 @@ body {
     touch-action: pan-x;
 }
 
-.world-sizes {
+.world-sizes,
+.palette-choices {
     display: flex;
     gap: 12px;
     margin-top: 12px;
 }
 
-.world-btn {
+.world-btn,
+.palette-btn {
     flex: 1;
     min-height: 72px;
     border-radius: 16px;
@@ -179,7 +181,13 @@ body {
     -webkit-backdrop-filter: blur(12px);
 }
 
-.world-btn.is-on {
+.palette-btn {
+    text-transform: none;
+    font-size: 18px;
+}
+
+.world-btn.is-on,
+.palette-btn.is-on {
     background: rgba(79, 124, 255, 0.42);
     border-color: rgba(220, 235, 255, 0.55);
 }

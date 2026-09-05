@@ -21,8 +21,9 @@ body {
 }
 
 html {
-    --control-inset-x: clamp(0px, calc((100vmin - 520px) * 150 / 380), 150px);
-    --control-inset-y: clamp(0px, calc(25vh * (100vmin - 520px) / 380px), 25vh);
+    --control-grow: clamp(1, calc(1 + 0.33 * (100vmin - 520px) / 380px), 1.33);
+    --control-inset-x: clamp(0px, calc(100vw / 6 * (100vmin - 520px) / 380px), calc(100vw / 6));
+    --control-inset-y: clamp(0px, calc(100vh / 6 * (100vmin - 520px) / 380px), calc(100vh / 6));
 }
 
 html.settings-open,
@@ -315,7 +316,8 @@ body.settings-open {
 }
 
 .joystick {
-    --stick-scale: 1;
+    --stick-base: 1;
+    --stick-scale: calc(var(--stick-base) * var(--control-grow));
     --stick-size: calc(220px * var(--stick-scale));
     --ring-slow: calc(68px * var(--stick-scale));
     --ring-medium: calc(110px * var(--stick-scale));
@@ -330,14 +332,14 @@ body.settings-open {
 
 .boost-btn {
     touch-action: none;
-    width: 76px;
-    height: 76px;
+    width: calc(76px * var(--control-grow));
+    height: calc(76px * var(--control-grow));
     margin-bottom: 8px;
     border-radius: 50%;
     border: 1px solid rgba(220, 235, 255, 0.35);
     background: rgba(10, 16, 36, 0.72);
     color: #eef3ff;
-    font-size: 22px;
+    font-size: calc(22px * var(--control-grow));
     font-weight: 800;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px);
@@ -551,7 +553,7 @@ button {
     }
 
     .joystick {
-        --stick-scale: 0.6363636364;
+        --stick-base: 0.6363636364;
     }
 
     .settings-sheet {

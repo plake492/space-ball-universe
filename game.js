@@ -12,6 +12,9 @@
     const MINIMAP_SCALE = 0.1;
     const COMPACT_UI = "(max-width: 1440px)";
     const COMPACT_STICK = 140 / 220;
+    const CONTROL_GROW = 0.33;
+    const SCALE_VMIN_START = 520;
+    const SCALE_VMIN_SPAN = 380;
     const STICK_PIP = 96;
     const MIN_BALL = 25;
     const MAX_BALL = 150;
@@ -168,8 +171,14 @@
         return window.matchMedia(COMPACT_UI).matches;
     }
 
+    function controlT() {
+        const vmin = Math.min(window.innerWidth, window.innerHeight);
+        return Math.min(1, Math.max(0, (vmin - SCALE_VMIN_START) / SCALE_VMIN_SPAN));
+    }
+
     function stickScale() {
-        return isCompactUi() ? COMPACT_STICK : 1;
+        const base = isCompactUi() ? COMPACT_STICK : 1;
+        return base * (1 + CONTROL_GROW * controlT());
     }
 
     function minimapSize() {
@@ -189,6 +198,7 @@
     }
 
     let uiCompact = isCompactUi();
+    let lastStickScale = stickScale();
 
     function resize() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -209,8 +219,10 @@
         miniCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         const compact = isCompactUi();
-        if (compact !== uiCompact) {
+        const nextScale = stickScale();
+        if (compact !== uiCompact || Math.abs(nextScale - lastStickScale) > 0.001) {
             uiCompact = compact;
+            lastStickScale = nextScale;
             buildPips();
             resetStick();
         }

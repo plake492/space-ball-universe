@@ -1251,28 +1251,23 @@
         ctx.restore();
     }
 
-    function drawBallSpikes(x, y, ball, pulse, layer) {
+    function drawBallSpikes(x, y, ball) {
         const count = ball.spikeCount || 12;
         const spin = ball.spikeSpin || 0;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(spin);
-        ctx.globalAlpha = 0.72 + 0.28 * pulse;
         for (let i = 0; i < count; i += 1) {
-            const along = i / count;
-            const depth = Math.cos(along * Math.PI * 2 + 0.4);
-            if (layer === "back" && depth > 0.12) continue;
-            if (layer === "front" && depth <= 0.12) continue;
-            const a = along * Math.PI * 2 + (i % 2) * 0.07;
+            const a = (i / count) * Math.PI * 2 + (i % 2) * 0.07;
             const tip = ball.r * (i % 2 ? 1.46 : 1.3);
             const half = ball.r * (i % 2 ? 0.15 : 0.18);
             const root = ball.r * 0.42;
             ctx.save();
             ctx.rotate(a);
             const g = ctx.createLinearGradient(root, 0, tip, 0);
-            g.addColorStop(0, shadeColor(ball.color, layer === "front" ? 0.7 : 0.38));
-            g.addColorStop(0.62, shadeColor(ball.color, layer === "front" ? 1.12 : 0.78));
-            g.addColorStop(1, shadeColor(ball.color, layer === "front" ? 1.32 : 0.95));
+            g.addColorStop(0, shadeColor(ball.color, 0.7));
+            g.addColorStop(0.62, shadeColor(ball.color, 0.92));
+            g.addColorStop(1, shadeColor(ball.color, 0.82));
             ctx.fillStyle = g;
             ctx.beginPath();
             ctx.moveTo(root, -half);
@@ -1321,24 +1316,31 @@
         const pulse = ballPulse(ball, now);
         ctx.save();
         ctx.globalAlpha = pulse;
-        ctx.shadowColor = ball.color;
-        ctx.shadowBlur = 10 + 16 * pulse;
+        if (!ball.hasSpikes) {
+            ctx.shadowColor = ball.color;
+            ctx.shadowBlur = 10 + 16 * pulse;
+        }
 
         if (ball.hasRings) drawBallRings(x, y, ball, pulse);
-        if (ball.hasSpikes) drawBallSpikes(x, y, ball, pulse, "back");
+        if (ball.hasSpikes) drawBallSpikes(x, y, ball);
 
-        const glow = ctx.createRadialGradient(x, y, 0, x, y, ball.r);
-        glow.addColorStop(0, shadeColor(ball.color, 1.28));
-        glow.addColorStop(0.4, ball.color);
-        glow.addColorStop(0.78, shadeColor(ball.color, 0.55));
-        glow.addColorStop(1, shadeColor(ball.color, 0.22));
-        ctx.fillStyle = glow;
+        const fill = ctx.createRadialGradient(x, y, 0, x, y, ball.r);
+        if (ball.hasSpikes) {
+            fill.addColorStop(0, shadeColor(ball.color, 1.08));
+            fill.addColorStop(0.45, ball.color);
+            fill.addColorStop(1, shadeColor(ball.color, 0.82));
+        } else {
+            fill.addColorStop(0, shadeColor(ball.color, 1.28));
+            fill.addColorStop(0.4, ball.color);
+            fill.addColorStop(0.78, shadeColor(ball.color, 0.55));
+            fill.addColorStop(1, shadeColor(ball.color, 0.22));
+        }
+        ctx.fillStyle = fill;
         ctx.beginPath();
         ctx.arc(x, y, ball.r, 0, Math.PI * 2);
         ctx.fill();
 
         if (ball.hasRings) drawBallRingsFront(x, y, ball, pulse);
-        if (ball.hasSpikes) drawBallSpikes(x, y, ball, pulse, "front");
         ctx.restore();
     }
 

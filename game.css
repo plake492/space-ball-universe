@@ -425,6 +425,9 @@ body.board-open {
 .req-btn,
 .audio-btn,
 .fullscreen-btn,
+.spike-btn,
+.meteor-btn,
+.fuel-btn,
 .diff-btn {
     flex: 1;
     min-height: 72px;
@@ -444,6 +447,9 @@ body.board-open {
 .req-btn,
 .audio-btn,
 .fullscreen-btn,
+.spike-btn,
+.meteor-btn,
+.fuel-btn,
 .diff-btn {
     text-transform: none;
     font-size: 18px;
@@ -461,6 +467,9 @@ body.board-open {
 .req-btn.is-on,
 .audio-btn.is-on,
 .fullscreen-btn.is-on,
+.spike-btn.is-on,
+.meteor-btn.is-on,
+.fuel-btn.is-on,
 .diff-btn.is-on,
 .ship-btn.is-on {
     background: rgba(79, 124, 255, 0.42);
@@ -1464,6 +1473,9 @@ body.home {
     .req-btn,
     .audio-btn,
     .fullscreen-btn,
+    .spike-btn,
+    .meteor-btn,
+    .fuel-btn,
     .diff-btn {
         min-height: 40px;
         border-radius: 10px;
@@ -1487,7 +1499,10 @@ body.home {
     .pulse-btn,
     .req-btn,
     .audio-btn,
-    .fullscreen-btn {
+    .fullscreen-btn,
+    .spike-btn,
+    .meteor-btn,
+    .fuel-btn {
         font-size: 13px;
     }
 

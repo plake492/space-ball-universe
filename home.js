@@ -81,6 +81,9 @@
         trialMs: 300000,
         audio: true,
         volume: 100,
+        spikes: true,
+        meteorOn: true,
+        infiniteFuel: false,
     };
 
     function snapStep(value, min, max, step) {
@@ -203,6 +206,9 @@
             state.trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
             state.audio = data.audio !== false;
             state.volume = data.volume == null ? 100 : clampVolume(data.volume);
+            state.spikes = data.spikes !== false;
+            state.meteorOn = data.meteorOn !== false;
+            state.infiniteFuel = data.infiniteFuel === true;
         } catch {
             // Keep defaults.
         }
@@ -225,6 +231,9 @@
                 trialMs: state.trialMs,
                 audio: state.audio,
                 volume: state.volume,
+                spikes: state.spikes,
+                meteorOn: state.meteorOn,
+                infiniteFuel: state.infiniteFuel,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -244,6 +253,9 @@
                 won: Boolean(data.won),
                 trial: Boolean(data.trial),
                 trialMs: Number(data.trialMs) || 0,
+                spikes: data.spikes !== false,
+                meteorOn: data.meteorOn !== false,
+                infiniteFuel: data.infiniteFuel === true,
             };
         } catch {
             return null;
@@ -262,6 +274,9 @@
             && play.ballCount === state.ballCount
             && play.trial === state.trial
             && (!state.trial || play.trialMs === state.trialMs)
+            && play.spikes === state.spikes
+            && play.meteorOn === state.meteorOn
+            && play.infiniteFuel === state.infiniteFuel
             && playIsActive(play)
         );
     }
@@ -394,6 +409,15 @@
         }
         for (const button of document.querySelectorAll(".audio-btn")) {
             button.classList.toggle("is-on", (button.dataset.audio === "on") === state.audio);
+        }
+        for (const button of document.querySelectorAll(".spike-btn")) {
+            button.classList.toggle("is-on", (button.dataset.spikes === "on") === state.spikes);
+        }
+        for (const button of document.querySelectorAll(".meteor-btn")) {
+            button.classList.toggle("is-on", (button.dataset.meteor === "on") === state.meteorOn);
+        }
+        for (const button of document.querySelectorAll(".fuel-btn")) {
+            button.classList.toggle("is-on", (button.dataset.fuel === "on") === state.infiniteFuel);
         }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
@@ -594,6 +618,27 @@
     for (const button of document.querySelectorAll(".audio-btn")) {
         button.addEventListener("click", () => {
             state.audio = button.dataset.audio === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".spike-btn")) {
+        button.addEventListener("click", () => {
+            state.spikes = button.dataset.spikes === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".meteor-btn")) {
+        button.addEventListener("click", () => {
+            state.meteorOn = button.dataset.meteor === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".fuel-btn")) {
+        button.addEventListener("click", () => {
+            state.infiniteFuel = button.dataset.fuel === "on";
             saveSettings();
             updateHud();
         });

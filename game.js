@@ -207,6 +207,9 @@
             const trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
             const audio = data.audio !== false;
             const volume = data.volume == null ? 100 : clampVolume(data.volume);
+            const spikes = data.spikes !== false;
+            const meteorOn = data.meteorOn !== false;
+            const infiniteFuel = data.infiniteFuel === true;
             if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
@@ -224,11 +227,14 @@
                     trialMs,
                     audio,
                     volume,
+                    spikes,
+                    meteorOn,
+                    infiniteFuel,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume };
+            return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false };
         }
     }
 
@@ -249,6 +255,9 @@
                 trialMs: state.trialMs,
                 audio: state.audio,
                 volume: state.volume,
+                spikes: state.spikes,
+                meteorOn: state.meteorOn,
+                infiniteFuel: state.infiniteFuel,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -324,6 +333,9 @@
                 cometSpawns: state.cometSpawns,
                 trial: state.trial,
                 trialMs: state.trialMs,
+                spikes: state.spikes,
+                meteorOn: state.meteorOn,
+                infiniteFuel: state.infiniteFuel,
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -338,6 +350,9 @@
             }
             if (Boolean(data.trial) !== state.trial) return null;
             if (state.trial && Number(data.trialMs) !== state.trialMs) return null;
+            if ((data.spikes !== false) !== state.spikes) return null;
+            if ((data.meteorOn !== false) !== state.meteorOn) return null;
+            if (Boolean(data.infiniteFuel) !== state.infiniteFuel) return null;
             if (!Array.isArray(data.balls)) return null;
             const balls = [];
             for (const ball of data.balls) {
@@ -443,6 +458,9 @@
         trialMs: TRIAL_MS.includes(Number(saved.trialMs)) ? Number(saved.trialMs) : 300000,
         audio: saved.audio !== false,
         volume: saved.volume == null ? 100 : clampVolume(saved.volume),
+        spikes: saved.spikes !== false,
+        meteorOn: saved.meteorOn !== false,
+        infiniteFuel: saved.infiniteFuel === true,
         speed: 0,
         boost: false,
         boostFuel: 1,
@@ -813,6 +831,7 @@
 
     function spawnMeteors() {
         state.meteors = [];
+        if (!state.meteorOn) return;
         nextMeteorAt = performance.now() + meteorWait();
         state.meteors.push(makeMeteor());
     }
@@ -844,7 +863,7 @@
     }
 
     function updateMeteors(dt, now, paused) {
-        if (paused) return;
+        if (paused || !state.meteorOn) return;
         moveFlyers(state.meteors, dt);
         if (now >= nextMeteorAt) {
             nextMeteorAt = now + meteorWait();
@@ -894,6 +913,7 @@
 
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) placeBall(false);
+        if (!state.spikes) return;
         const spikes = Math.round(count * SPIKE_RATE);
         for (let i = 0; i < spikes; i += 1) placeBall(true);
     }
@@ -1048,6 +1068,15 @@
         }
         for (const button of document.querySelectorAll(".audio-btn")) {
             button.classList.toggle("is-on", (button.dataset.audio === "on") === state.audio);
+        }
+        for (const button of document.querySelectorAll(".spike-btn")) {
+            button.classList.toggle("is-on", (button.dataset.spikes === "on") === state.spikes);
+        }
+        for (const button of document.querySelectorAll(".meteor-btn")) {
+            button.classList.toggle("is-on", (button.dataset.meteor === "on") === state.meteorOn);
+        }
+        for (const button of document.querySelectorAll(".fuel-btn")) {
+            button.classList.toggle("is-on", (button.dataset.fuel === "on") === state.infiniteFuel);
         }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
@@ -1226,6 +1255,7 @@
     }
 
     function collectMeteors() {
+        if (!state.meteorOn) return;
         for (let i = state.meteors.length - 1; i >= 0; i -= 1) {
             const meteor = state.meteors[i];
             if (Math.hypot(meteor.x - state.shipX, meteor.y - state.shipY) > meteorBody(meteor) + SHIP_RADIUS) continue;
@@ -2301,7 +2331,9 @@
             return;
         }
         const want = boostWanted();
-        if (want && state.boostFuel > 0) {
+        if (state.infiniteFuel) {
+            state.boostFuel = 1;
+        } else if (want && state.boostFuel > 0) {
             state.boostFuel = Math.max(0, state.boostFuel - dt / BOOST_DRAIN);
         } else if (!want && state.boostFuel < 1) {
             state.boostFuel = Math.min(1, state.boostFuel + dt / BOOST_REFILL);
@@ -2722,6 +2754,44 @@
                 state.audio = next;
                 saveSettings();
                 applyAudioLevels();
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".spike-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.spikes === "on";
+                if (next === state.spikes) return;
+                state.spikes = next;
+                saveSettings();
+                if (!state.spikes) {
+                    state.balls = state.balls.filter((ball) => !ball.hasSpikes);
+                    savePlay();
+                }
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".meteor-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.meteor === "on";
+                if (next === state.meteorOn) return;
+                state.meteorOn = next;
+                saveSettings();
+                if (state.meteorOn) spawnMeteors();
+                else state.meteors = [];
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".fuel-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.fuel === "on";
+                if (next === state.infiniteFuel) return;
+                state.infiniteFuel = next;
+                if (state.infiniteFuel) state.boostFuel = 1;
+                saveSettings();
+                applyBoost();
                 updateHud();
             });
         }

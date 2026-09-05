@@ -194,13 +194,49 @@ body.board-open {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 20px;
     flex-shrink: 0;
 }
 
+.settings-back {
+    min-height: 48px;
+    padding: 0 14px;
+    flex-shrink: 0;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.settings-cat {
+    min-height: 64px;
+    border-radius: 16px;
+    border: 1px solid rgba(220, 235, 255, 0.28);
+    background: rgba(79, 124, 255, 0.42);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.settings-panel.hidden,
+.settings-nav.hidden,
+.settings-back.hidden {
+    display: none;
+}
+
 .settings-sheet h1 {
     margin: 0;
+    flex: 1;
+    text-align: center;
     font-size: 40px;
 }
 
@@ -226,7 +262,8 @@ body.board-open {
     margin-bottom: 28px;
 }
 
-.settings-body .settings-block:last-child {
+.settings-body .settings-block:last-child,
+.settings-panel .settings-block:last-child {
     margin-bottom: 0;
 }
 
@@ -268,7 +305,8 @@ body.board-open {
     font-weight: 500;
 }
 
-.settings-board {
+.settings-board,
+.settings-reset {
     display: block;
     width: 100%;
     margin-top: 0;
@@ -281,6 +319,11 @@ body.board-open {
     font-weight: 700;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+}
+
+.settings-reset {
+    background: rgba(255, 90, 90, 0.42);
+    border-color: rgba(255, 190, 190, 0.35);
 }
 
 .reset-confirm {
@@ -1083,6 +1126,19 @@ body.home {
         font-size: 24px;
     }
 
+    .settings-back {
+        min-height: 36px;
+        padding: 0 10px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .settings-cat {
+        min-height: 52px;
+        border-radius: 12px;
+        font-size: 18px;
+    }
+
     .settings-block {
         margin-bottom: 14px;
     }
@@ -1100,7 +1156,8 @@ body.home {
         font-size: 16px;
     }
 
-    .settings-board {
+    .settings-board,
+    .settings-reset {
         min-height: 40px;
         border-radius: 10px;
         font-size: 15px;

@@ -45,6 +45,7 @@
         menuOpen: false,
         boardOpen: false,
         boardFrom: "home",
+        settingsPanel: "",
     };
 
     function snapStep(value, min, max, step) {
@@ -169,6 +170,21 @@
         }
     }
 
+    function showSettingsPanel(id) {
+        state.settingsPanel = id || "";
+        const titles = { user: "User", game: "Game", visuals: "Visuals" };
+        const nav = document.getElementById("settings-nav");
+        const back = document.getElementById("settings-back");
+        const title = document.getElementById("settings-title");
+        if (nav) nav.classList.toggle("hidden", Boolean(id));
+        if (back) back.classList.toggle("hidden", !id);
+        if (title) title.textContent = titles[id] || "Settings";
+        for (const panel of document.querySelectorAll(".settings-panel")) {
+            panel.classList.toggle("hidden", panel.dataset.panel !== id);
+        }
+        if (settingsMenu) settingsMenu.scrollTop = 0;
+    }
+
     function setMenuOpen(open) {
         state.menuOpen = open;
         settingsMenu.classList.toggle("hidden", !open);
@@ -265,7 +281,10 @@
         boardOverlay.classList.add("hidden");
         document.documentElement.classList.remove("board-open");
         document.body.classList.remove("board-open");
-        if (from === "settings") setMenuOpen(true);
+        if (from === "settings") {
+            setMenuOpen(true);
+            showSettingsPanel(state.settingsPanel || "user");
+        }
     }
 
     function setFullscreen(on) {
@@ -289,13 +308,22 @@
     document.getElementById("home-new").addEventListener("click", () => {
         location.href = "./game.html?mode=new";
     });
-    document.getElementById("home-settings").addEventListener("click", () => setMenuOpen(true));
+    document.getElementById("home-settings").addEventListener("click", () => {
+        showSettingsPanel("");
+        setMenuOpen(true);
+    });
     document.getElementById("home-board").addEventListener("click", () => openBoard("home"));
     document.getElementById("settings-close").addEventListener("click", () => setMenuOpen(false));
     document.getElementById("settings-continue").addEventListener("click", () => setMenuOpen(false));
+    document.getElementById("settings-back").addEventListener("click", () => showSettingsPanel(""));
+    for (const button of document.querySelectorAll(".settings-cat")) {
+        button.addEventListener("click", () => showSettingsPanel(button.dataset.panel));
+    }
     document.getElementById("settings-board").addEventListener("click", () => openBoard("settings"));
     const resetOverlay = document.getElementById("reset-overlay");
-    document.getElementById("home-reset").addEventListener("click", () => resetOverlay.classList.remove("hidden"));
+    const openReset = () => resetOverlay.classList.remove("hidden");
+    document.getElementById("home-reset").addEventListener("click", openReset);
+    document.getElementById("settings-reset").addEventListener("click", openReset);
     document.getElementById("reset-cancel").addEventListener("click", () => resetOverlay.classList.add("hidden"));
     document.getElementById("reset-confirm").addEventListener("click", () => {
         state.lifetime = 0;

@@ -34,73 +34,92 @@
     <div class="settings-overlay hidden" id="settings-menu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="settings-sheet">
             <div class="settings-head">
+                <button type="button" class="settings-back hidden" id="settings-back">Back</button>
                 <h1 id="settings-title">Settings</h1>
                 <button type="button" class="settings-close" id="settings-close" aria-label="Close settings">×</button>
             </div>
 
             <div class="settings-body">
-            <section class="settings-block">
-                <p class="label">Username</p>
-                <input type="text" class="username-input" id="username-input" maxlength="20" autocomplete="username" enterkeyhint="done" spellcheck="false" placeholder="Pilot" aria-label="Username">
-            </section>
+            <div class="settings-nav" id="settings-nav">
+                <button type="button" class="settings-cat" data-panel="user">User settings</button>
+                <button type="button" class="settings-cat" data-panel="game">Game settings</button>
+                <button type="button" class="settings-cat" data-panel="visuals">Visuals</button>
+            </div>
 
-            <section class="settings-block">
-                <button type="button" class="settings-board" id="settings-board">Leaderboard</button>
-            </section>
+            <div class="settings-panel hidden" data-panel="user">
+                <section class="settings-block">
+                    <p class="label">Username</p>
+                    <input type="text" class="username-input" id="username-input" maxlength="20" autocomplete="username" enterkeyhint="done" spellcheck="false" placeholder="Pilot" aria-label="Username">
+                </section>
+                <section class="settings-block">
+                    <button type="button" class="settings-board" id="settings-board">Leaderboard</button>
+                </section>
+                <section class="settings-block">
+                    <button type="button" class="settings-reset" id="settings-reset">Reset progress</button>
+                </section>
+            </div>
 
-            <section class="settings-block">
-                <p class="label">Fullscreen</p>
-                <div class="fullscreen-choices" role="group" aria-label="Fullscreen">
-                    <button type="button" class="fullscreen-btn" data-fullscreen="on">On</button>
-                    <button type="button" class="fullscreen-btn is-on" data-fullscreen="off">Off</button>
-                </div>
-            </section>
+            <div class="settings-panel hidden" data-panel="game">
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Balls</p>
+                        <p class="value"><span id="balls-slider-value">75</span></p>
+                    </div>
+                    <input type="range" id="balls-slider" min="25" max="250" step="5" value="75" aria-label="Balls in the game">
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Goal</p>
+                        <p class="value"><span id="goal-slider-value">75</span></p>
+                    </div>
+                    <input type="range" id="goal-slider" min="5" max="75" step="5" value="75" aria-label="Balls to win">
+                </section>
+                <section class="settings-block">
+                    <p class="label">World size</p>
+                    <div class="world-sizes" role="group" aria-label="World size">
+                        <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
+                        <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
+                        <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
+                        <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
+                    </div>
+                </section>
+            </div>
 
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Balls</p>
-                    <p class="value"><span id="balls-slider-value">75</span></p>
-                </div>
-                <input type="range" id="balls-slider" min="25" max="250" step="5" value="75" aria-label="Balls in the game">
-            </section>
-
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Goal</p>
-                    <p class="value"><span id="goal-slider-value">75</span></p>
-                </div>
-                <input type="range" id="goal-slider" min="5" max="75" step="5" value="75" aria-label="Balls to win">
-            </section>
-
-            <section class="settings-block">
-                <p class="label">Colors</p>
-                <div class="palette-choices" role="group" aria-label="Color palette">
-                    <button type="button" class="palette-btn is-on" data-palette="rainbow">Rainbow</button>
-                    <button type="button" class="palette-btn" data-palette="space">Space</button>
-                    <button type="button" class="palette-btn" data-palette="dark">Dark</button>
-                </div>
-            </section>
-
-            <section class="settings-block">
-                <p class="label">Pulse</p>
-                <div class="pulse-choices" role="group" aria-label="Ball pulse">
-                    <button type="button" class="pulse-btn is-on" data-pulse="on">On</button>
-                    <button type="button" class="pulse-btn" data-pulse="off">Off</button>
-                </div>
-            </section>
-
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Lifetime</p>
-                    <p class="value" id="lifetime-points" aria-label="Lifetime points">0</p>
-                </div>
-                <p class="label">Locks</p>
-                <div class="pulse-choices" role="group" aria-label="Ship point locks">
-                    <button type="button" class="req-btn is-on" data-req="on">On</button>
-                    <button type="button" class="req-btn" data-req="off">Off</button>
-                </div>
-                <p class="label ship-picker-label">Ship</p>
-                <div class="ship-choices" role="group" aria-label="Ship">
+            <div class="settings-panel hidden" data-panel="visuals">
+                <section class="settings-block">
+                    <p class="label">Fullscreen</p>
+                    <div class="fullscreen-choices" role="group" aria-label="Fullscreen">
+                        <button type="button" class="fullscreen-btn" data-fullscreen="on">On</button>
+                        <button type="button" class="fullscreen-btn is-on" data-fullscreen="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Colors</p>
+                    <div class="palette-choices" role="group" aria-label="Color palette">
+                        <button type="button" class="palette-btn is-on" data-palette="rainbow">Rainbow</button>
+                        <button type="button" class="palette-btn" data-palette="space">Space</button>
+                        <button type="button" class="palette-btn" data-palette="dark">Dark</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Pulse</p>
+                    <div class="pulse-choices" role="group" aria-label="Ball pulse">
+                        <button type="button" class="pulse-btn is-on" data-pulse="on">On</button>
+                        <button type="button" class="pulse-btn" data-pulse="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Lifetime</p>
+                        <p class="value" id="lifetime-points" aria-label="Lifetime points">0</p>
+                    </div>
+                    <p class="label">Locks</p>
+                    <div class="pulse-choices" role="group" aria-label="Ship point locks">
+                        <button type="button" class="req-btn is-on" data-req="on">On</button>
+                        <button type="button" class="req-btn" data-req="off">Off</button>
+                    </div>
+                    <p class="label ship-picker-label">Ship</p>
+                    <div class="ship-choices" role="group" aria-label="Ship">
                     <button type="button" class="ship-btn is-on" data-ship="classic" aria-label="Classic ship">
                         <svg viewBox="0 0 32 40" aria-hidden="true">
                             <path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/>
@@ -147,18 +166,9 @@
                         <img src="public/images/ships/selah-harlie.png" alt="">
                         <span class="ship-lock">192,220</span>
                     </button>
-                </div>
-            </section>
-
-            <section class="settings-block">
-                <p class="label">World size</p>
-                <div class="world-sizes" role="group" aria-label="World size">
-                    <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
-                    <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
-                    <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
-                    <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
-                </div>
-            </section>
+                    </div>
+                </section>
+            </div>
             </div>
 
             <div class="settings-actions">

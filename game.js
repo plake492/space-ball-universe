@@ -240,6 +240,7 @@
     }
 
     function savePlay() {
+        if (state.wiped) return;
         try {
             localStorage.setItem(PLAY_KEY, JSON.stringify({
                 world: state.world,
@@ -378,6 +379,8 @@
         boardOpen: false,
         boardFrom: "settings",
         boardLogged: false,
+        settingsPanel: "",
+        wiped: false,
         minimapLarge: false,
         width: 0,
         height: 0,
@@ -1660,6 +1663,21 @@
         savePlay();
     }
 
+    function showSettingsPanel(id) {
+        state.settingsPanel = id || "";
+        const titles = { user: "User", game: "Game", visuals: "Visuals" };
+        const nav = document.getElementById("settings-nav");
+        const back = document.getElementById("settings-back");
+        const title = document.getElementById("settings-title");
+        if (nav) nav.classList.toggle("hidden", Boolean(id));
+        if (back) back.classList.toggle("hidden", !id);
+        if (title) title.textContent = titles[id] || "Settings";
+        for (const panel of document.querySelectorAll(".settings-panel")) {
+            panel.classList.toggle("hidden", panel.dataset.panel !== id);
+        }
+        settingsMenu.scrollTop = 0;
+    }
+
     function openMenu() {
         if (state.menuOpen) return;
         state.menuOpen = true;
@@ -1669,6 +1687,7 @@
         settingsMenu.classList.remove("hidden");
         document.documentElement.classList.add("settings-open");
         document.body.classList.add("settings-open");
+        showSettingsPanel("");
         settingsMenu.scrollTop = 0;
         syncBoost();
         savePlay();
@@ -1899,6 +1918,28 @@
         document.getElementById("settings-board").addEventListener("click", () => {
             openBoard("settings");
         });
+        document.getElementById("settings-back").addEventListener("click", () => showSettingsPanel(""));
+        for (const button of document.querySelectorAll(".settings-cat")) {
+            button.addEventListener("click", () => showSettingsPanel(button.dataset.panel));
+        }
+        const resetOverlay = document.getElementById("reset-overlay");
+        if (resetOverlay) {
+            document.getElementById("settings-reset").addEventListener("click", () => resetOverlay.classList.remove("hidden"));
+            document.getElementById("reset-cancel").addEventListener("click", () => resetOverlay.classList.add("hidden"));
+            document.getElementById("reset-confirm").addEventListener("click", () => {
+                state.wiped = true;
+                state.lifetime = 0;
+                state.ship = "classic";
+                try {
+                    localStorage.removeItem(PLAY_KEY);
+                    localStorage.removeItem(BOARD_KEY);
+                } catch {
+                    // Ignore private-mode failures.
+                }
+                saveSettings();
+                location.href = "./index.html";
+            });
+        }
 
         const homeBtn = document.getElementById("settings-home");
         if (homeBtn) {

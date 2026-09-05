@@ -66,8 +66,8 @@
         world: START_WORLD,
         ballCount: START_BALLS,
         goal: START_GOAL,
-        palette: "rainbow",
-        pulse: true,
+        palette: "space",
+        pulse: false,
         ship: "classic",
         name: "",
         lifetime: 0,
@@ -184,8 +184,8 @@
             state.world = WORLD_SIZES.includes(Number(data.world)) ? Number(data.world) : START_WORLD;
             state.ballCount = snapStep(Number(data.ballCount) || START_BALLS, BALLS_MIN, BALLS_MAX, GOAL_STEP);
             state.goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, state.ballCount, GOAL_STEP);
-            state.palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
-            state.pulse = data.pulse !== false;
+            state.palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "space";
+            state.pulse = data.pulse === true;
             state.lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             state.reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";

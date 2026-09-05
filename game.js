@@ -195,8 +195,8 @@
             const world = WORLD_SIZES.includes(Number(data.world)) ? Number(data.world) : START_WORLD;
             const ballCount = snapStep(Number(data.ballCount) || START_BALLS, BALLS_MIN, BALLS_MAX, GOAL_STEP);
             const goal = snapStep(Number(data.goal) || START_GOAL, GOAL_MIN, ballCount, GOAL_STEP);
-            const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "rainbow";
-            const pulse = data.pulse !== false;
+            const palette = PALETTE_NAMES.includes(data.palette) ? data.palette : "space";
+            const pulse = data.pulse === true;
             const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             const reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -234,7 +234,7 @@
             }
             return { world, ballCount, goal, palette, pulse, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "rainbow", pulse: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false };
         }
     }
 

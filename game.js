@@ -39,6 +39,7 @@
     const SPIKE_TYPES = BALL_TYPES.slice(-2);
     const SPIKE_RATE = 0.15;
     const SPIKE_REACH = 1.4;
+    const SPIKE_TRIAL_MS = 10000;
     const SHIP_RADIUS = 22;
     const SHIP_SPEED = 840;
     const SHIP_ACCEL = 2000;
@@ -1055,11 +1056,19 @@
         }
         state.found = 0;
         state.score = 0;
-        if (!state.trial) {
-            resetTimer(performance.now(), !state.menuOpen && !state.won && !state.resumeOpen);
-        }
         flashSpikeBorder();
         playHit();
+        const now = performance.now();
+        if (state.trial) {
+            timer.elapsed += SPIKE_TRIAL_MS;
+            shownSecond = -1;
+            if (!state.won && remainingTime(now) <= 0) {
+                finishTrial();
+                return;
+            }
+        } else {
+            resetTimer(now, !state.menuOpen && !state.won && !state.resumeOpen);
+        }
         updateHud();
         savePlay();
     }

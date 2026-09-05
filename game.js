@@ -90,7 +90,8 @@
         ufo: "public/images/ships/ufo.png",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
-    const SHIP_COST = 5000;
+    const SHIP_COST_START = 5000;
+    const SHIP_COST_GROW = 1.5;
     const shipImages = {};
 
     const canvas = document.getElementById("game");
@@ -151,7 +152,8 @@
 
     function shipUnlockAt(id) {
         const index = SHIP_IDS.indexOf(id);
-        return Math.max(0, index) * SHIP_COST;
+        if (index <= 0) return 0;
+        return Math.round(SHIP_COST_START * (SHIP_COST_GROW ** (index - 1)));
     }
 
     function shipUnlocked(id, lifetime) {

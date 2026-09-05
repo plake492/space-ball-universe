@@ -134,6 +134,7 @@
         goal: saved.goal,
         palette: saved.palette,
         pulse: saved.pulse,
+        boost: false,
         won: false,
         menuOpen: false,
         width: 0,
@@ -335,7 +336,7 @@
             vy /= length;
             state.heading = Math.atan2(vy, vx);
             const usingStick = stick.vx !== 0 || stick.vy !== 0;
-            const speed = SHIP_SPEED * (usingStick ? stick.speed : 1);
+            const speed = SHIP_SPEED * (usingStick ? stick.speed : 1) * (state.boost ? 2 : 1);
             state.shipX += vx * speed * dt;
             state.shipY += vy * speed * dt;
         }
@@ -657,11 +658,23 @@
         requestAnimationFrame(frame);
     }
 
+    function setBoost(on) {
+        state.boost = on;
+        const button = document.getElementById("boost-btn");
+        button.classList.toggle("is-on", on);
+        button.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+
     function bindKeys() {
         window.addEventListener("keydown", (event) => {
             if (state.menuOpen || state.won) return;
+            if (event.key === " " || event.code === "Space") {
+                event.preventDefault();
+                if (!event.repeat) setBoost(!state.boost);
+                return;
+            }
             keys.add(event.key.toLowerCase());
-            if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(event.key.toLowerCase())) {
+            if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(event.key.toLowerCase())) {
                 event.preventDefault();
             }
         });
@@ -820,6 +833,11 @@
 
     function bindHud() {
         document.getElementById("open-settings").addEventListener("click", openMenu);
+
+        document.getElementById("boost-btn").addEventListener("click", () => {
+            if (state.menuOpen || state.won) return;
+            setBoost(!state.boost);
+        });
 
         ballsSlider.addEventListener("input", () => {
             ballsSliderValue.textContent = ballsSlider.value;

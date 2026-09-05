@@ -263,14 +263,41 @@ body {
     pointer-events: none;
 }
 
-.joystick {
+.controls {
     position: fixed;
     left: max(20px, env(safe-area-inset-left));
     bottom: max(24px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    z-index: 3;
+}
+
+.joystick {
+    position: relative;
     width: 220px;
     height: 220px;
-    z-index: 3;
     touch-action: none;
+}
+
+.boost-btn {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(220, 235, 255, 0.35);
+    background: rgba(10, 16, 36, 0.72);
+    color: #eef3ff;
+    font-size: 22px;
+    font-weight: 800;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+}
+
+.boost-btn.is-on {
+    background: rgba(79, 124, 255, 0.72);
+    border-color: rgba(190, 230, 255, 0.7);
+    box-shadow: 0 0 18px rgba(90, 160, 255, 0.7);
 }
 
 .joystick-base {

@@ -578,6 +578,7 @@
                 r,
                 angle: rand(-0.4, 0.4),
                 spin: rand(0, Math.PI * 2),
+                near: 0.22 + 0.78 * (Math.random() ** 0.85),
             });
         }
     }
@@ -1150,10 +1151,16 @@
         return g;
     }
 
+    function holeNear(hole) {
+        const near = Number(hole && hole.near);
+        return Number.isFinite(near) ? Math.min(1, Math.max(0.18, near)) : 1;
+    }
+
     function drawHole(hole, cam, now) {
+        const near = holeNear(hole);
         const x = hole.x - cam.x;
         const y = hole.y - cam.y;
-        const r = hole.r;
+        const r = hole.r * (0.32 + 0.68 * near);
         const reach = r * 3.4;
         if (x < -reach || y < -reach || x > state.width + reach || y > state.height + reach) return;
 
@@ -1164,6 +1171,7 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(hole.angle);
+        ctx.globalAlpha = 0.16 + 0.84 * near;
 
         const warp = ctx.createRadialGradient(0, 0, r * 0.35, 0, 0, r * 3.2);
         warp.addColorStop(0, "rgba(0, 0, 0, 0.62)");
@@ -1549,7 +1557,8 @@
     }
 
     function drawHoles(cam, now) {
-        for (const hole of state.holes) drawHole(hole, cam, now);
+        const holes = state.holes.slice().sort((a, b) => holeNear(a) - holeNear(b));
+        for (const hole of holes) drawHole(hole, cam, now);
     }
 
     function toMinimap(worldX, worldY, size, scale) {

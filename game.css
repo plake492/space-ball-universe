@@ -601,9 +601,11 @@ body.board-open {
 }
 
 .board-card {
-    width: min(400px, calc(100vw - 56px));
-    max-height: min(62vh, 520px);
-    padding: 18px 16px 16px;
+    width: max(66vw, min(calc(100vw - 24px), 420px));
+    max-width: calc(100vw - 24px);
+    height: min(66vh, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: 22px 20px 18px;
     display: flex;
     flex-direction: column;
     text-align: left;
@@ -611,7 +613,7 @@ body.board-open {
 
 .board-card h1 {
     margin: 0;
-    font-size: clamp(18px, 4vw, 26px);
+    font-size: clamp(20px, 3.6vw, 32px);
     letter-spacing: 0.14em;
 }
 
@@ -648,8 +650,8 @@ body.board-open {
 .board-cols,
 .board-row {
     display: grid;
-    grid-template-columns: 28px 1fr 72px 56px;
-    gap: 8px;
+    grid-template-columns: 32px minmax(0, 1fr) 88px 72px;
+    gap: 10px;
     align-items: center;
 }
 
@@ -886,31 +888,17 @@ button {
     }
 
     .board-card {
-        width: min(360px, calc(100vw - 32px));
-        max-height: min(58vh, 440px);
-        padding: 14px 12px 12px;
-        border-radius: 18px;
+        width: max(66vw, min(calc(100vw - 20px), 420px));
+        max-width: calc(100vw - 20px);
+        height: min(66vh, calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+        max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        padding: 16px 14px 14px;
+        border-radius: 20px;
     }
 
-    .board-head {
-        grid-template-columns: 64px 1fr 40px;
-        margin-bottom: 10px;
-    }
-
-    .board-back,
-    .board-close {
-        min-height: 40px;
-        border-radius: 10px;
-        font-size: 13px;
-    }
-
-    .board-close {
-        width: 40px;
-        font-size: 22px;
-    }
-
+    .board-cols,
     .board-row {
-        padding: 8px 6px;
-        font-size: 12px;
+        grid-template-columns: 28px minmax(0, 1fr) 76px 60px;
+        gap: 8px;
     }
 }

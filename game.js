@@ -1583,13 +1583,32 @@
 
         for (const ball of state.balls) {
             const p = toMinimap(ball.x, ball.y, size, scale);
-            const r = Math.max(2.2 * mark, ball.r * scale);
-            if (p.x < -r || p.y < -r || p.x > size + r || p.y > size + r) continue;
+            const r = Math.max(ball.hasSpikes ? 3.4 * mark : 2.2 * mark, ball.r * scale);
+            const reach = ball.hasSpikes ? r * 1.9 : r;
+            if (p.x < -reach || p.y < -reach || p.x > size + reach || p.y > size + reach) continue;
             miniCtx.globalAlpha = ballPulse(ball, now);
             miniCtx.fillStyle = ball.color;
-            miniCtx.beginPath();
-            miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
-            miniCtx.fill();
+            if (ball.hasSpikes) {
+                const spikes = 7;
+                const inner = r * 0.72;
+                const outer = r * 1.85;
+                miniCtx.beginPath();
+                for (let i = 0; i < spikes; i += 1) {
+                    const a = (i / spikes) * Math.PI * 2 - Math.PI / 2;
+                    const b = a + Math.PI / spikes;
+                    miniCtx.lineTo(p.x + Math.cos(a) * outer, p.y + Math.sin(a) * outer);
+                    miniCtx.lineTo(p.x + Math.cos(b) * inner, p.y + Math.sin(b) * inner);
+                }
+                miniCtx.closePath();
+                miniCtx.fill();
+                miniCtx.strokeStyle = "#ff3b30";
+                miniCtx.lineWidth = Math.max(1.2 * mark, r * 0.28);
+                miniCtx.stroke();
+            } else {
+                miniCtx.beginPath();
+                miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                miniCtx.fill();
+            }
             miniCtx.globalAlpha = 1;
         }
 

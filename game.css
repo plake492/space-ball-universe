@@ -885,6 +885,24 @@ body.home {
     touch-action: pan-y;
 }
 
+.home-user {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    z-index: 4;
+    margin: 0;
+    max-width: min(50vw, 280px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #e8f6ff;
+    text-align: right;
+    pointer-events: none;
+}
+
 .home-screen {
     min-height: 100%;
     display: flex;

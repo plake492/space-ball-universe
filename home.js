@@ -30,6 +30,7 @@
     const boardEmpty = document.getElementById("board-empty");
     const continueBtn = document.getElementById("home-continue");
     const homeSub = document.getElementById("home-sub");
+    const homeUser = document.getElementById("home-user");
 
     const state = {
         world: START_WORLD,
@@ -190,6 +191,7 @@
     function updateHud() {
         if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
         if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
+        if (homeUser) homeUser.textContent = state.name || "Pilot";
         ballsSlider.value = String(state.ballCount);
         ballsSliderValue.textContent = String(state.ballCount);
         goalSlider.min = String(GOAL_MIN);

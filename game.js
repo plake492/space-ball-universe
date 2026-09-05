@@ -43,6 +43,8 @@
     const SHIP_SPEED = 840;
     const SHIP_ACCEL = 2000;
     const SHIP_DECEL = 1500;
+    const BOOST_DRAIN = 5;
+    const BOOST_REFILL = 7.5;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 5;
     const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
@@ -437,6 +439,7 @@
         volume: saved.volume == null ? 100 : clampVolume(saved.volume),
         speed: 0,
         boost: false,
+        boostFuel: 1,
         won: false,
         menuOpen: false,
         settingsLite: false,
@@ -2029,6 +2032,7 @@
         updateEngine(moving);
         const cam = camera();
 
+        updateBoostFuel(dt, paused);
         updateComets(dt, now, paused);
         drawSpace(cam);
         drawHoles(cam, now);
@@ -2050,13 +2054,47 @@
 
     const boostHold = { pointer: false, space: false };
 
-    function syncBoost() {
-        const on = !state.menuOpen && !state.won && !state.resumeOpen && !state.boardOpen && (boostHold.pointer || boostHold.space);
-        state.boost = on;
+    function boostWanted() {
+        return !state.menuOpen && !state.won && !state.resumeOpen && !state.boardOpen && (boostHold.pointer || boostHold.space);
+    }
+
+    function showBoostFuel() {
+        const fill = document.getElementById("boost-fuel");
+        const meter = fill && fill.parentElement;
+        const pct = Math.round(state.boostFuel * 100);
+        if (fill) fill.style.height = `${pct}%`;
+        if (meter) meter.setAttribute("aria-valuenow", String(pct));
+    }
+
+    function applyBoost() {
+        const on = boostWanted() && state.boostFuel > 0;
         const button = document.getElementById("boost-btn");
+        if (state.boost !== on) {
+            state.boost = on;
+            fadeEngineRate();
+        }
         button.classList.toggle("is-on", on);
+        button.classList.toggle("is-empty", state.boostFuel <= 0);
         button.setAttribute("aria-pressed", on ? "true" : "false");
-        fadeEngineRate();
+        showBoostFuel();
+    }
+
+    function updateBoostFuel(dt, paused) {
+        if (paused) {
+            if (state.boost) applyBoost();
+            return;
+        }
+        const want = boostWanted();
+        if (want && state.boostFuel > 0) {
+            state.boostFuel = Math.max(0, state.boostFuel - dt / BOOST_DRAIN);
+        } else if (!want && state.boostFuel < 1) {
+            state.boostFuel = Math.min(1, state.boostFuel + dt / BOOST_REFILL);
+        }
+        applyBoost();
+    }
+
+    function syncBoost() {
+        applyBoost();
     }
 
     function bindKeys() {
@@ -2215,6 +2253,7 @@
         state.shipY = center;
         state.heading = -Math.PI / 2;
         state.speed = 0;
+        state.boostFuel = 1;
         state.balls = [];
         state.holes = [];
         state.nebulae = [];

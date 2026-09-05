@@ -64,7 +64,12 @@
                 <div class="joystick-knob" id="joystick-knob"></div>
             </div>
         </div>
-        <button type="button" class="boost-btn" id="boost-btn" aria-pressed="false" aria-label="Hold to double ship speed">2×</button>
+        <div class="boost-wrap">
+            <div class="boost-fuel" role="meter" aria-label="Boost fuel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                <div class="boost-fuel-fill" id="boost-fuel"></div>
+            </div>
+            <button type="button" class="boost-btn" id="boost-btn" aria-pressed="false" aria-label="Hold to double ship speed">2×</button>
+        </div>
     </div>
 
     <div class="minimap-stage" id="minimap-stage">

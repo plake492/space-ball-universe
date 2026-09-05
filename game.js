@@ -703,7 +703,6 @@
     ];
     const METEOR_MIN = 5000;
     const METEOR_MAX = 10000;
-    const METEOR_POINTS = 500;
     const METEOR_TINTS = [
         { r: 168, g: 128, b: 92 },
         { r: 118, g: 108, b: 98 },
@@ -1090,18 +1089,7 @@
         flash.classList.add("is-on");
     }
 
-    function hitSpikes(index) {
-        const ball = state.balls[index];
-        if (ball) {
-            state.pops.push({
-                x: ball.x,
-                y: ball.y,
-                r: ball.r,
-                color: ball.color,
-                life: 1,
-            });
-            state.balls.splice(index, 1);
-        }
+    function applyHazardHit() {
         state.found = 0;
         state.score = 0;
         flashSpikeBorder();
@@ -1119,6 +1107,36 @@
         }
         updateHud();
         savePlay();
+    }
+
+    function hitSpikes(index) {
+        const ball = state.balls[index];
+        if (ball) {
+            state.pops.push({
+                x: ball.x,
+                y: ball.y,
+                r: ball.r,
+                color: ball.color,
+                life: 1,
+            });
+            state.balls.splice(index, 1);
+        }
+        applyHazardHit();
+    }
+
+    function hitMeteor(index) {
+        const meteor = state.meteors[index];
+        if (meteor) {
+            state.pops.push({
+                x: meteor.x,
+                y: meteor.y,
+                r: meteorBody(meteor),
+                color: meteorColor(meteor),
+                life: 1,
+            });
+            state.meteors.splice(index, 1);
+        }
+        applyHazardHit();
     }
 
     function cometBody(comet) {
@@ -1170,26 +1188,8 @@
         for (let i = state.meteors.length - 1; i >= 0; i -= 1) {
             const meteor = state.meteors[i];
             if (Math.hypot(meteor.x - state.shipX, meteor.y - state.shipY) > meteorBody(meteor) + SHIP_RADIUS) continue;
-            state.meteors.splice(i, 1);
-            state.score += METEOR_POINTS;
-            state.lifetime += METEOR_POINTS;
-            saveSettings();
-            state.pops.push({
-                x: meteor.x,
-                y: meteor.y,
-                r: meteorBody(meteor),
-                color: meteorColor(meteor),
-                life: 1,
-            });
-            state.floaters.push({
-                x: meteor.x,
-                y: meteor.y,
-                points: METEOR_POINTS,
-                life: 1,
-            });
-            playHit();
-            updateHud();
-            savePlay();
+            hitMeteor(i);
+            return;
         }
     }
 
@@ -1202,7 +1202,6 @@
                 if (ball.hasSpikes) {
                     hitSpikes(i);
                     collectComets();
-                    collectMeteors();
                     return;
                 }
                 state.balls.splice(i, 1);

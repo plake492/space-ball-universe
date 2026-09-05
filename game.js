@@ -718,7 +718,7 @@
             angle = -Math.PI / 2 + rand(-0.65, 0.65);
         }
         const near = 0.28 + 0.72 * Math.random();
-        const speed = rand(90, 240) * (0.7 + 0.5 * near);
+        const speed = rand(99, 288) * (0.7 + 0.5 * near);
         return {
             x,
             y,

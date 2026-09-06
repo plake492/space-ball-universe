@@ -1046,26 +1046,34 @@
         const sizes = [160, 220, 300, 380];
         const pad = 520;
         for (let i = 0; i < count; i += 1) {
-            const r = pick(sizes);
-            const minShip = r + 720;
+            const nearby = i === 0;
+            const r = nearby ? 220 : pick(sizes);
+            const minShip = nearby ? 0 : r + 720;
             let x = 0;
             let y = 0;
             let attempts = 0;
-            do {
-                x = rand(pad, state.world - pad);
-                y = rand(pad, state.world - pad);
-                attempts += 1;
-            } while (
-                (Math.hypot(x - state.shipX, y - state.shipY) < minShip || tooCloseToHoles(x, y, r * 1.6)) &&
-                attempts < 240
-            );
+            if (nearby) {
+                const dist = Math.max(260, r * 1.15 + 180);
+                const a = rand(0, Math.PI * 2);
+                x = Math.min(state.world - pad, Math.max(pad, state.shipX + Math.cos(a) * dist));
+                y = Math.min(state.world - pad, Math.max(pad, state.shipY + Math.sin(a) * dist));
+            } else {
+                do {
+                    x = rand(pad, state.world - pad);
+                    y = rand(pad, state.world - pad);
+                    attempts += 1;
+                } while (
+                    (Math.hypot(x - state.shipX, y - state.shipY) < minShip || tooCloseToHoles(x, y, r * 1.6)) &&
+                    attempts < 240
+                );
+            }
             state.holes.push({
                 x,
                 y,
                 r,
                 angle: rand(-0.4, 0.4),
                 spin: rand(0, Math.PI * 2),
-                near: 0.22 + 0.78 * (Math.random() ** 0.85),
+                near: nearby ? 1 : 0.22 + 0.78 * (Math.random() ** 0.85),
             });
         }
         // Draw order depends only on `near`, which is fixed here, so sort once
@@ -3978,6 +3986,25 @@
                 miniCtx.fill();
             }
             miniCtx.globalAlpha = 1;
+        }
+
+        for (const hole of state.holes) {
+            const p = toMinimap(hole.x, hole.y, size, scale);
+            const r = Math.max(5 * mark, hole.r * scale * 0.22);
+            if (p.x < -r * 2 || p.y < -r * 2 || p.x > size + r * 2 || p.y > size + r * 2) continue;
+            miniCtx.fillStyle = "rgba(255, 140, 48, 0.28)";
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r * 1.8, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.fillStyle = "#000000";
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r * 0.72, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.strokeStyle = "rgba(255, 176, 80, 0.85)";
+            miniCtx.lineWidth = Math.max(1, 1.2 * mark);
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            miniCtx.stroke();
         }
 
         for (const pair of state.neutrons) {

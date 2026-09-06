@@ -53,6 +53,7 @@
     const SHIELD_SHIP_R = 38;
     const SHIP_RADIUS = 22;
     const CARGO_PER = 5;
+    const CARGO_MAX = 30;
     const CARGO_R_MIN = 28;
     const CARGO_R_MAX = 40;
     const CARGO_SPIN = 0.02;
@@ -3259,7 +3260,7 @@
 
     function cargoMoonCount() {
         if (state.found <= 0) return 0;
-        return Math.ceil(state.found / CARGO_PER);
+        return Math.min(CARGO_MAX, Math.ceil(state.found / CARGO_PER));
     }
 
     function cargoScale() {

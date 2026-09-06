@@ -68,6 +68,7 @@
     const ENGINE_GAIN = 0.38;
     const ENGINE_BOOST_RATE = 1.25;
     const HIT_SRC = "public/audio/balls/audio_319c456817.mp3";
+    const COLLIDE_SRC = "public/audio/balls/collide.mp3";
     const ATMO_SRC = "public/audio/atmosphere/drone-outerspace-hum-danijel-zambo-1-02-27.mp3";
     const ATMO_GAIN = 0.14;
     const ATMO_FADE = 1.4;
@@ -1527,7 +1528,7 @@
     function burstShield() {
         state.shield = false;
         state.shieldRings.push({ life: 1 });
-        playHit();
+        playCollide();
         savePlay();
         return true;
     }
@@ -1544,7 +1545,7 @@
         state.found = 0;
         state.score = 0;
         flashSpikeBorder();
-        playHit();
+        playCollide();
         const now = performance.now();
         if (state.trial) {
             timer.elapsed += SPIKE_TRIAL_MS;
@@ -1858,6 +1859,7 @@
         loading: null,
         wanted: false,
         hit: null,
+        collide: null,
         atmo: null,
         atmoSource: null,
         atmoGain: null,
@@ -1934,12 +1936,14 @@
     async function loadEngine() {
         try {
             const ctx = engineContext();
-            const [engineBytes, hitBytes] = await Promise.all([
+            const [engineBytes, hitBytes, collideBytes] = await Promise.all([
                 fetch(ENGINE_SRC).then((res) => res.arrayBuffer()),
                 fetch(HIT_SRC).then((res) => res.arrayBuffer()),
+                fetch(COLLIDE_SRC).then((res) => res.arrayBuffer()).catch(() => null),
             ]);
             engine.buffer = await ctx.decodeAudioData(engineBytes.slice(0));
             engine.hit = await ctx.decodeAudioData(hitBytes.slice(0));
+            if (collideBytes) engine.collide = await ctx.decodeAudioData(collideBytes.slice(0));
             if (engine.wanted && pageIsVisible()) startEngine(true);
             loadAtmosphere();
         } catch {
@@ -1976,17 +1980,25 @@
         engine.atmoGain = gain;
     }
 
-    function playHit() {
-        if (!pageIsVisible() || !engine.hit || masterGain() <= 0) return;
+    function playCue(buffer) {
+        if (!pageIsVisible() || !buffer || masterGain() <= 0) return;
         const ctx = engineContext();
         if (ctx.state === "suspended") ctx.resume();
         const source = ctx.createBufferSource();
-        source.buffer = engine.hit;
+        source.buffer = buffer;
         const gain = ctx.createGain();
         gain.gain.value = masterGain();
         source.connect(gain);
         gain.connect(ctx.destination);
         source.start();
+    }
+
+    function playHit() {
+        playCue(engine.hit);
+    }
+
+    function playCollide() {
+        playCue(engine.collide || engine.hit);
     }
 
     function engineRate() {

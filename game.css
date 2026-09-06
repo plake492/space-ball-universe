@@ -614,9 +614,9 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     pointer-events: none;
 }
 
-.ship-btn img[src*="cat.png"],
-.ship-btn img[src*="wolf.png"],
-.ship-btn img[src*="ufo.png"] {
+.ship-btn img[src*="cat.webp"],
+.ship-btn img[src*="wolf.webp"],
+.ship-btn img[src*="ufo.webp"] {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }

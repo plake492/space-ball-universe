@@ -43,17 +43,17 @@
     ];
     const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1"];
     const SHIP_SRC = {
-        "ship-1": "public/images/ships/ship-1.png",
-        cat: "public/images/ships/cat.png",
-        wolf: "public/images/ships/wolf.png",
-        cube: "public/images/ships/cube.png",
-        "hello-kitty": "public/images/ships/hello-kitty.png",
-        ufo: "public/images/ships/ufo.png",
-        harlie: "public/images/ships/harlie.png",
-        selah: "public/images/ships/selah.png",
-        guitar: "public/images/ships/guitar.png",
-        "selah-harlie": "public/images/ships/selah-harlie.png",
-        "harlie-ship-1": "public/images/ships/harlie-ship-1.png",
+        "ship-1": "public/images/ships/ship-1.webp",
+        cat: "public/images/ships/cat.webp",
+        wolf: "public/images/ships/wolf.webp",
+        cube: "public/images/ships/cube.webp",
+        "hello-kitty": "public/images/ships/hello-kitty.webp",
+        ufo: "public/images/ships/ufo.webp",
+        harlie: "public/images/ships/harlie.webp",
+        selah: "public/images/ships/selah.webp",
+        guitar: "public/images/ships/guitar.webp",
+        "selah-harlie": "public/images/ships/selah-harlie.webp",
+        "harlie-ship-1": "public/images/ships/harlie-ship-1.webp",
     };
     const CLASSIC_SHIP_SVG = `<svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>`;
     const SHIP_COST_START = 5000;

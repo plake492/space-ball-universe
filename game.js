@@ -64,9 +64,9 @@
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 5;
     const ZOOM_STEP = 0.5;
-    const ENGINE_SRC = "public/audio/ship/freesound_community-spacecraft-engine-loop-01-58205.mp3";
-    const ENGINE_LOOP_START = 0.5;
-    const ENGINE_LOOP_END = 15;
+    const ENGINE_SRC = "public/audio/ship/ship-sound.mp3";
+    const ENGINE_LOOP_START = 0;
+    const ENGINE_LOOP_END = 12.23;
     const ENGINE_FADE = 0.3;
     const ENGINE_FADE_IN = 0.15;
     const ENGINE_GAIN = 0.38;

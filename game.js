@@ -3364,10 +3364,14 @@
             ctx.translate(cx + moon.x, cy + moon.y);
             ctx.shadowColor = moon.color;
             ctx.shadowBlur = 10;
-            const fill = ctx.createRadialGradient(r * -0.28, r * -0.32, r * 0.1, 0, 0, r);
-            fill.addColorStop(0, paints[0] || moon.color);
-            fill.addColorStop(1, paints[paints.length - 1] || moon.color);
-            ctx.fillStyle = fill;
+            if (!moon.fill || moon.fillR !== r) {
+                const fill = ctx.createRadialGradient(r * -0.28, r * -0.32, r * 0.1, 0, 0, r);
+                fill.addColorStop(0, paints[0] || moon.color);
+                fill.addColorStop(1, paints[paints.length - 1] || moon.color);
+                moon.fill = fill;
+                moon.fillR = r;
+            }
+            ctx.fillStyle = moon.fill;
             ctx.beginPath();
             ctx.arc(0, 0, r, 0, Math.PI * 2);
             ctx.fill();
@@ -3779,25 +3783,34 @@
         };
     }
 
-    function drawNeutronStar(x, y, r, cam) {
-        const sx = x - cam.x;
-        const sy = y - cam.y;
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 4.6);
+    const neutronGlows = new Map();
+
+    function neutronGlow(r) {
+        const hit = neutronGlows.get(r);
+        if (hit) return hit;
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 4.6);
         glow.addColorStop(0, "rgba(255, 255, 255, 1)");
         glow.addColorStop(0.16, "rgba(255, 255, 255, 0.95)");
         glow.addColorStop(0.4, "rgba(200, 225, 255, 0.42)");
         glow.addColorStop(1, "rgba(255, 255, 255, 0)");
-        ctx.fillStyle = glow;
+        if (neutronGlows.size > 32) neutronGlows.clear();
+        neutronGlows.set(r, glow);
+        return glow;
+    }
+
+    function drawNeutronStar(x, y, r, cam) {
+        ctx.save();
+        ctx.translate(x - cam.x, y - cam.y);
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = neutronGlow(r);
         ctx.beginPath();
-        ctx.arc(sx, sy, r * 4.6, 0, Math.PI * 2);
+        ctx.arc(0, 0, r * 4.6, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#ffffff";
         ctx.shadowColor = "#ffffff";
         ctx.shadowBlur = r * 2.4;
         ctx.beginPath();
-        ctx.arc(sx, sy, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
@@ -3831,33 +3844,42 @@
             ctx.translate(x, y);
             ctx.rotate(comet.angle);
             ctx.globalCompositeOperation = "lighter";
-            const streak = ctx.createLinearGradient(-comet.tail, 0, comet.r * 2, 0);
-            streak.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
-            streak.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${0.08 * a})`);
-            streak.addColorStop(0.86, `rgba(${r}, ${g}, ${b}, ${0.28 * a})`);
-            streak.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.55 * a})`);
-            ctx.fillStyle = streak;
+            if (!comet.streakFill) {
+                const streak = ctx.createLinearGradient(-comet.tail, 0, comet.r * 2, 0);
+                streak.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+                streak.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${0.08 * a})`);
+                streak.addColorStop(0.86, `rgba(${r}, ${g}, ${b}, ${0.28 * a})`);
+                streak.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.55 * a})`);
+                comet.streakFill = streak;
+            }
+            ctx.fillStyle = comet.streakFill;
             ctx.beginPath();
             ctx.moveTo(-comet.tail, 0);
             ctx.lineTo(comet.r * 0.4, comet.r * 1.15);
             ctx.lineTo(comet.r * 0.4, -comet.r * 1.15);
             ctx.closePath();
             ctx.fill();
-            const coma = ctx.createRadialGradient(0, 0, 0, 0, 0, comet.r * 4.2);
-            coma.addColorStop(0, `rgba(255, 255, 255, ${0.55 * a})`);
-            coma.addColorStop(0.28, `rgba(${r}, ${g}, ${b}, ${0.42 * a})`);
-            coma.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-            ctx.fillStyle = coma;
+            if (!comet.comaFill) {
+                const coma = ctx.createRadialGradient(0, 0, 0, 0, 0, comet.r * 4.2);
+                coma.addColorStop(0, `rgba(255, 255, 255, ${0.55 * a})`);
+                coma.addColorStop(0.28, `rgba(${r}, ${g}, ${b}, ${0.42 * a})`);
+                coma.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+                comet.comaFill = coma;
+            }
+            ctx.fillStyle = comet.comaFill;
             ctx.beginPath();
             ctx.arc(0, 0, comet.r * 4.2, 0, Math.PI * 2);
             ctx.fill();
             ctx.globalCompositeOperation = "source-over";
             const ball = comet.r * 1.35;
-            const core = ctx.createRadialGradient(0, 0, 0, 0, 0, ball);
-            core.addColorStop(0, "#ffffff");
-            core.addColorStop(0.45, `rgb(${r}, ${g}, ${b})`);
-            core.addColorStop(1, `rgb(${Math.round(r * 0.72)}, ${Math.round(g * 0.72)}, ${Math.round(b * 0.72)})`);
-            ctx.fillStyle = core;
+            if (!comet.coreFill) {
+                const core = ctx.createRadialGradient(0, 0, 0, 0, 0, ball);
+                core.addColorStop(0, "#ffffff");
+                core.addColorStop(0.45, `rgb(${r}, ${g}, ${b})`);
+                core.addColorStop(1, `rgb(${Math.round(r * 0.72)}, ${Math.round(g * 0.72)}, ${Math.round(b * 0.72)})`);
+                comet.coreFill = core;
+            }
+            ctx.fillStyle = comet.coreFill;
             ctx.beginPath();
             ctx.arc(0, 0, ball, 0, Math.PI * 2);
             ctx.fill();
@@ -3896,12 +3918,15 @@
             ctx.translate(x, y);
             ctx.rotate(meteor.angle);
             ctx.globalCompositeOperation = "lighter";
-            const streak = ctx.createLinearGradient(-meteor.tail, 0, 0, 0);
-            streak.addColorStop(0, "rgba(255, 80, 20, 0)");
-            streak.addColorStop(0.55, `rgba(255, 110, 32, ${0.12 * a})`);
-            streak.addColorStop(0.86, `rgba(255, 176, 64, ${0.38 * a})`);
-            streak.addColorStop(1, `rgba(255, 230, 160, ${0.55 * a})`);
-            ctx.fillStyle = streak;
+            if (!meteor.streakFill) {
+                const streak = ctx.createLinearGradient(-meteor.tail, 0, 0, 0);
+                streak.addColorStop(0, "rgba(255, 80, 20, 0)");
+                streak.addColorStop(0.55, `rgba(255, 110, 32, ${0.12 * a})`);
+                streak.addColorStop(0.86, `rgba(255, 176, 64, ${0.38 * a})`);
+                streak.addColorStop(1, `rgba(255, 230, 160, ${0.55 * a})`);
+                meteor.streakFill = streak;
+            }
+            ctx.fillStyle = meteor.streakFill;
             ctx.beginPath();
             ctx.moveTo(-meteor.tail, 0);
             ctx.lineTo(-meteor.r * 0.35, meteor.r * 0.42);
@@ -3912,11 +3937,14 @@
             ctx.globalCompositeOperation = "source-over";
             ctx.rotate(meteor.spin);
             meteorPath(ctx, meteor, 1);
-            const shade = ctx.createRadialGradient(-meteor.r * 0.28, -meteor.r * 0.22, meteor.r * 0.12, 0, 0, meteor.r * 1.15);
-            shade.addColorStop(0, `rgb(${Math.min(255, r + 38)}, ${Math.min(255, g + 28)}, ${Math.min(255, b + 18)})`);
-            shade.addColorStop(0.55, `rgb(${r}, ${g}, ${b})`);
-            shade.addColorStop(1, `rgb(${Math.round(r * 0.42)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.38)})`);
-            ctx.fillStyle = shade;
+            if (!meteor.shadeFill) {
+                const shade = ctx.createRadialGradient(-meteor.r * 0.28, -meteor.r * 0.22, meteor.r * 0.12, 0, 0, meteor.r * 1.15);
+                shade.addColorStop(0, `rgb(${Math.min(255, r + 38)}, ${Math.min(255, g + 28)}, ${Math.min(255, b + 18)})`);
+                shade.addColorStop(0.55, `rgb(${r}, ${g}, ${b})`);
+                shade.addColorStop(1, `rgb(${Math.round(r * 0.42)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.38)})`);
+                meteor.shadeFill = shade;
+            }
+            ctx.fillStyle = meteor.shadeFill;
             ctx.fill();
             ctx.restore();
         }

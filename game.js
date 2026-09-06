@@ -2597,7 +2597,7 @@
         return Number.isFinite(near) ? Math.min(1, Math.max(0.18, near)) : 1;
     }
 
-    /* ---------- Gargantua-style hole (playground only) ----------
+    /* ---------- Gargantua-style hole ----------
        Geometry for a disk viewed a couple of degrees off its plane: the far
        side sits above the shadow, the near side crosses in front, and light
        from behind is lensed over the top and under the bottom into a
@@ -2606,7 +2606,10 @@
        so they fuse into one sheet instead of reading as separate rings. */
     const NO_DASH = [];
     const G_BANDS = 30;
-    const G_INNER = 1.52;   // inner disk edge, in shadow radii
+    // Hugs the shadow: Gargantua spins near-maximally, so its ISCO sits close to
+    // the horizon. Further out and the disk's transparent inner hole pokes past
+    // the sphere on both sides and reads as a black lens over the band.
+    const G_INNER = 1.06;   // inner disk edge, in shadow radii
     const G_OUTER = 3.05;
     const G_FLAT = 0.105;   // vertical squash at the inner edge
     const G_FLARE = 0.55;   // disks thicken outward
@@ -2850,106 +2853,7 @@
     }
 
     function drawHole(hole, cam, now) {
-        if (PLAYGROUND) {
-            drawGargantua(hole, cam, now);
-            return;
-        }
-        const near = holeNear(hole);
-        const x = hole.x - cam.x;
-        const y = hole.y - cam.y;
-        const r = hole.r * (0.32 + 0.68 * near);
-        const reach = r * 3.4;
-        if (offView(x, y, reach, cam)) return;
-
-        const spin = now * 0.0001 + hole.spin;
-        const rx = r * 2.7;
-        const ry = r * 0.34;
-
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(hole.angle);
-        ctx.globalAlpha = 0.16 + 0.84 * near;
-
-        if (!hole.warpFill) {
-            const warp = ctx.createRadialGradient(0, 0, r * 0.35, 0, 0, r * 3.2);
-            warp.addColorStop(0, "rgba(0, 0, 0, 0.62)");
-            warp.addColorStop(0.42, "rgba(10, 4, 18, 0.22)");
-            warp.addColorStop(1, "rgba(0, 0, 0, 0)");
-            hole.warpFill = warp;
-        }
-        ctx.fillStyle = hole.warpFill;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 3.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(-rx - r, -r * 3, rx * 2 + r * 2, r * 3);
-        ctx.clip();
-        ctx.strokeStyle = holeDiskGradient(r, spin, 0.55);
-        ctx.lineWidth = r * 0.62;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = holeDiskGradient(r, spin, 0.32);
-        ctx.lineWidth = r * 0.2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx * 1.18, ry * 1.22, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
-        ctx.strokeStyle = holeDiskGradient(r, spin, 0.78);
-        ctx.lineWidth = r * 0.34;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 1.08, r * 1.02, 0, Math.PI * 1.08, Math.PI * 1.92);
-        ctx.stroke();
-        ctx.strokeStyle = holeDiskGradient(r, spin, 0.45);
-        ctx.lineWidth = r * 0.16;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 1.22, r * 1.14, 0, Math.PI * 1.12, Math.PI * 1.88);
-        ctx.stroke();
-
-        if (!hole.photonFill) {
-            const photon = ctx.createRadialGradient(0, 0, r * 0.9, 0, 0, r * 1.2);
-            photon.addColorStop(0, "#000000");
-            photon.addColorStop(0.74, "#000000");
-            photon.addColorStop(0.88, "rgba(255, 206, 140, 0.95)");
-            photon.addColorStop(1, "rgba(255, 130, 40, 0)");
-            hole.photonFill = photon;
-        }
-        ctx.fillStyle = hole.photonFill;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#000000";
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(-rx - r, 0, rx * 2 + r * 2, r * 3);
-        ctx.clip();
-        ctx.strokeStyle = holeDiskGradient(r, spin, 1);
-        ctx.lineWidth = r * 0.7;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = holeDiskGradient(r, spin, 0.62);
-        ctx.lineWidth = r * 0.22;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx * 1.18, ry * 1.22, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
-        ctx.strokeStyle = holeDiskGradient(r, spin, 0.38);
-        ctx.lineWidth = r * 0.2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 1.1, r * 0.98, 0, Math.PI * 0.08, Math.PI * 0.92);
-        ctx.stroke();
-
-        ctx.restore();
+        drawGargantua(hole, cam, now);
     }
 
     function ballPulse(ball, now) {
@@ -3354,7 +3258,7 @@
     let cargoSpin = 0;
 
     function cargoMoonCount() {
-        if (!PLAYGROUND || state.found <= 0) return 0;
+        if (state.found <= 0) return 0;
         return Math.ceil(state.found / CARGO_PER);
     }
 
@@ -3404,7 +3308,6 @@
     }
 
     function scatterCargoMoons() {
-        if (!PLAYGROUND) return;
         for (const moon of cargoMoons) {
             if (moon.scatter) continue;
             moon.scatter = true;
@@ -3417,7 +3320,7 @@
     }
 
     function updateCargoMoons(dt) {
-        if (!PLAYGROUND && !cargoMoons.length) return;
+        if (!cargoMoons.length && cargoMoonCount() <= 0) return;
         cargoSpin += CARGO_SPIN * (dt * 60);
         syncCargoMoons();
         const live = cargoMoons.filter((moon) => !moon.scatter).length;

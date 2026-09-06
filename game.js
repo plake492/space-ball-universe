@@ -213,17 +213,39 @@
         return String(value || "").replace(/\s+/g, " ").trim().slice(0, NAME_MAX);
     }
 
-    function shipUnlockAt(id) {
+    function shipCost(id) {
         const index = SHIP_IDS.indexOf(id);
         if (index <= 0) return 0;
         const raw = SHIP_COST_START * (SHIP_COST_GROW ** (index - 1));
         return Math.ceil(raw / 10) * 10;
     }
 
-    function shipUnlocked(id, lifetime, reqShips) {
+    function normalizeOwnedShips(raw, lifetime) {
+        const owned = new Set(["classic"]);
+        if (Array.isArray(raw)) {
+            for (const id of raw) {
+                if (SHIP_IDS.includes(id)) owned.add(id);
+            }
+            return SHIP_IDS.filter((id) => owned.has(id));
+        }
+        const points = Math.max(0, Math.round(Number(lifetime) || 0));
+        return SHIP_IDS.filter((id) => shipCost(id) <= points);
+    }
+
+    function shipOwned(id, ownedShips) {
+        const list = ownedShips ?? state.ownedShips;
+        return id === "classic" || (Array.isArray(list) && list.includes(id));
+    }
+
+    function shipUnlocked(id, ownedShips, reqShips) {
         if (PLAYGROUND) return true;
         if ((reqShips ?? state.reqShips) === false) return true;
-        return (lifetime ?? state.lifetime) >= shipUnlockAt(id);
+        return shipOwned(id, ownedShips);
+    }
+
+    function grantShip(id) {
+        if (!SHIP_IDS.includes(id) || shipOwned(id)) return;
+        state.ownedShips = normalizeOwnedShips([...(state.ownedShips || []), id], 0);
     }
 
     function clampVolume(value) {
@@ -368,9 +390,10 @@
             const starDrift = data.starDrift !== false;
             const sky = SKY_NAMES.includes(data.sky) ? data.sky : "stars";
             const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
+            const ownedShips = normalizeOwnedShips(data.ownedShips, lifetime);
             const reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
-            const ship = shipUnlocked(wanted, lifetime, reqShips) ? wanted : "classic";
+            const ship = shipUnlocked(wanted, ownedShips, reqShips) ? wanted : "classic";
             const name = normalizeName(data.name);
             const difficulty = data.difficulty === "custom" || DIFFICULTIES[data.difficulty] ? data.difficulty : "";
             const trial = data.trial === true;
@@ -406,6 +429,7 @@
                     ship,
                     name,
                     lifetime,
+                    ownedShips,
                     reqShips,
                     difficulty,
                     trial,
@@ -435,6 +459,7 @@
                 ship,
                 name,
                 lifetime,
+                ownedShips,
                 reqShips,
                 difficulty,
                 trial,
@@ -452,7 +477,7 @@
                 zoom,
             };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), infiniteFuel: false, zoom: 1 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), infiniteFuel: false, zoom: 1 };
         }
     }
 
@@ -470,6 +495,7 @@
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
+                ownedShips: state.ownedShips,
                 reqShips: state.reqShips,
                 difficulty: state.difficulty || "",
                 trial: state.trial,
@@ -795,6 +821,7 @@
         ship: saved.ship,
         name: saved.name,
         lifetime: saved.lifetime,
+        ownedShips: saved.ownedShips || ["classic"],
         reqShips: saved.reqShips,
         difficulty: saved.difficulty || "",
         trial: Boolean(saved.trial),
@@ -1687,6 +1714,8 @@
     // querySelectorAll calls, which is wasted work on a ball pickup.
     function updateScoreHud() {
         if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
+        const storePoints = document.getElementById("store-points");
+        if (storePoints) storePoints.textContent = state.lifetime.toLocaleString();
         foundEl.textContent = String(state.found);
         if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
         goalEl.textContent = String(state.goal);
@@ -1725,12 +1754,16 @@
         }
         for (const button of document.querySelectorAll(".ship-btn")) {
             const id = button.dataset.ship;
-            const locked = !shipUnlocked(id);
+            const cost = shipCost(id);
+            const owned = shipOwned(id);
+            const forSale = !PLAYGROUND && !owned && state.reqShips;
+            const canBuy = forSale && state.lifetime >= cost;
             button.classList.toggle("is-on", id === state.ship);
-            button.classList.toggle("is-locked", locked);
-            button.setAttribute("aria-disabled", locked ? "true" : "false");
+            button.classList.toggle("is-locked", forSale && !canBuy);
+            button.classList.toggle("is-sale", canBuy);
+            button.setAttribute("aria-disabled", forSale && !canBuy ? "true" : "false");
             const need = button.querySelector(".ship-lock");
-            if (need) need.textContent = shipUnlockAt(id).toLocaleString();
+            if (need) need.textContent = forSale ? cost.toLocaleString() : "";
         }
         const fullscreenOn = isFullscreen();
         for (const button of document.querySelectorAll(".fullscreen-btn")) {
@@ -4466,9 +4499,7 @@
         settingsMenu.classList.remove("hidden");
         document.documentElement.classList.add("settings-open");
         document.body.classList.add("settings-open");
-        // Ship unlocks track lifetime points, which grow on every pickup. The full
-        // sweep runs here, when the settings UI becomes visible, rather than on
-        // every pickup as it used to.
+        // Store tiles use lifetime points, so refresh prices when settings open.
         updateHud();
         showSettingsPanel("");
         syncBoost();
@@ -5060,14 +5091,64 @@
             });
         }
 
+        let pendingBuy = "";
+        const buyOverlay = document.getElementById("buy-overlay");
+        const buyCopy = document.getElementById("buy-copy");
+        const buyTitle = document.getElementById("buy-title");
+
+        function closeBuy() {
+            pendingBuy = "";
+            if (buyOverlay) buyOverlay.classList.add("hidden");
+        }
+
+        function openBuy(id, el) {
+            pendingBuy = id;
+            const cost = shipCost(id);
+            const name = (el?.getAttribute("aria-label") || id).replace(/ ship$/i, "");
+            if (buyTitle) buyTitle.textContent = `BUY ${name.toUpperCase()}?`;
+            if (buyCopy) buyCopy.textContent = `Spend ${cost.toLocaleString()} lifetime points?`;
+            if (buyOverlay) buyOverlay.classList.remove("hidden");
+        }
+
+        function selectShip(id) {
+            state.ship = id;
+            loadShipImage(id);
+            saveSettings();
+            updateHud();
+        }
+
+        function purchaseShip(id) {
+            const cost = shipCost(id);
+            if (shipOwned(id) || state.lifetime < cost) return false;
+            state.lifetime -= cost;
+            grantShip(id);
+            selectShip(id);
+            return true;
+        }
+
         for (const button of document.querySelectorAll(".ship-btn")) {
             button.addEventListener("click", () => {
                 const next = button.dataset.ship;
-                if (!SHIP_IDS.includes(next) || next === state.ship || !shipUnlocked(next)) return;
-                state.ship = next;
-                loadShipImage(next);
-                saveSettings();
-                updateHud();
+                if (!SHIP_IDS.includes(next)) return;
+                if (shipUnlocked(next)) {
+                    if (next !== state.ship) selectShip(next);
+                    return;
+                }
+                if (state.lifetime < shipCost(next)) {
+                    button.classList.remove("is-nope");
+                    void button.offsetWidth;
+                    button.classList.add("is-nope");
+                    return;
+                }
+                openBuy(next, button);
+            });
+        }
+        if (buyOverlay) {
+            document.getElementById("buy-cancel").addEventListener("click", closeBuy);
+            document.getElementById("buy-confirm").addEventListener("click", () => {
+                const id = pendingBuy;
+                closeBuy();
+                purchaseShip(id);
             });
         }
 
@@ -5085,6 +5166,7 @@
             document.getElementById("reset-confirm").addEventListener("click", () => {
                 state.wiped = true;
                 state.lifetime = 0;
+                state.ownedShips = ["classic"];
                 state.ship = "classic";
                 try {
                     localStorage.removeItem(PLAY_KEY);
@@ -5253,6 +5335,7 @@
     loadShipImage(state.ship);
     resize();
     restorePlay();
+    saveSettings();
     updateHud();
     bindKeys();
     buildPips();

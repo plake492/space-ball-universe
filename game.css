@@ -567,6 +567,10 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     opacity: 0.42;
 }
 
+.ship-btn.is-sale {
+    opacity: 1;
+}
+
 .ship-lock {
     display: none;
     position: absolute;
@@ -583,8 +587,23 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     color: #e8f6ff;
 }
 
-.ship-btn.is-locked .ship-lock {
+.ship-btn.is-locked .ship-lock,
+.ship-btn.is-sale .ship-lock {
     display: block;
+}
+
+.ship-btn.is-sale .ship-lock {
+    background: rgba(79, 124, 255, 0.88);
+}
+
+@keyframes ship-nope {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.ship-btn.is-nope {
+    animation: ship-nope 0.28s ease;
 }
 
 .ship-btn img,
@@ -1354,7 +1373,15 @@ body.home {
 }
 
 .ships-card h1 {
-    margin-bottom: 18px;
+    margin-bottom: 8px;
+}
+
+.store-balance {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(232, 246, 255, 0.78);
 }
 
 .ships-card .ship-choices {

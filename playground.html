@@ -449,12 +449,12 @@
                         <p class="value" id="lifetime-points" aria-label="Lifetime points">0</p>
                     </div>
                     <p class="label">Locks</p>
-                    <div class="pulse-choices" role="group" aria-label="Ship point locks">
+                    <div class="pulse-choices" role="group" aria-label="Ship store prices">
                         <button type="button" class="req-btn is-on" data-req="on">On</button>
                         <button type="button" class="req-btn" data-req="off">Off</button>
                     </div>
-                    <p class="label ship-picker-label">Ship</p>
-                    <div class="ship-choices" role="group" aria-label="Ship">
+                    <p class="label ship-picker-label">Store</p>
+                    <div class="ship-choices" role="group" aria-label="Ship store">
                     <button type="button" class="ship-btn is-on" data-ship="classic" aria-label="Classic ship">
                         <svg viewBox="0 0 32 40" aria-hidden="true">
                             <path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/>
@@ -518,10 +518,21 @@
         </div>
     </div>
 
+    <div class="overlay hidden" id="buy-overlay" role="dialog" aria-modal="true" aria-labelledby="buy-title">
+        <div class="win-card resume-card">
+            <h1 id="buy-title">BUY SHIP?</h1>
+            <p id="buy-copy">Spend points to own this ship?</p>
+            <div class="resume-actions">
+                <button type="button" id="buy-cancel">Cancel</button>
+                <button type="button" class="resume-continue" id="buy-confirm">Buy</button>
+            </div>
+        </div>
+    </div>
+
     <div class="overlay hidden" id="reset-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
         <div class="win-card resume-card">
             <h1 id="reset-title">RESET ALL?</h1>
-            <p>This erases lifetime points, unlocked ships, the leaderboard, and any game in progress.</p>
+            <p>This erases lifetime points, purchased ships, the leaderboard, and any game in progress.</p>
             <div class="resume-actions">
                 <button type="button" id="reset-cancel">Cancel</button>
                 <button type="button" class="reset-confirm" id="reset-confirm">Reset</button>

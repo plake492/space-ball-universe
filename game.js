@@ -56,6 +56,7 @@
     const NEUTRON_ORBIT = 34;
     const NEUTRON_SPEED = 8.6;
     const NEUTRON_PAIRS = 1;
+    const NEUTRON_SWEEP = 250;
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 5;
     const ZOOM_STEP = 0.5;
@@ -427,6 +428,13 @@
                 spikes: state.spikes,
                 meteorOn: state.meteorOn,
                 infiniteFuel: state.infiniteFuel,
+                neutrons: state.neutrons.map((pair) => ({
+                    x: pair.x,
+                    y: pair.y,
+                    spin: pair.spin,
+                    tilt: pair.tilt,
+                    alive: pair.alive ? [pair.alive[0] !== false, pair.alive[1] !== false] : [true, true],
+                })),
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -465,6 +473,13 @@
                     if (next && !next.hasSpikes) taken.push(next);
                 }
             }
+            const neutrons = [];
+            if (Array.isArray(data.neutrons)) {
+                for (const pair of data.neutrons) {
+                    const next = normalizeNeutron(pair);
+                    if (next) neutrons.push(next);
+                }
+            }
             const found = Math.max(0, Math.round(Number(data.found) || 0));
             const score = Math.max(0, Math.round(Number(data.score) || 0));
             const shipX = Number(data.shipX);
@@ -486,6 +501,8 @@
                 hasDrops: Array.isArray(data.drops),
                 shield: data.shield === true,
                 taken,
+                neutrons,
+                hasNeutrons: Array.isArray(data.neutrons),
             };
         } catch {
             return null;
@@ -837,6 +854,7 @@
                 speed: NEUTRON_SPEED,
                 spin: rand(0, Math.PI * 2),
                 tilt: rand(0.32, 0.48),
+                alive: [true, true],
             });
         }
     }
@@ -1135,6 +1153,27 @@
         const r = Number(drop.r) || SHIELD_DROP_R;
         if (!Number.isFinite(x) || !Number.isFinite(y) || r <= 0) return null;
         return { type: "shield", x, y, r };
+    }
+
+    function normalizeNeutron(pair) {
+        const x = Number(pair && pair.x);
+        const y = Number(pair && pair.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const alive = Array.isArray(pair.alive)
+            ? [pair.alive[0] !== false, pair.alive[1] !== false]
+            : [true, true];
+        if (!alive[0] && !alive[1]) return null;
+        const tilt = Number(pair.tilt);
+        return {
+            x,
+            y,
+            r: NEUTRON_R,
+            orbit: NEUTRON_ORBIT,
+            speed: NEUTRON_SPEED,
+            spin: Number.isFinite(Number(pair.spin)) ? Number(pair.spin) : 0,
+            tilt: Number.isFinite(tilt) ? Math.max(0.2, Math.min(0.7, tilt)) : 0.4,
+            alive,
+        };
     }
 
     function formatBoardDate(at) {
@@ -1554,8 +1593,111 @@
         }
     }
 
-    function collectIfHit() {
+    function planetSnapshot(ball) {
+        return {
+            x: ball.x,
+            y: ball.y,
+            r: ball.r,
+            points: ball.points,
+            color: ball.color,
+            paints: sanitizePaints(ball.paints),
+            litX: ball.litX,
+            litY: ball.litY,
+            pulseMs: ball.pulseMs,
+            pulseOffset: ball.pulseOffset,
+            hasRings: ball.hasRings,
+            ringTilt: ball.ringTilt,
+            hasSpikes: false,
+            spikeCount: ball.spikeCount,
+            spikeSpin: ball.spikeSpin,
+        };
+    }
+
+    function collectPlanet(ball, extras) {
+        state.taken.push(planetSnapshot(ball));
+        state.found += 1;
+        const points = ball.points || ballTypeFor(ball).points;
+        state.score += points;
+        state.lifetime += points;
+        if (!extras || extras.pop !== false) {
+            state.pops.push({
+                x: ball.x,
+                y: ball.y,
+                r: ball.r,
+                color: ball.color,
+                life: 1,
+            });
+        }
+        if (!extras || extras.floater !== false) {
+            state.floaters.push({
+                x: ball.x,
+                y: ball.y,
+                points,
+                life: 1,
+            });
+        }
+        return points;
+    }
+
+    function neutronAlive(pair, index) {
+        return !pair.alive || pair.alive[index] !== false;
+    }
+
+    function hitNeutronStar(pair, index, now) {
+        const star = neutronStarAt(pair, now, index);
+        if (!pair.alive) pair.alive = [true, true];
+        pair.alive[index] = false;
+        state.pops.push({
+            x: star.x,
+            y: star.y,
+            r: 72,
+            grow: NEUTRON_SWEEP,
+            width: 16,
+            color: "#ffffff",
+            burst: true,
+            life: 1,
+        });
+        const sweep = NEUTRON_SWEEP * NEUTRON_SWEEP;
+        for (let i = state.balls.length - 1; i >= 0; i -= 1) {
+            const ball = state.balls[i];
+            if (ball.hasSpikes) continue;
+            const dx = ball.x - star.x;
+            const dy = ball.y - star.y;
+            if (dx * dx + dy * dy > sweep) continue;
+            collectPlanet(ball);
+            state.balls.splice(i, 1);
+        }
+        if (!pair.alive[0] && !pair.alive[1]) {
+            const at = state.neutrons.indexOf(pair);
+            if (at >= 0) state.neutrons.splice(at, 1);
+        }
+        playHit();
+        saveSettings();
+        updateScoreHud();
+        savePlay();
+        maybeWin();
+    }
+
+    function collectNeutrons(now) {
+        const hitR = SHIP_RADIUS + NEUTRON_R * 1.7;
+        const hitR2 = hitR * hitR;
+        for (const pair of state.neutrons) {
+            for (let i = 0; i < 2; i += 1) {
+                if (!neutronAlive(pair, i)) continue;
+                const star = neutronStarAt(pair, now, i);
+                const dx = star.x - state.shipX;
+                const dy = star.y - state.shipY;
+                if (dx * dx + dy * dy <= hitR2) {
+                    hitNeutronStar(pair, i, now);
+                    return;
+                }
+            }
+        }
+    }
+
+    function collectIfHit(now) {
         collectDrops();
+        collectNeutrons(now);
         // Runs against every ball in the world each frame, so compare squared
         // distances and hoist the ship radius out of the loop.
         const spikeReach = shipHitRadius();
@@ -1571,42 +1713,9 @@
                     collectComets();
                     return;
                 }
-                state.taken.push({
-                    x: ball.x,
-                    y: ball.y,
-                    r: ball.r,
-                    points: ball.points,
-                    color: ball.color,
-                    paints: sanitizePaints(ball.paints),
-                    litX: ball.litX,
-                    litY: ball.litY,
-                    pulseMs: ball.pulseMs,
-                    pulseOffset: ball.pulseOffset,
-                    hasRings: ball.hasRings,
-                    ringTilt: ball.ringTilt,
-                    hasSpikes: false,
-                    spikeCount: ball.spikeCount,
-                    spikeSpin: ball.spikeSpin,
-                });
+                collectPlanet(ball);
                 state.balls.splice(i, 1);
-                state.found += 1;
-                const points = ball.points || ballTypeFor(ball).points;
-                state.score += points;
-                state.lifetime += points;
                 saveSettings();
-                state.pops.push({
-                    x: ball.x,
-                    y: ball.y,
-                    r: ball.r,
-                    color: ball.color,
-                    life: 1,
-                });
-                state.floaters.push({
-                    x: ball.x,
-                    y: ball.y,
-                    points,
-                    life: 1,
-                });
                 playHit();
                 updateScoreHud();
                 savePlay();
@@ -2381,12 +2490,22 @@
             }
             const x = pop.x - cam.x;
             const y = pop.y - cam.y;
-            ctx.beginPath();
+            const grow = Number.isFinite(pop.grow) ? pop.grow : 40;
+            const width = Number.isFinite(pop.width) ? pop.width : 6;
+            const t = 1 - pop.life;
             ctx.strokeStyle = pop.color;
             ctx.globalAlpha = pop.life;
-            ctx.lineWidth = 6;
-            ctx.arc(x, y, pop.r + (1 - pop.life) * 40, 0, Math.PI * 2);
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.arc(x, y, pop.r + t * grow, 0, Math.PI * 2);
             ctx.stroke();
+            if (pop.burst) {
+                ctx.lineWidth = Math.max(4, width * 0.4);
+                ctx.globalAlpha = pop.life * 0.7;
+                ctx.beginPath();
+                ctx.arc(x, y, pop.r * 0.45 + t * grow * 0.62, 0, Math.PI * 2);
+                ctx.stroke();
+            }
             ctx.globalAlpha = 1;
         }
     }
@@ -2712,12 +2831,12 @@
         for (const pair of state.neutrons) {
             const reach = pair.orbit + pair.r * 4.6;
             if (offView(pair.x - cam.x, pair.y - cam.y, reach, cam)) continue;
-            const a = neutronStarAt(pair, now, 0);
-            const b = neutronStarAt(pair, now, 1);
-            const first = a.depth <= b.depth ? a : b;
-            const second = a.depth <= b.depth ? b : a;
-            drawNeutronStar(first.x, first.y, pair.r, cam);
-            drawNeutronStar(second.x, second.y, pair.r, cam);
+            const stars = [];
+            for (let i = 0; i < 2; i += 1) {
+                if (neutronAlive(pair, i)) stars.push(neutronStarAt(pair, now, i));
+            }
+            stars.sort((a, b) => a.depth - b.depth);
+            for (const star of stars) drawNeutronStar(star.x, star.y, pair.r, cam);
         }
     }
 
@@ -2894,6 +3013,24 @@
             miniCtx.globalAlpha = 1;
         }
 
+        for (const pair of state.neutrons) {
+            for (let i = 0; i < 2; i += 1) {
+                if (!neutronAlive(pair, i)) continue;
+                const star = neutronStarAt(pair, now, i);
+                const p = toMinimap(star.x, star.y, size, scale);
+                const r = Math.max(3.6 * mark, 4.2);
+                if (p.x < -r * 3 || p.y < -r * 3 || p.x > size + r * 3 || p.y > size + r * 3) continue;
+                miniCtx.fillStyle = "rgba(255, 255, 255, 0.28)";
+                miniCtx.beginPath();
+                miniCtx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2);
+                miniCtx.fill();
+                miniCtx.fillStyle = "#ffffff";
+                miniCtx.beginPath();
+                miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                miniCtx.fill();
+            }
+        }
+
         miniCtx.save();
         miniCtx.beginPath();
         miniCtx.rect(origin.x, origin.y, worldPx, worldPx);
@@ -2992,7 +3129,7 @@
 
         const paused = state.menuOpen || state.won || state.resumeOpen || state.boardOpen;
         const moving = paused ? false : moveShip(dt);
-        if (!paused) collectIfHit();
+        if (!paused) collectIfHit(now);
         updateEngine(moving);
         const cam = camera();
 
@@ -3804,6 +3941,7 @@
         timer.runningSince = null;
         shownSecond = -1;
         spawnDecor();
+        if (play.hasNeutrons) state.neutrons = play.neutrons;
         if (play.won) {
             recordWinScore();
             if (state.trial) timerEl.textContent = formatPlayTime(0);

@@ -266,8 +266,9 @@
         const lo = Number.isFinite(min) ? min : 0;
         const hi = Number.isFinite(max) ? max : 100;
         const inc = Number.isFinite(step) && step > 0 ? step : 1;
-        const rect = el.getBoundingClientRect();
-        const pad = Math.min(16, rect.width / 4);
+        const host = el.closest(".range-hit") || el;
+        const rect = host.getBoundingClientRect();
+        const pad = Math.min(22, rect.width / 6);
         const usable = Math.max(1, rect.width - pad * 2);
         const t = (clientX - (rect.left + pad)) / usable;
         const raw = lo + Math.min(1, Math.max(0, t)) * (hi - lo);
@@ -280,19 +281,17 @@
         for (const el of document.querySelectorAll("input[type='range']")) {
             if (el.dataset.fineRange === "1") continue;
             el.dataset.fineRange = "1";
+            const wrap = document.createElement("div");
+            wrap.className = "range-hit";
+            el.parentNode.insertBefore(wrap, el);
+            wrap.appendChild(el);
+
             let dragging = false;
             let pointerId = null;
 
-            const pointX = (event) => {
-                if (event.clientX != null) return event.clientX;
-                const touch = event.changedTouches?.[0] || event.touches?.[0];
-                return touch ? touch.clientX : null;
-            };
-
-            const apply = (event) => {
-                const x = pointX(event);
-                if (x == null) return;
-                const next = String(rangeValueFromClientX(el, x));
+            const apply = (clientX) => {
+                if (clientX == null || !Number.isFinite(clientX)) return;
+                const next = String(rangeValueFromClientX(el, clientX));
                 if (el.value === next) return;
                 el.value = next;
                 el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -303,37 +302,29 @@
                 if (pointerId != null && event.pointerId != null && event.pointerId !== pointerId) return;
                 dragging = false;
                 pointerId = null;
-                apply(event);
+                wrap.classList.remove("is-dragging");
+                document.documentElement.classList.remove("range-dragging");
+                apply(event.clientX);
                 el.dispatchEvent(new Event("change", { bubbles: true }));
             };
 
-            el.addEventListener("pointerdown", (event) => {
+            wrap.addEventListener("pointerdown", (event) => {
                 if (event.pointerType === "mouse" && event.button !== 0) return;
                 dragging = true;
                 pointerId = event.pointerId;
-                try { el.setPointerCapture(event.pointerId); } catch (_) {}
-                apply(event);
+                wrap.classList.add("is-dragging");
+                document.documentElement.classList.add("range-dragging");
+                try { wrap.setPointerCapture(event.pointerId); } catch (_) {}
+                apply(event.clientX);
                 event.preventDefault();
-            });
-            el.addEventListener("pointermove", (event) => {
+            }, { passive: false });
+            wrap.addEventListener("pointermove", (event) => {
                 if (!dragging || event.pointerId !== pointerId) return;
-                apply(event);
-                event.preventDefault();
-            });
-            el.addEventListener("pointerup", finish);
-            el.addEventListener("pointercancel", finish);
-            el.addEventListener("touchstart", (event) => {
-                dragging = true;
-                apply(event);
+                apply(event.clientX);
                 event.preventDefault();
             }, { passive: false });
-            el.addEventListener("touchmove", (event) => {
-                if (!dragging) return;
-                apply(event);
-                event.preventDefault();
-            }, { passive: false });
-            el.addEventListener("touchend", finish);
-            el.addEventListener("touchcancel", finish);
+            wrap.addEventListener("pointerup", finish);
+            wrap.addEventListener("pointercancel", finish);
         }
     }
 
@@ -2666,9 +2657,29 @@
             bands,
             warp,
             bloom,
-            haloCore: gargHaloPaint(r * 1.3, 0.95, 0.05, 1.02),
-            haloSoft: gargHaloPaint(r * 1.315, 0.3, 0.26, 1),
-            haloSecond: gargHaloPaint(r * 1.115, 0.55, 0.02, 1.04),
+            haloRings: (function () {
+                const rings = [];
+                const N = 13;
+                const mid = 1.3;
+                const spread = 0.12;
+                for (let i = 0; i < N; i += 1) {
+                    const rr = 1.12 + (1.54 - 1.12) * (i / (N - 1));
+                    const w = Math.exp(-Math.pow((rr - mid) / spread, 2));
+                    rings.push({
+                        rx: r * rr,
+                        ry: r * rr * 0.955,
+                        lw: r * 0.085,
+                        paint: gargHaloPaint(r * rr, 0.26 * w, 0.1 + 0.34 * Math.abs(rr - mid) / spread, 1),
+                    });
+                }
+                rings.push({
+                    rx: r * mid,
+                    ry: r * mid * 0.955,
+                    lw: r * 0.016,
+                    paint: gargHaloPaint(r * mid, 0.45, 0.13, 1.02),
+                });
+                return rings;
+            })(),
         };
         return hole.garg;
     }
@@ -2679,7 +2690,7 @@
     function gargDisk(g, t, a0, a1) {
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        ctx.lineCap = "round";
+        ctx.lineCap = "butt";
         for (let i = g.bands.length - 1; i >= 0; i -= 1) {
             const b = g.bands[i];
             ctx.setLineDash(NO_DASH);
@@ -2715,9 +2726,10 @@
         };
         ctx.globalCompositeOperation = "lighter";
         ctx.lineCap = "butt";
-        arc(g.haloSoft, r * 1.315, r * 1.255, r * 0.2);
-        arc(g.haloCore, r * 1.3, r * 1.24, r * 0.065);
-        arc(g.haloSecond, r * 1.115, r * 1.075, r * 0.03);
+        for (let i = 0; i < g.haloRings.length; i += 1) {
+            const h = g.haloRings[i];
+            arc(h.paint, h.rx, h.ry, h.lw);
+        }
     }
 
     function drawGargantua(hole, cam, now) {
@@ -5095,7 +5107,7 @@
 
         document.addEventListener("touchmove", (event) => {
             if (pageZoomed() && event.touches.length > 1) return;
-            if (event.target.closest("input[type='range']")) {
+            if (event.target.closest(".range-hit, input[type='range']")) {
                 event.preventDefault();
                 return;
             }

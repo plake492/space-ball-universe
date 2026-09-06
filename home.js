@@ -444,8 +444,9 @@
         const lo = Number.isFinite(min) ? min : 0;
         const hi = Number.isFinite(max) ? max : 100;
         const inc = Number.isFinite(step) && step > 0 ? step : 1;
-        const rect = el.getBoundingClientRect();
-        const pad = Math.min(16, rect.width / 4);
+        const host = el.closest(".range-hit") || el;
+        const rect = host.getBoundingClientRect();
+        const pad = Math.min(22, rect.width / 6);
         const usable = Math.max(1, rect.width - pad * 2);
         const t = (clientX - (rect.left + pad)) / usable;
         const raw = lo + Math.min(1, Math.max(0, t)) * (hi - lo);
@@ -458,19 +459,17 @@
         for (const el of document.querySelectorAll("input[type='range']")) {
             if (el.dataset.fineRange === "1") continue;
             el.dataset.fineRange = "1";
+            const wrap = document.createElement("div");
+            wrap.className = "range-hit";
+            el.parentNode.insertBefore(wrap, el);
+            wrap.appendChild(el);
+
             let dragging = false;
             let pointerId = null;
 
-            const pointX = (event) => {
-                if (event.clientX != null) return event.clientX;
-                const touch = event.changedTouches?.[0] || event.touches?.[0];
-                return touch ? touch.clientX : null;
-            };
-
-            const apply = (event) => {
-                const x = pointX(event);
-                if (x == null) return;
-                const next = String(rangeValueFromClientX(el, x));
+            const apply = (clientX) => {
+                if (clientX == null || !Number.isFinite(clientX)) return;
+                const next = String(rangeValueFromClientX(el, clientX));
                 if (el.value === next) return;
                 el.value = next;
                 el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -481,37 +480,29 @@
                 if (pointerId != null && event.pointerId != null && event.pointerId !== pointerId) return;
                 dragging = false;
                 pointerId = null;
-                apply(event);
+                wrap.classList.remove("is-dragging");
+                document.documentElement.classList.remove("range-dragging");
+                apply(event.clientX);
                 el.dispatchEvent(new Event("change", { bubbles: true }));
             };
 
-            el.addEventListener("pointerdown", (event) => {
+            wrap.addEventListener("pointerdown", (event) => {
                 if (event.pointerType === "mouse" && event.button !== 0) return;
                 dragging = true;
                 pointerId = event.pointerId;
-                try { el.setPointerCapture(event.pointerId); } catch (_) {}
-                apply(event);
+                wrap.classList.add("is-dragging");
+                document.documentElement.classList.add("range-dragging");
+                try { wrap.setPointerCapture(event.pointerId); } catch (_) {}
+                apply(event.clientX);
                 event.preventDefault();
-            });
-            el.addEventListener("pointermove", (event) => {
+            }, { passive: false });
+            wrap.addEventListener("pointermove", (event) => {
                 if (!dragging || event.pointerId !== pointerId) return;
-                apply(event);
-                event.preventDefault();
-            });
-            el.addEventListener("pointerup", finish);
-            el.addEventListener("pointercancel", finish);
-            el.addEventListener("touchstart", (event) => {
-                dragging = true;
-                apply(event);
+                apply(event.clientX);
                 event.preventDefault();
             }, { passive: false });
-            el.addEventListener("touchmove", (event) => {
-                if (!dragging) return;
-                apply(event);
-                event.preventDefault();
-            }, { passive: false });
-            el.addEventListener("touchend", finish);
-            el.addEventListener("touchcancel", finish);
+            wrap.addEventListener("pointerup", finish);
+            wrap.addEventListener("pointercancel", finish);
         }
     }
 

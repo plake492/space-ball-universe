@@ -935,15 +935,33 @@
         { r: 200, g: 130, b: 220 },
     ];
 
-    const GALAXY_CELL = 3500;
+    const GALAXY_CELL = 3800;
     const GALAXY_PAIR_GAP = 500;
     const GALAXY_PAIR_CHANCE = 0.2;
+    const GALAXY_R_MIN = 220;
+    const GALAXY_R_MAX = Math.round(2400 * 0.8);
 
     function varyGalaxyTint(base) {
         return {
             r: Math.max(70, Math.min(255, Math.round(base.r + rand(-32, 32)))),
             g: Math.max(70, Math.min(255, Math.round(base.g + rand(-32, 32)))),
             b: Math.max(70, Math.min(255, Math.round(base.b + rand(-32, 32)))),
+        };
+    }
+
+    function galaxyMute(r) {
+        const t = (r - GALAXY_R_MIN) / (GALAXY_R_MAX - GALAXY_R_MIN);
+        const small = 1 - Math.max(0, Math.min(1, t));
+        return 0.3 + 0.36 * small;
+    }
+
+    function muteRgb(rgb, mute) {
+        const gray = (rgb.r + rgb.g + rgb.b) / 3;
+        const fog = gray * 0.32 + 68;
+        return {
+            r: Math.round(rgb.r * (1 - mute) + fog * mute),
+            g: Math.round(rgb.g * (1 - mute) + fog * mute),
+            b: Math.round(rgb.b * (1 - mute) + fog * mute),
         };
     }
 
@@ -967,20 +985,22 @@
             attempts += 1;
         } while (attempts < 80 && galaxyTooClose(x, y, minGap));
         if (attempts >= 80 && galaxyTooClose(x, y, minGap)) return null;
-        const r = rand(220, 2400);
+        const r = rand(GALAXY_R_MIN, GALAXY_R_MAX);
         const kind = Math.random() < 0.5 ? "classic" : (Math.random() < 0.5 ? "andromeda" : "milky");
+        const mute = galaxyMute(r);
         state.galaxies.push({
             x,
             y,
             r,
             kind,
+            mute,
             tilt: rand(0, Math.PI * 2),
             flat: kind === "classic" ? rand(0.22, 0.86) : rand(0.16, 0.46),
             spin: rand(0.032, 0.085) * (Math.random() < 0.5 ? -1 : 1),
             phase: rand(0, Math.PI * 2),
             arms: kind === "classic" ? 2 + Math.floor(Math.random() * 2) : 2,
             wind: kind === "classic" ? rand(3.1, 5.4) : rand(4.4, 6.2),
-            tint: varyGalaxyTint(pick(GALAXY_TINTS)),
+            tint: muteRgb(varyGalaxyTint(pick(GALAXY_TINTS)), mute),
             sprite: null,
         });
         return { x, y };
@@ -2930,6 +2950,11 @@
         if (kind === "andromeda") paintAndromedaGalaxy(g, r, galaxy);
         else if (kind === "milky") paintMilkyGalaxy(g, r, galaxy);
         else paintClassicGalaxy(g, r, galaxy);
+        const mute = galaxy.mute ?? galaxyMute(galaxy.r);
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.globalCompositeOperation = "source-atop";
+        g.fillStyle = `rgba(10, 8, 20, ${0.16 + mute * 0.42})`;
+        g.fillRect(0, 0, dim, dim);
         galaxy.sprite = canvas;
         return canvas;
     }
@@ -2938,8 +2963,8 @@
         const { r: cr, g: cg, b: cb } = galaxy.tint;
         g.globalCompositeOperation = "lighter";
         const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
-        halo.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, 0.2)`);
-        halo.addColorStop(0.42, `rgba(${cr}, ${cg}, ${cb}, 0.08)`);
+        halo.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, 0.14)`);
+        halo.addColorStop(0.42, `rgba(${cr}, ${cg}, ${cb}, 0.055)`);
         halo.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
         g.fillStyle = halo;
         g.beginPath();
@@ -2954,7 +2979,7 @@
                 const px = Math.cos(a) * rad;
                 const py = Math.sin(a) * rad;
                 const blob = 2.1 + (1 - t) * 4.6;
-                const alpha = 0.17 * (1 - t * 0.5);
+                const alpha = 0.12 * (1 - t * 0.5);
                 const glow = g.createRadialGradient(px, py, 0, px, py, blob * 2.5);
                 glow.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${alpha})`);
                 glow.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
@@ -2965,8 +2990,8 @@
             }
         }
         const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.2);
-        core.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-        core.addColorStop(0.32, `rgba(${cr}, ${cg}, ${cb}, 0.55)`);
+        core.addColorStop(0, "rgba(255, 255, 255, 0.62)");
+        core.addColorStop(0.32, `rgba(${cr}, ${cg}, ${cb}, 0.38)`);
         core.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
         g.fillStyle = core;
         g.beginPath();
@@ -2989,7 +3014,7 @@
                 const cr = Math.round(inner.r + (outer.r - inner.r) * mix);
                 const cg = Math.round(inner.g + (outer.g - inner.g) * mix);
                 const cb = Math.round(inner.b + (outer.b - inner.b) * mix);
-                const alpha = 0.2 * (1 - t * 0.42);
+                const alpha = 0.13 * (1 - t * 0.42);
                 const glow = g.createRadialGradient(px, py, 0, px, py, blob * 2.6);
                 glow.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${alpha})`);
                 glow.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
@@ -3019,19 +3044,22 @@
     }
 
     function paintAndromedaGalaxy(g, r, galaxy) {
+        const mute = galaxy.mute ?? 0.3;
+        const warm = muteRgb({ r: 255, g: 232, b: 196 }, mute);
+        const blue = muteRgb({ r: 150, g: 186, b: 255 }, mute);
         g.globalCompositeOperation = "lighter";
         const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
-        halo.addColorStop(0, "rgba(255, 232, 196, 0.16)");
-        halo.addColorStop(0.38, "rgba(150, 186, 255, 0.1)");
+        halo.addColorStop(0, `rgba(${warm.r}, ${warm.g}, ${warm.b}, 0.12)`);
+        halo.addColorStop(0.38, `rgba(${blue.r}, ${blue.g}, ${blue.b}, 0.07)`);
         halo.addColorStop(1, "rgba(90, 140, 220, 0)");
         g.fillStyle = halo;
         g.beginPath();
         g.arc(0, 0, r, 0, Math.PI * 2);
         g.fill();
-        paintGalaxyArms(g, r, galaxy, { r: 255, g: 214, b: 168 }, { r: 120, g: 168, b: 255 }, 96);
+        paintGalaxyArms(g, r, galaxy, muteRgb({ r: 255, g: 214, b: 168 }, mute), muteRgb({ r: 120, g: 168, b: 255 }, mute), 96);
         const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.3);
-        core.addColorStop(0, "rgba(255, 252, 240, 0.98)");
-        core.addColorStop(0.28, "rgba(255, 220, 160, 0.7)");
+        core.addColorStop(0, "rgba(255, 252, 240, 0.62)");
+        core.addColorStop(0.28, "rgba(255, 220, 160, 0.42)");
         core.addColorStop(0.62, "rgba(210, 170, 120, 0.22)");
         core.addColorStop(1, "rgba(180, 140, 90, 0)");
         g.fillStyle = core;
@@ -3042,10 +3070,13 @@
     }
 
     function paintMilkyGalaxy(g, r, galaxy) {
+        const mute = galaxy.mute ?? 0.3;
+        const gold = muteRgb({ r: 255, g: 214, b: 150 }, mute);
+        const lilac = muteRgb({ r: 180, g: 160, b: 255 }, mute);
         g.globalCompositeOperation = "lighter";
         const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
-        halo.addColorStop(0, "rgba(255, 214, 150, 0.18)");
-        halo.addColorStop(0.4, "rgba(180, 160, 255, 0.08)");
+        halo.addColorStop(0, `rgba(${gold.r}, ${gold.g}, ${gold.b}, 0.12)`);
+        halo.addColorStop(0.4, `rgba(${lilac.r}, ${lilac.g}, ${lilac.b}, 0.055)`);
         halo.addColorStop(1, "rgba(80, 90, 160, 0)");
         g.fillStyle = halo;
         g.beginPath();
@@ -3054,18 +3085,18 @@
         g.save();
         g.rotate(0.18);
         const bar = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.42);
-        bar.addColorStop(0, "rgba(255, 236, 190, 0.55)");
-        bar.addColorStop(0.55, "rgba(255, 190, 120, 0.22)");
+        bar.addColorStop(0, "rgba(255, 236, 190, 0.32)");
+        bar.addColorStop(0.55, "rgba(255, 190, 120, 0.14)");
         bar.addColorStop(1, "rgba(255, 170, 90, 0)");
         g.fillStyle = bar;
         g.beginPath();
         g.ellipse(0, 0, r * 0.42, r * 0.11, 0, 0, Math.PI * 2);
         g.fill();
         g.restore();
-        paintGalaxyArms(g, r, galaxy, { r: 255, g: 196, b: 130 }, { r: 160, g: 190, b: 255 }, 88);
+        paintGalaxyArms(g, r, galaxy, muteRgb({ r: 255, g: 196, b: 130 }, mute), muteRgb({ r: 160, g: 190, b: 255 }, mute), 88);
         const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.22);
-        core.addColorStop(0, "rgba(255, 250, 230, 0.96)");
-        core.addColorStop(0.4, "rgba(255, 200, 120, 0.58)");
+        core.addColorStop(0, "rgba(255, 250, 230, 0.58)");
+        core.addColorStop(0.4, "rgba(255, 200, 120, 0.34)");
         core.addColorStop(1, "rgba(220, 140, 70, 0)");
         g.fillStyle = core;
         g.beginPath();

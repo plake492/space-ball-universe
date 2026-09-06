@@ -819,6 +819,9 @@
     document.getElementById("home-new").addEventListener("click", () => {
         location.href = "./game.html?mode=new";
     });
+    document.getElementById("home-playground").addEventListener("click", () => {
+        location.href = "./playground.html";
+    });
     document.getElementById("home-settings").addEventListener("click", () => {
         showSettingsPanel("");
         setMenuOpen(true);

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <script>
+        function blockSafariZoom(event) { event.preventDefault(); }
+        document.addEventListener("gesturestart", blockSafariZoom, { passive: false });
+        document.addEventListener("gesturechange", blockSafariZoom, { passive: false });
+        document.addEventListener("gestureend", blockSafariZoom, { passive: false });
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Space Hunt">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#050217">
+    <meta name="description" content="Fly through space and collect glowing balls.">
+    <title>Playground · Harlie Space Hunt</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="public/favicon_io/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="public/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="public/favicon_io/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="public/favicon_io/apple-touch-icon.png">
+    <link rel="stylesheet" href="game.css">
+</head>
+<body class="playground playground-open">
+    <canvas id="game" aria-label="Space hunt play area"></canvas>
+    <div class="spike-flash" id="spike-flash" aria-hidden="true"></div>
+
+    <div class="hud-cluster">
+        <button type="button" class="settings-btn" id="go-home" aria-label="Home">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12 3.1 2.6 11.2h2.5v9.1h5.4v-6.1h3v6.1h5.4v-9.1h2.5L12 3.1z"/>
+            </svg>
+        </button>
+        <section class="panel hud-stats" aria-live="polite" aria-label="Score and time">
+            <div class="hud-stats-row">
+                <p class="value" aria-label="Found"><span id="found-count">0</span> / <span id="goal-count">75</span></p>
+                <p class="value hud-score" id="play-score" aria-label="Score">0</p>
+                <p class="value hud-timer" id="play-timer" aria-label="Play time">0:00</p>
+            </div>
+        </section>
+        <button type="button" class="settings-btn play-settings" id="play-settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.49-.42h-3.84a.49.49 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94L2.86 14.52a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.41.34.6.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.09.49 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="playground-dock">
+        <button type="button" class="playground-toggle" id="playground-toggle" aria-expanded="true" aria-controls="playground-panel">Playground</button>
+        <div class="playground-panel" id="playground-panel">
+            <section class="settings-block">
+                <p class="label">Difficulty</p>
+                <div class="diff-choices" role="group" aria-label="Difficulty">
+                    <button type="button" class="diff-btn" data-diff="easy">Easy</button>
+                    <button type="button" class="diff-btn" data-diff="medium">Medium</button>
+                    <button type="button" class="diff-btn" data-diff="hard">Hard</button>
+                    <button type="button" class="diff-btn" data-diff="extra">Extra</button>
+                    <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
+                    <button type="button" class="diff-btn" data-diff="custom">Custom</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Balls</p>
+                    <p class="value"><span data-pg-value="balls">75</span></p>
+                </div>
+                <input type="range" data-pg-range="balls" min="25" max="250" step="5" value="75" aria-label="Balls in the game">
+            </section>
+            <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Goal</p>
+                    <p class="value"><span data-pg-value="goal">75</span></p>
+                </div>
+                <input type="range" data-pg-range="goal" min="5" max="75" step="5" value="75" aria-label="Balls to win">
+            </section>
+            <section class="settings-block">
+                <p class="label">World size</p>
+                <div class="world-sizes" role="group" aria-label="World size">
+                    <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
+                    <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
+                    <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
+                    <button type="button" class="world-btn" data-world="20000" data-size="xl">xl</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Time trial</p>
+                <button type="button" class="trial-toggle" id="trial-toggle" aria-pressed="false">Time trial</button>
+                <div class="trial-times hidden" id="trial-times" role="group" aria-label="Time trial length">
+                    <button type="button" class="trial-btn" data-trial="60000">1 min</button>
+                    <button type="button" class="trial-btn" data-trial="300000">5 min</button>
+                    <button type="button" class="trial-btn" data-trial="600000">10 min</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Spike balls</p>
+                <div class="pulse-choices" role="group" aria-label="Spike balls">
+                    <button type="button" class="spike-btn" data-spikes="on">On</button>
+                    <button type="button" class="spike-btn" data-spikes="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Meteors</p>
+                <div class="pulse-choices" role="group" aria-label="Meteors">
+                    <button type="button" class="meteor-btn" data-meteor="on">On</button>
+                    <button type="button" class="meteor-btn" data-meteor="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Infinite fuel</p>
+                <div class="pulse-choices" role="group" aria-label="Infinite fuel">
+                    <button type="button" class="fuel-btn" data-fuel="on">On</button>
+                    <button type="button" class="fuel-btn" data-fuel="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Zoom</p>
+                    <p class="value"><span data-pg-value="zoom">1×</span></p>
+                </div>
+                <input type="range" data-pg-range="zoom" min="1" max="5" step="0.5" value="1" aria-label="Camera zoom out">
+            </section>
+            <section class="settings-block">
+                <p class="label">Colors</p>
+                <div class="palette-choices" role="group" aria-label="Color palette">
+                    <button type="button" class="palette-btn" data-palette="rainbow">Rainbow</button>
+                    <button type="button" class="palette-btn" data-palette="space">Space</button>
+                    <button type="button" class="palette-btn" data-palette="dark">Dark</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Pulse</p>
+                <div class="pulse-choices" role="group" aria-label="Ball pulse">
+                    <button type="button" class="pulse-btn" data-pulse="on">On</button>
+                    <button type="button" class="pulse-btn" data-pulse="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Nebula</p>
+                <div class="pulse-choices" role="group" aria-label="Nebula">
+                    <button type="button" class="nebula-btn" data-nebula="on">On</button>
+                    <button type="button" class="nebula-btn" data-nebula="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Moving stars</p>
+                <div class="pulse-choices" role="group" aria-label="Moving stars">
+                    <button type="button" class="star-btn" data-stars="on">On</button>
+                    <button type="button" class="star-btn" data-stars="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Background</p>
+                <div class="pulse-choices" role="group" aria-label="Background">
+                    <button type="button" class="sky-btn" data-sky="stars">Stars</button>
+                    <button type="button" class="sky-btn" data-sky="galaxies">Galaxies</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <p class="label">Audio</p>
+                <div class="pulse-choices" role="group" aria-label="Audio">
+                    <button type="button" class="audio-btn" data-audio="on">On</button>
+                    <button type="button" class="audio-btn" data-audio="off">Off</button>
+                </div>
+            </section>
+            <section class="settings-block">
+                <div class="settings-heading">
+                    <p class="label">Volume</p>
+                    <p class="value"><span data-pg-value="volume">100</span></p>
+                </div>
+                <input type="range" data-pg-range="volume" min="0" max="100" step="1" value="100" aria-label="Volume">
+            </section>
+            <section class="settings-block">
+                <p class="label">Ship</p>
+                <div class="ship-choices playground-ships" role="group" aria-label="Ship">
+                    <button type="button" class="ship-btn" data-ship="classic" aria-label="Classic ship">
+                        <svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>
+                    </button>
+                    <button type="button" class="ship-btn" data-ship="ship-1" aria-label="Crew ship"><img src="public/images/ships/ship-1.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="cat" aria-label="Cat ship"><img src="public/images/ships/cat.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="wolf" aria-label="Wolf ship"><img src="public/images/ships/wolf.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="cube" aria-label="Cube ship"><img src="public/images/ships/cube.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="hello-kitty" aria-label="Hello Kitty ship"><img src="public/images/ships/hello-kitty.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="ufo" aria-label="UFO ship"><img src="public/images/ships/ufo.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="harlie" aria-label="Harlie ship"><img src="public/images/ships/harlie.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="selah" aria-label="Selah ship"><img src="public/images/ships/selah.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="guitar" aria-label="Guitar ship"><img src="public/images/ships/guitar.png" alt=""></button>
+                    <button type="button" class="ship-btn" data-ship="selah-harlie" aria-label="Selah and Harlie ship"><img src="public/images/ships/selah-harlie.png" alt=""></button>
+                </div>
+            </section>
+            <button type="button" class="playground-restart" id="playground-restart">Restart world</button>
+        </div>
+    </div>
+
+    <p class="coords" id="coords">0, 0</p>
+
+    <div class="controls">
+        <div class="joystick" id="joystick" role="application" aria-label="Ship joystick">
+            <div class="joystick-base">
+                <span class="joystick-ring" data-ring="slow"></span>
+                <span class="joystick-ring" data-ring="medium"></span>
+                <span class="joystick-ring" data-ring="fast"></span>
+                <div class="joystick-knob" id="joystick-knob"></div>
+            </div>
+        </div>
+        <div class="boost-wrap">
+            <div class="boost-fuel" role="meter" aria-label="Boost fuel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                <div class="boost-fuel-fill" id="boost-fuel"></div>
+            </div>
+            <button type="button" class="boost-btn" id="boost-btn" aria-pressed="false" aria-label="Hold to double ship speed">2×</button>
+        </div>
+    </div>
+
+    <div class="minimap-stage" id="minimap-stage">
+        <canvas id="minimap" class="minimap" aria-label="Minimap, tap to expand" role="button" aria-pressed="false"></canvas>
+        <button type="button" class="minimap-close hidden" id="minimap-close" aria-label="Close map">×</button>
+    </div>
+
+    <div class="settings-overlay hidden" id="settings-menu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="settings-sheet">
+            <div class="settings-head">
+                <button type="button" class="settings-back hidden" id="settings-back">Back</button>
+                <h1 id="settings-title">Settings</h1>
+                <button type="button" class="settings-close" id="settings-close" aria-label="Close settings">×</button>
+            </div>
+
+            <div class="settings-body">
+            <div class="settings-nav" id="settings-nav">
+                <button type="button" class="settings-cat" data-panel="user">User settings</button>
+                <button type="button" class="settings-cat" data-panel="game">Game settings</button>
+                <button type="button" class="settings-cat" data-panel="audio">Volume</button>
+                <button type="button" class="settings-cat" data-panel="visuals">Visuals</button>
+            </div>
+
+            <div class="settings-panel hidden" data-panel="user">
+                <section class="settings-block">
+                    <p class="label">Username</p>
+                    <input type="text" class="username-input" id="username-input" maxlength="20" autocomplete="username" enterkeyhint="done" spellcheck="false" placeholder="Pilot" aria-label="Username">
+                </section>
+                <section class="settings-block">
+                    <button type="button" class="settings-board" id="settings-board">Leaderboard</button>
+                </section>
+                <section class="settings-block">
+                    <button type="button" class="settings-reset" id="settings-reset">Reset progress</button>
+                </section>
+            </div>
+
+            <div class="settings-panel hidden" data-panel="game">
+                <section class="settings-block">
+                    <p class="label">Difficulty</p>
+                    <div class="diff-choices" role="group" aria-label="Difficulty">
+                        <button type="button" class="diff-btn" data-diff="easy">Easy</button>
+                        <button type="button" class="diff-btn" data-diff="medium">Medium</button>
+                        <button type="button" class="diff-btn" data-diff="hard">Hard</button>
+                        <button type="button" class="diff-btn" data-diff="extra">Extra hard</button>
+                        <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
+                        <button type="button" class="diff-btn" data-diff="custom">Custom</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Balls</p>
+                        <p class="value"><span id="balls-slider-value">75</span></p>
+                    </div>
+                    <input type="range" id="balls-slider" min="25" max="250" step="5" value="75" aria-label="Balls in the game">
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Goal</p>
+                        <p class="value"><span id="goal-slider-value">75</span></p>
+                    </div>
+                    <input type="range" id="goal-slider" min="5" max="75" step="5" value="75" aria-label="Balls to win">
+                </section>
+                <section class="settings-block">
+                    <p class="label">World size</p>
+                    <div class="world-sizes" role="group" aria-label="World size">
+                        <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
+                        <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
+                        <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
+                        <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Spike balls</p>
+                    <div class="pulse-choices" role="group" aria-label="Spike balls">
+                        <button type="button" class="spike-btn is-on" data-spikes="on">On</button>
+                        <button type="button" class="spike-btn" data-spikes="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Meteors</p>
+                    <div class="pulse-choices" role="group" aria-label="Meteors">
+                        <button type="button" class="meteor-btn is-on" data-meteor="on">On</button>
+                        <button type="button" class="meteor-btn" data-meteor="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Infinite fuel</p>
+                    <div class="pulse-choices" role="group" aria-label="Infinite fuel">
+                        <button type="button" class="fuel-btn" data-fuel="on">On</button>
+                        <button type="button" class="fuel-btn is-on" data-fuel="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Zoom</p>
+                        <p class="value"><span id="zoom-slider-value">1×</span></p>
+                    </div>
+                    <input type="range" id="zoom-slider" min="1" max="5" step="0.5" value="1" aria-label="Camera zoom out">
+                </section>
+            </div>
+
+            <div class="settings-panel hidden" data-panel="audio">
+                <section class="settings-block">
+                    <p class="label">Audio</p>
+                    <div class="pulse-choices" role="group" aria-label="Audio">
+                        <button type="button" class="audio-btn is-on" data-audio="on">On</button>
+                        <button type="button" class="audio-btn" data-audio="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Volume</p>
+                        <p class="value"><span id="volume-slider-value">100</span></p>
+                    </div>
+                    <input type="range" id="volume-slider" min="0" max="100" step="1" value="100" aria-label="Volume">
+                </section>
+            </div>
+
+            <div class="settings-panel hidden" data-panel="visuals">
+                <section class="settings-block">
+                    <p class="label">Fullscreen</p>
+                    <div class="fullscreen-choices" role="group" aria-label="Fullscreen">
+                        <button type="button" class="fullscreen-btn" data-fullscreen="on">On</button>
+                        <button type="button" class="fullscreen-btn is-on" data-fullscreen="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Colors</p>
+                    <div class="palette-choices" role="group" aria-label="Color palette">
+                        <button type="button" class="palette-btn" data-palette="rainbow">Rainbow</button>
+                        <button type="button" class="palette-btn is-on" data-palette="space">Space</button>
+                        <button type="button" class="palette-btn" data-palette="dark">Dark</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Pulse</p>
+                    <div class="pulse-choices" role="group" aria-label="Ball pulse">
+                        <button type="button" class="pulse-btn" data-pulse="on">On</button>
+                        <button type="button" class="pulse-btn is-on" data-pulse="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Nebula</p>
+                    <div class="pulse-choices" role="group" aria-label="Nebula">
+                        <button type="button" class="nebula-btn is-on" data-nebula="on">On</button>
+                        <button type="button" class="nebula-btn" data-nebula="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <p class="label">Moving stars</p>
+                    <div class="pulse-choices" role="group" aria-label="Moving stars">
+                        <button type="button" class="star-btn is-on" data-stars="on">On</button>
+                        <button type="button" class="star-btn" data-stars="off">Off</button>
+                    </div>
+                </section>
+                <section class="settings-block">
+                    <div class="settings-heading">
+                        <p class="label">Lifetime</p>
+                        <p class="value" id="lifetime-points" aria-label="Lifetime points">0</p>
+                    </div>
+                    <p class="label">Locks</p>
+                    <div class="pulse-choices" role="group" aria-label="Ship point locks">
+                        <button type="button" class="req-btn is-on" data-req="on">On</button>
+                        <button type="button" class="req-btn" data-req="off">Off</button>
+                    </div>
+                    <p class="label ship-picker-label">Ship</p>
+                    <div class="ship-choices" role="group" aria-label="Ship">
+                    <button type="button" class="ship-btn is-on" data-ship="classic" aria-label="Classic ship">
+                        <svg viewBox="0 0 32 40" aria-hidden="true">
+                            <path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/>
+                            <ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="ship-1" aria-label="Crew ship">
+                        <img src="public/images/ships/ship-1.png" alt="">
+                        <span class="ship-lock">5,000</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="cat" aria-label="Cat ship">
+                        <img src="public/images/ships/cat.png" alt="">
+                        <span class="ship-lock">7,500</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="wolf" aria-label="Wolf ship">
+                        <img src="public/images/ships/wolf.png" alt="">
+                        <span class="ship-lock">11,250</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="cube" aria-label="Cube ship">
+                        <img src="public/images/ships/cube.png" alt="">
+                        <span class="ship-lock">16,880</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="hello-kitty" aria-label="Hello Kitty ship">
+                        <img src="public/images/ships/hello-kitty.png" alt="">
+                        <span class="ship-lock">25,320</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="ufo" aria-label="UFO ship">
+                        <img src="public/images/ships/ufo.png" alt="">
+                        <span class="ship-lock">37,970</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="harlie" aria-label="Harlie ship">
+                        <img src="public/images/ships/harlie.png" alt="">
+                        <span class="ship-lock">56,960</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="selah" aria-label="Selah ship">
+                        <img src="public/images/ships/selah.png" alt="">
+                        <span class="ship-lock">85,430</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="guitar" aria-label="Guitar ship">
+                        <img src="public/images/ships/guitar.png" alt="">
+                        <span class="ship-lock">128,150</span>
+                    </button>
+                    <button type="button" class="ship-btn is-locked" data-ship="selah-harlie" aria-label="Selah and Harlie ship">
+                        <img src="public/images/ships/selah-harlie.png" alt="">
+                        <span class="ship-lock">192,220</span>
+                    </button>
+                    </div>
+                </section>
+            </div>
+            </div>
+
+            <div class="settings-actions">
+                <button type="button" class="settings-home" id="settings-home">Home</button>
+                <button type="button" class="settings-restart" id="settings-restart">Restart</button>
+                <button type="button" class="settings-continue" id="settings-continue">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="reset-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+        <div class="win-card resume-card">
+            <h1 id="reset-title">RESET ALL?</h1>
+            <p>This erases lifetime points, unlocked ships, the leaderboard, and any game in progress.</p>
+            <div class="resume-actions">
+                <button type="button" id="reset-cancel">Cancel</button>
+                <button type="button" class="reset-confirm" id="reset-confirm">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="resume-overlay" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+        <div class="win-card resume-card">
+            <h1 id="resume-title">CONTINUE?</h1>
+            <p id="resume-message">A game is in progress.</p>
+            <div class="resume-actions">
+                <button type="button" class="resume-new" id="resume-new">New game</button>
+                <button type="button" class="resume-continue" id="resume-continue">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="board-overlay" role="dialog" aria-modal="true" aria-labelledby="board-title">
+        <div class="win-card board-card">
+            <div class="board-head">
+                <button type="button" class="board-back" id="board-back">Back</button>
+                <button type="button" class="board-close" id="board-close" aria-label="Close leaderboard">×</button>
+            </div>
+            <h1 id="board-title">SCORES</h1>
+            <div class="board-table" id="board-table" role="table" aria-label="Leaderboard">
+                <div class="board-cols" role="row">
+                    <span class="board-rank">#</span>
+                    <span class="board-name">Name</span>
+                    <span class="board-score">Score</span>
+                    <span class="board-time">Time</span>
+                    <span class="board-date">Date</span>
+                </div>
+                <div class="board-list" id="board-list"></div>
+            </div>
+            <p class="board-empty hidden" id="board-empty">No wins yet.</p>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="win-overlay">
+        <div class="win-card">
+            <h1 id="win-title">YOU WON</h1>
+            <p class="win-score" id="win-score">0</p>
+            <p id="win-message">You reached the goal.</p>
+            <div class="win-actions">
+                <button type="button" id="win-board">Leaderboard</button>
+                <button type="button" id="win-home">Home</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

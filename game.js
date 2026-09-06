@@ -125,6 +125,7 @@
     const SHIP_COST_GROW = 1.5;
     const shipImages = {};
 
+    const PLAYGROUND = document.body.classList.contains("playground");
     const canvas = document.getElementById("game");
     // The sky gradient repaints every pixel each frame, so the canvas never needs
     // an alpha channel. Opaque canvases skip per-pixel blending when compositing.
@@ -197,6 +198,7 @@
     }
 
     function shipUnlocked(id, lifetime, reqShips) {
+        if (PLAYGROUND) return true;
         if ((reqShips ?? state.reqShips) === false) return true;
         return (lifetime ?? state.lifetime) >= shipUnlockAt(id);
     }
@@ -373,7 +375,7 @@
     }
 
     function writePlay() {
-        if (state.wiped) return;
+        if (state.wiped || PLAYGROUND) return;
         try {
             localStorage.setItem(PLAY_KEY, JSON.stringify({
                 world: state.world,
@@ -548,7 +550,7 @@
     }
 
     function recordWinScore() {
-        if (state.boardLogged) return;
+        if (PLAYGROUND || state.boardLogged) return;
         const rows = loadBoard();
         rows.push({
             name: state.name || "Pilot",
@@ -1334,8 +1336,10 @@
             state.difficulty = "custom";
             saveSettings();
             updateHud();
-            showSettingsPanel("game");
-            if (!state.menuOpen) openMenu();
+            if (!PLAYGROUND) {
+                showSettingsPanel("game");
+                if (!state.menuOpen) openMenu();
+            }
             return;
         }
         const preset = DIFFICULTIES[id];
@@ -1442,6 +1446,35 @@
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
         if (zoomSlider) zoomSlider.value = String(state.zoom);
         if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
+        const trialToggle = document.getElementById("trial-toggle");
+        if (trialToggle) {
+            trialToggle.classList.toggle("is-on", state.trial);
+            trialToggle.setAttribute("aria-pressed", state.trial ? "true" : "false");
+        }
+        const trialTimes = document.getElementById("trial-times");
+        if (trialTimes) trialTimes.classList.toggle("hidden", !state.trial);
+        for (const button of document.querySelectorAll(".trial-btn")) {
+            button.classList.toggle("is-on", Number(button.dataset.trial) === state.trialMs);
+        }
+        syncPlaygroundRanges();
+    }
+
+    function syncPlaygroundRanges() {
+        for (const el of document.querySelectorAll("[data-pg-range]")) {
+            const key = el.dataset.pgRange;
+            if (key === "balls") el.value = String(state.ballCount);
+            else if (key === "goal") {
+                el.max = String(state.ballCount);
+                el.value = String(state.goal);
+            } else if (key === "zoom") el.value = String(state.zoom);
+            else if (key === "volume") el.value = String(state.volume);
+            const label = document.querySelector(`[data-pg-value="${key}"]`);
+            if (!label) continue;
+            if (key === "zoom") label.textContent = `${state.zoom}×`;
+            else if (key === "volume") label.textContent = String(state.volume);
+            else if (key === "balls") label.textContent = String(state.ballCount);
+            else if (key === "goal") label.textContent = String(state.goal);
+        }
     }
 
     function fullscreenElement() {
@@ -1615,8 +1648,10 @@
             if (Math.hypot(comet.x - state.shipX, comet.y - state.shipY) > cometBody(comet) + SHIP_RADIUS) continue;
             state.comets.splice(i, 1);
             state.score += COMET_POINTS;
-            state.lifetime += COMET_POINTS;
-            saveSettings();
+            if (!PLAYGROUND) {
+                state.lifetime += COMET_POINTS;
+                saveSettings();
+            }
             state.pops.push({
                 x: comet.x,
                 y: comet.y,
@@ -1693,7 +1728,7 @@
         state.found += 1;
         const points = ball.points || ballTypeFor(ball).points;
         state.score += points;
-        state.lifetime += points;
+        if (!PLAYGROUND) state.lifetime += points;
         if (!extras || extras.pop !== false) {
             state.pops.push({
                 x: ball.x,
@@ -3689,6 +3724,96 @@
         openMenu();
     }
 
+    function bindPlayground() {
+        if (!PLAYGROUND) return;
+        const toggle = document.getElementById("playground-toggle");
+        if (toggle) {
+            toggle.addEventListener("click", () => {
+                document.body.classList.toggle("playground-open");
+                toggle.setAttribute("aria-expanded", document.body.classList.contains("playground-open") ? "true" : "false");
+            });
+        }
+        const restart = document.getElementById("playground-restart");
+        if (restart) {
+            restart.addEventListener("click", () => restartGame());
+        }
+        const trialToggle = document.getElementById("trial-toggle");
+        if (trialToggle) {
+            trialToggle.addEventListener("click", () => {
+                state.trial = !state.trial;
+                saveSettings();
+                resetTimer(performance.now(), !state.menuOpen && !state.won);
+                updateHud();
+            });
+        }
+        for (const button of document.querySelectorAll(".trial-btn")) {
+            button.addEventListener("click", () => {
+                const next = Number(button.dataset.trial);
+                if (!TRIAL_MS.includes(next)) return;
+                state.trial = true;
+                state.trialMs = next;
+                saveSettings();
+                resetTimer(performance.now(), !state.menuOpen && !state.won);
+                updateHud();
+            });
+        }
+        for (const el of document.querySelectorAll("[data-pg-range]")) {
+            el.addEventListener("input", () => {
+                const key = el.dataset.pgRange;
+                const label = document.querySelector(`[data-pg-value="${key}"]`);
+                if (key === "balls" && label) label.textContent = el.value;
+                if (key === "goal" && label) label.textContent = el.value;
+                if (key === "zoom") {
+                    state.zoom = clampZoom(el.value);
+                    if (label) label.textContent = `${state.zoom}×`;
+                }
+                if (key === "volume") {
+                    state.volume = clampVolume(el.value);
+                    if (label) label.textContent = String(state.volume);
+                    applyAudioLevels();
+                }
+            });
+            el.addEventListener("change", () => {
+                const key = el.dataset.pgRange;
+                if (key === "balls") {
+                    const next = Number(el.value);
+                    if (next === state.ballCount) return;
+                    state.ballCount = next;
+                    state.goal = clampGoal(state.goal);
+                    state.difficulty = "custom";
+                    saveSettings();
+                    restartGame();
+                    return;
+                }
+                if (key === "goal") {
+                    const next = clampGoal(Number(el.value));
+                    if (next === state.goal) {
+                        syncPlaygroundRanges();
+                        return;
+                    }
+                    state.goal = next;
+                    state.difficulty = "custom";
+                    saveSettings();
+                    updateHud();
+                    maybeWin();
+                    return;
+                }
+                if (key === "zoom") {
+                    state.zoom = clampZoom(el.value);
+                    saveSettings();
+                    updateHud();
+                    return;
+                }
+                if (key === "volume") {
+                    state.volume = clampVolume(el.value);
+                    saveSettings();
+                    applyAudioLevels();
+                    updateHud();
+                }
+            });
+        }
+    }
+
     function bindHud() {
         const bindHudTap = (el, fn) => {
             let last = 0;
@@ -3709,7 +3834,7 @@
             });
         };
         bindHudTap(document.getElementById("go-home"), () => {
-            savePlay();
+            if (!PLAYGROUND) savePlay();
             saveSettings();
             flushSaves();
             location.href = "./index.html";
@@ -3923,6 +4048,8 @@
             });
         }
 
+        bindPlayground();
+
         for (const button of document.querySelectorAll(".req-btn")) {
             button.addEventListener("click", () => {
                 const next = button.dataset.req === "on";
@@ -4001,7 +4128,7 @@
         const homeBtn = document.getElementById("settings-home");
         if (homeBtn) {
             homeBtn.addEventListener("click", () => {
-                savePlay();
+                if (!PLAYGROUND) savePlay();
                 saveSettings();
                 flushSaves();
                 location.href = "./index.html";
@@ -4020,7 +4147,7 @@
             openBoard("win");
         });
         document.getElementById("win-home").addEventListener("click", () => {
-            savePlay();
+            if (!PLAYGROUND) savePlay();
             saveSettings();
             flushSaves();
             location.href = "./index.html";
@@ -4087,6 +4214,10 @@
     }
 
     function restorePlay() {
+        if (PLAYGROUND) {
+            restartGame();
+            return;
+        }
         const boot = new URLSearchParams(location.search).get("mode");
         if (boot) history.replaceState({}, "", location.pathname);
 

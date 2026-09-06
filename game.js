@@ -5254,7 +5254,7 @@
                 event.preventDefault();
                 return;
             }
-            if (state.menuOpen || state.boardOpen || event.target.closest("#settings-menu") || event.target.closest("#board-overlay")) {
+            if (state.menuOpen || state.boardOpen || event.target.closest("#settings-menu") || event.target.closest("#board-overlay") || event.target.closest("#playground-panel")) {
                 if (event.touches.length > 1) event.preventDefault();
                 return;
             }

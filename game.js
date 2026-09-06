@@ -2991,6 +2991,9 @@
             // Cleared so a repaint (palette switch) discards cached gradients.
             bodyFill: null,
             spikeFills: null,
+            shadeFill: null,
+            limbFill: null,
+            bandFill: null,
         };
     }
 
@@ -3113,7 +3116,7 @@
         ctx.globalAlpha = pulse;
         if (!ball.hasSpikes) {
             ctx.shadowColor = ball.color;
-            ctx.shadowBlur = 10 + 16 * pulse;
+            ctx.shadowBlur = 6 + 9 * pulse;
         }
 
         if (ball.hasRings) drawBallRings(x, y, ball, pulse);
@@ -3147,9 +3150,81 @@
         ctx.beginPath();
         ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
         ctx.fill();
+
+        if (!ball.hasSpikes) {
+            const lx = Number.isFinite(ball.litX) ? ball.litX : -0.28;
+            const ly = Number.isFinite(ball.litY) ? ball.litY : -0.32;
+            if (!ball.shadeFill) {
+                // Night side, opposite the lit point, easing round the terminator.
+                const sh = ctx.createRadialGradient(
+                    -lx * ball.r * 0.85, -ly * ball.r * 0.85, ball.r * 0.1,
+                    -lx * ball.r * 0.45, -ly * ball.r * 0.45, ball.r * 1.5
+                );
+                sh.addColorStop(0, "rgba(0, 0, 0, 0.6)");
+                sh.addColorStop(0.42, "rgba(0, 0, 0, 0.32)");
+                sh.addColorStop(0.78, "rgba(0, 0, 0, 0.08)");
+                sh.addColorStop(1, "rgba(0, 0, 0, 0)");
+                ball.shadeFill = sh;
+                // Limb darkening: the edge of a sphere turns away from us.
+                const limb = ctx.createRadialGradient(0, 0, ball.r * 0.62, 0, 0, ball.r);
+                limb.addColorStop(0, "rgba(0, 0, 0, 0)");
+                limb.addColorStop(1, "rgba(0, 0, 0, 0.34)");
+                ball.limbFill = limb;
+            }
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
+            ctx.clip();
+            if (ball.r >= 44) drawPlanetBands(ball);
+            ctx.fillStyle = ball.shadeFill;
+            ctx.fillRect(-ball.r, -ball.r, ball.r * 2, ball.r * 2);
+            ctx.fillStyle = ball.limbFill;
+            ctx.fillRect(-ball.r, -ball.r, ball.r * 2, ball.r * 2);
+            ctx.restore();
+            drawPlanetRim(ball, lx, ly);
+        }
         ctx.restore();
 
         if (ball.hasRings) drawBallRingsFront(x, y, ball, pulse);
+        ctx.restore();
+    }
+
+    // Gas-giant banding: soft latitude stripes in the planet's own tilted frame.
+    function drawPlanetBands(ball) {
+        if (!ball.bandFill) {
+            if (ball.bandTilt == null) {
+                ball.bandTilt = rand(-0.5, 0.5);
+                ball.bandSeed = Math.random();
+            }
+            const g = ctx.createLinearGradient(0, -ball.r, 0, ball.r);
+            const n = 7;
+            for (let i = 0; i <= n; i += 1) {
+                const u = i / n;
+                const w = Math.sin((u + ball.bandSeed) * Math.PI * 5.5);
+                const a = 0.055 * Math.abs(w);
+                g.addColorStop(u, w > 0
+                    ? `rgba(255, 246, 226, ${a})`
+                    : `rgba(0, 0, 0, ${a * 1.5})`);
+            }
+            ball.bandFill = g;
+        }
+        ctx.save();
+        ctx.rotate(ball.bandTilt);
+        ctx.fillStyle = ball.bandFill;
+        ctx.fillRect(-ball.r * 1.5, -ball.r * 1.5, ball.r * 3, ball.r * 3);
+        ctx.restore();
+    }
+
+    // A thin bright arc on the lit limb, the way an atmosphere catches light.
+    function drawPlanetRim(ball, lx, ly) {
+        const a = Math.atan2(ly, lx);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = `rgba(255, 250, 240, 0.34)`;
+        ctx.lineWidth = Math.max(1, ball.r * 0.045);
+        ctx.beginPath();
+        ctx.arc(0, 0, ball.r * 0.985, a - 1.15, a + 1.15);
+        ctx.stroke();
         ctx.restore();
     }
 
@@ -3630,6 +3705,26 @@
                 g.beginPath();
                 g.arc(px, py, blob * 2.6, 0, Math.PI * 2);
                 g.fill();
+
+                // Knots thin out toward the quiet inner disk.
+                if (t > 0.22 && (s * 7 + arm * 3) % 11 === 0) {
+                    const hii = hash2(s * 1.7 + arm, t * 9.3) < 0.62;
+                    const kr = blob * (0.5 + 0.5 * hash2(s + arm * 2.1, t * 4.7));
+                    const knot = g.createRadialGradient(px, py, 0, px, py, kr * 2.2);
+                    if (hii) {
+                        knot.addColorStop(0, "rgba(255, 150, 190, 0.5)");
+                        knot.addColorStop(0.45, "rgba(232, 96, 150, 0.22)");
+                        knot.addColorStop(1, "rgba(210, 70, 130, 0)");
+                    } else {
+                        knot.addColorStop(0, "rgba(216, 234, 255, 0.55)");
+                        knot.addColorStop(0.45, "rgba(158, 196, 255, 0.24)");
+                        knot.addColorStop(1, "rgba(130, 170, 255, 0)");
+                    }
+                    g.fillStyle = knot;
+                    g.beginPath();
+                    g.arc(px, py, kr * 2.2, 0, Math.PI * 2);
+                    g.fill();
+                }
             }
         }
     }
@@ -3784,6 +3879,7 @@
     }
 
     const neutronGlows = new Map();
+    let neutronJet = null;
 
     function neutronGlow(r) {
         const hit = neutronGlows.get(r);
@@ -3806,8 +3902,33 @@
         ctx.beginPath();
         ctx.arc(0, 0, r * 4.6, 0, Math.PI * 2);
         ctx.fill();
+        // Collimated jets along the magnetic axis.
+        ctx.save();
+        ctx.rotate(0.6 + r * 0.02);
+        if (!neutronJet) {
+            neutronJet = ctx.createLinearGradient(0, 0, 0, 1);
+            neutronJet.addColorStop(0, "rgba(198, 226, 255, 0.5)");
+            neutronJet.addColorStop(0.35, "rgba(150, 196, 255, 0.16)");
+            neutronJet.addColorStop(1, "rgba(120, 170, 255, 0)");
+        }
+        for (let i = 0; i < 2; i += 1) {
+            ctx.save();
+            ctx.scale(1, i ? -1 : 1);
+            ctx.scale(r * 0.9, r * 7);
+            ctx.fillStyle = neutronJet;
+            ctx.beginPath();
+            ctx.moveTo(-0.32, 0);
+            ctx.lineTo(0.32, 0);
+            ctx.lineTo(0.09, 1);
+            ctx.lineTo(-0.09, 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        ctx.restore();
+
         ctx.fillStyle = "#ffffff";
-        ctx.shadowColor = "#ffffff";
+        ctx.shadowColor = "#cfe4ff";
         ctx.shadowBlur = r * 2.4;
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -3844,21 +3965,43 @@
             ctx.translate(x, y);
             ctx.rotate(comet.angle);
             ctx.globalCompositeOperation = "lighter";
-            if (!comet.streakFill) {
-                const streak = ctx.createLinearGradient(-comet.tail, 0, comet.r * 2, 0);
-                streak.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
-                streak.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${0.08 * a})`);
-                streak.addColorStop(0.86, `rgba(${r}, ${g}, ${b}, ${0.28 * a})`);
-                streak.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.55 * a})`);
-                comet.streakFill = streak;
+            if (!comet.ionFill) {
+                // Grains lag the comet, so the dust tail trails off its track.
+                comet.dustLag = 0.16 + 0.18 * comet.near;
+                const ion = ctx.createLinearGradient(-comet.tail * 1.42, 0, comet.r * 2, 0);
+                ion.addColorStop(0, "rgba(120, 170, 255, 0)");
+                ion.addColorStop(0.5, `rgba(126, 178, 255, ${0.1 * a})`);
+                ion.addColorStop(0.85, `rgba(158, 202, 255, ${0.3 * a})`);
+                ion.addColorStop(1, `rgba(206, 230, 255, ${0.5 * a})`);
+                comet.ionFill = ion;
+                const dust = ctx.createLinearGradient(-comet.tail, 0, comet.r * 2, 0);
+                dust.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+                dust.addColorStop(0.55, `rgba(255, 240, 214, ${0.07 * a})`);
+                dust.addColorStop(0.86, `rgba(255, 244, 224, ${0.22 * a})`);
+                dust.addColorStop(1, `rgba(255, 250, 238, ${0.42 * a})`);
+                comet.dustFill = dust;
             }
-            ctx.fillStyle = comet.streakFill;
+
+            // Ion tail: narrow and straight.
+            ctx.fillStyle = comet.ionFill;
             ctx.beginPath();
-            ctx.moveTo(-comet.tail, 0);
-            ctx.lineTo(comet.r * 0.4, comet.r * 1.15);
-            ctx.lineTo(comet.r * 0.4, -comet.r * 1.15);
+            ctx.moveTo(-comet.tail * 1.42, 0);
+            ctx.lineTo(comet.r * 0.3, comet.r * 0.44);
+            ctx.lineTo(comet.r * 0.3, -comet.r * 0.44);
             ctx.closePath();
             ctx.fill();
+
+            // Dust tail: broader, warmer, curving off the direction of travel.
+            ctx.save();
+            ctx.rotate(comet.dustLag);
+            ctx.fillStyle = comet.dustFill;
+            ctx.beginPath();
+            ctx.moveTo(comet.r * 0.4, -comet.r * 1.0);
+            ctx.quadraticCurveTo(-comet.tail * 0.5, -comet.r * 1.5, -comet.tail, comet.r * 0.5);
+            ctx.quadraticCurveTo(-comet.tail * 0.45, comet.r * 1.1, comet.r * 0.4, comet.r * 1.0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
             if (!comet.comaFill) {
                 const coma = ctx.createRadialGradient(0, 0, 0, 0, 0, comet.r * 4.2);
                 coma.addColorStop(0, `rgba(255, 255, 255, ${0.55 * a})`);
@@ -3946,6 +4089,47 @@
             }
             ctx.fillStyle = meteor.shadeFill;
             ctx.fill();
+
+            if (!meteor.craters) {
+                meteor.craters = [];
+                const n = 3 + Math.floor(Math.random() * 4);
+                for (let i = 0; i < n; i += 1) {
+                    meteor.craters.push({
+                        x: rand(-0.5, 0.5),
+                        y: rand(-0.5, 0.5),
+                        r: rand(0.09, 0.22),
+                        a: rand(0, Math.PI * 2),
+                    });
+                }
+                const term = ctx.createLinearGradient(-meteor.r * 0.5, -meteor.r * 0.5, meteor.r, meteor.r);
+                term.addColorStop(0, "rgba(0, 0, 0, 0)");
+                term.addColorStop(0.55, "rgba(0, 0, 0, 0.18)");
+                term.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+                meteor.termFill = term;
+            }
+
+            ctx.save();
+            meteorPath(ctx, meteor, 1);
+            ctx.clip();
+            for (let i = 0; i < meteor.craters.length; i += 1) {
+                const c = meteor.craters[i];
+                const cx = c.x * meteor.r;
+                const cy = c.y * meteor.r;
+                const cr = c.r * meteor.r;
+                ctx.fillStyle = "rgba(0, 0, 0, 0.24)";
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, cr, cr * 0.82, c.a, 0, Math.PI * 2);
+                ctx.fill();
+                // Sunlit crater rim, opposite the shading direction.
+                ctx.strokeStyle = "rgba(255, 238, 214, 0.16)";
+                ctx.lineWidth = Math.max(1, meteor.r * 0.022);
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, cr, cr * 0.82, c.a, Math.PI * 0.95, Math.PI * 1.95);
+                ctx.stroke();
+            }
+            ctx.fillStyle = meteor.termFill;
+            ctx.fillRect(-meteor.r * 1.4, -meteor.r * 1.4, meteor.r * 2.8, meteor.r * 2.8);
+            ctx.restore();
             ctx.restore();
         }
         ctx.restore();

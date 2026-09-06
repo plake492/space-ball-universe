@@ -39,6 +39,8 @@
     const MAX_BALL = BALL_TYPES[BALL_TYPES.length - 1].size;
     const SPIKE_TYPES = BALL_TYPES.slice(-2);
     const SPIKE_RATE = 0.15;
+    const SPIKE_COUNT_MAX = 1000;
+    const METEOR_COUNT_MAX = 20;
     const SPIKE_REACH = 1.4;
     const SPIKE_TRIAL_MS = 10000;
     const DROP_RATE = 0.05;
@@ -150,6 +152,10 @@
     const volumeSliderValue = document.getElementById("volume-slider-value");
     const zoomSlider = document.getElementById("zoom-slider");
     const zoomSliderValue = document.getElementById("zoom-slider-value");
+    const meteorSlider = document.getElementById("meteor-slider");
+    const meteorSliderValue = document.getElementById("meteor-slider-value");
+    const spikesSlider = document.getElementById("spikes-slider");
+    const spikesSliderValue = document.getElementById("spikes-slider-value");
     const settingsMenu = document.getElementById("settings-menu");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
@@ -215,6 +221,26 @@
         return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP));
     }
 
+    function clampMeteorCount(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(METEOR_COUNT_MAX, Math.max(0, n)) : 1;
+    }
+
+    function clampSpikeBalls(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(SPIKE_COUNT_MAX, Math.max(0, n)) : Math.round(START_BALLS * SPIKE_RATE);
+    }
+
+    function isCustomGame() {
+        return state.difficulty === "custom";
+    }
+
+    function syncHazardFlags() {
+        if (!isCustomGame()) return;
+        state.meteorOn = state.meteorCount > 0;
+        state.spikes = state.spikeBalls > 0;
+    }
+
     function loadSettings() {
         try {
             const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "");
@@ -238,6 +264,12 @@
             const volume = data.volume == null ? 100 : clampVolume(data.volume);
             const spikes = data.spikes !== false;
             const meteorOn = data.meteorOn !== false;
+            const meteorCount = data.meteorCount == null
+                ? (meteorOn ? 1 : 0)
+                : clampMeteorCount(data.meteorCount);
+            const spikeBalls = data.spikeBalls == null
+                ? (spikes ? Math.round(ballCount * SPIKE_RATE) : 0)
+                : clampSpikeBalls(data.spikeBalls);
             const infiniteFuel = data.infiniteFuel === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             if (difficulty && difficulty !== "custom") {
@@ -262,13 +294,39 @@
                     volume,
                     spikes,
                     meteorOn,
+                    meteorCount,
+                    spikeBalls,
                     infiniteFuel,
                     zoom,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, nebula, starDrift, sky, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
+            return {
+                world,
+                ballCount,
+                goal,
+                palette,
+                pulse,
+                nebula,
+                starDrift,
+                sky,
+                ship,
+                name,
+                lifetime,
+                reqShips,
+                difficulty,
+                trial,
+                trialMs,
+                audio,
+                volume,
+                spikes: difficulty === "custom" ? spikeBalls > 0 : spikes,
+                meteorOn: difficulty === "custom" ? meteorCount > 0 : meteorOn,
+                meteorCount,
+                spikeBalls,
+                infiniteFuel,
+                zoom,
+            };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), infiniteFuel: false, zoom: 1 };
         }
     }
 
@@ -294,6 +352,8 @@
                 volume: state.volume,
                 spikes: state.spikes,
                 meteorOn: state.meteorOn,
+                meteorCount: state.meteorCount,
+                spikeBalls: state.spikeBalls,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
             }));
@@ -435,6 +495,8 @@
                 trialMs: state.trialMs,
                 spikes: state.spikes,
                 meteorOn: state.meteorOn,
+                meteorCount: state.meteorCount,
+                spikeBalls: state.spikeBalls,
                 infiniteFuel: state.infiniteFuel,
                 neutrons: state.neutrons.map((pair) => ({
                     x: pair.x,
@@ -460,6 +522,8 @@
             if (state.trial && Number(data.trialMs) !== state.trialMs) return null;
             if ((data.spikes !== false) !== state.spikes) return null;
             if ((data.meteorOn !== false) !== state.meteorOn) return null;
+            if (data.meteorCount != null && Number(data.meteorCount) !== state.meteorCount) return null;
+            if (data.spikeBalls != null && Number(data.spikeBalls) !== state.spikeBalls) return null;
             if (Boolean(data.infiniteFuel) !== state.infiniteFuel) return null;
             if (!Array.isArray(data.balls)) return null;
             const balls = [];
@@ -604,6 +668,10 @@
         volume: saved.volume == null ? 100 : clampVolume(saved.volume),
         spikes: saved.spikes !== false,
         meteorOn: saved.meteorOn !== false,
+        meteorCount: saved.meteorCount == null ? (saved.meteorOn !== false ? 1 : 0) : clampMeteorCount(saved.meteorCount),
+        spikeBalls: saved.spikeBalls == null
+            ? (saved.spikes !== false ? Math.round(saved.ballCount * SPIKE_RATE) : 0)
+            : clampSpikeBalls(saved.spikeBalls),
         infiniteFuel: saved.infiniteFuel === true,
         zoom: clampZoom(saved.zoom == null ? 1 : saved.zoom),
         speed: 0,
@@ -1140,8 +1208,27 @@
         nextCometAt = performance.now() + COMET_CHECK;
     }
 
+    function meteorCap() {
+        if (isCustomGame()) return state.meteorCount;
+        return state.meteorOn ? 1 : 0;
+    }
+
+    function fillMeteors() {
+        const want = meteorCap();
+        if (want <= 0) {
+            state.meteors = [];
+            return;
+        }
+        while (state.meteors.length < want) state.meteors.push(makeMeteor());
+        if (state.meteors.length > want) state.meteors.length = want;
+    }
+
     function spawnMeteors() {
         state.meteors = [];
+        if (isCustomGame()) {
+            fillMeteors();
+            return;
+        }
         if (!state.meteorOn) return;
         nextMeteorAt = performance.now() + meteorWait();
         state.meteors.push(makeMeteor());
@@ -1174,7 +1261,17 @@
     }
 
     function updateMeteors(dt, now, paused) {
-        if (paused || !state.meteorOn) return;
+        if (paused) return;
+        if (isCustomGame()) {
+            if (state.meteorCount <= 0) {
+                state.meteors = [];
+                return;
+            }
+            moveFlyers(state.meteors, dt);
+            fillMeteors();
+            return;
+        }
+        if (!state.meteorOn) return;
         moveFlyers(state.meteors, dt);
         if (now >= nextMeteorAt) {
             nextMeteorAt = now + meteorWait();
@@ -1226,10 +1323,10 @@
 
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) placeBall(false);
-        if (state.spikes) {
-            const spikes = Math.round(count * SPIKE_RATE);
-            for (let i = 0; i < spikes; i += 1) placeBall(true);
-        }
+        const spikes = isCustomGame()
+            ? state.spikeBalls
+            : (state.spikes ? Math.round(count * SPIKE_RATE) : 0);
+        for (let i = 0; i < spikes; i += 1) placeBall(true);
         spawnDrops();
     }
 
@@ -1395,6 +1492,8 @@
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
+        state.spikes = true;
+        state.meteorOn = true;
         saveSettings();
         if (restart) restartGame();
         else updateHud();
@@ -1485,6 +1584,7 @@
         for (const button of document.querySelectorAll(".meteor-btn")) {
             button.classList.toggle("is-on", (button.dataset.meteor === "on") === state.meteorOn);
         }
+        syncCustomHazards();
         for (const button of document.querySelectorAll(".fuel-btn")) {
             button.classList.toggle("is-on", (button.dataset.fuel === "on") === state.infiniteFuel);
         }
@@ -1505,6 +1605,16 @@
         syncPlaygroundRanges();
     }
 
+    function syncCustomHazards() {
+        const custom = isCustomGame();
+        for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !custom);
+        for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", custom);
+        if (meteorSlider) meteorSlider.value = String(state.meteorCount);
+        if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);
+        if (spikesSlider) spikesSlider.value = String(state.spikeBalls);
+        if (spikesSliderValue) spikesSliderValue.textContent = String(state.spikeBalls);
+    }
+
     function syncPlaygroundRanges() {
         for (const el of document.querySelectorAll("[data-pg-range]")) {
             const key = el.dataset.pgRange;
@@ -1514,12 +1624,16 @@
                 el.value = String(state.goal);
             } else if (key === "zoom") el.value = String(state.zoom);
             else if (key === "volume") el.value = String(state.volume);
+            else if (key === "meteors") el.value = String(state.meteorCount);
+            else if (key === "spikes") el.value = String(state.spikeBalls);
             const label = document.querySelector(`[data-pg-value="${key}"]`);
             if (!label) continue;
             if (key === "zoom") label.textContent = `${state.zoom}×`;
             else if (key === "volume") label.textContent = String(state.volume);
             else if (key === "balls") label.textContent = String(state.ballCount);
             else if (key === "goal") label.textContent = String(state.goal);
+            else if (key === "meteors") label.textContent = String(state.meteorCount);
+            else if (key === "spikes") label.textContent = String(state.spikeBalls);
         }
     }
 
@@ -3927,6 +4041,8 @@
                 const label = document.querySelector(`[data-pg-value="${key}"]`);
                 if (key === "balls" && label) label.textContent = el.value;
                 if (key === "goal" && label) label.textContent = el.value;
+                if (key === "meteors" && label) label.textContent = el.value;
+                if (key === "spikes" && label) label.textContent = el.value;
                 if (key === "zoom") {
                     state.zoom = clampZoom(el.value);
                     if (label) label.textContent = `${state.zoom}×`;
@@ -3973,6 +4089,33 @@
                     saveSettings();
                     applyAudioLevels();
                     updateHud();
+                    return;
+                }
+                if (key === "meteors") {
+                    const next = clampMeteorCount(el.value);
+                    if (next === state.meteorCount && isCustomGame()) {
+                        syncPlaygroundRanges();
+                        return;
+                    }
+                    state.meteorCount = next;
+                    state.difficulty = "custom";
+                    syncHazardFlags();
+                    saveSettings();
+                    fillMeteors();
+                    updateHud();
+                    return;
+                }
+                if (key === "spikes") {
+                    const next = clampSpikeBalls(el.value);
+                    if (next === state.spikeBalls && isCustomGame()) {
+                        syncPlaygroundRanges();
+                        return;
+                    }
+                    state.spikeBalls = next;
+                    state.difficulty = "custom";
+                    syncHazardFlags();
+                    saveSettings();
+                    restartGame();
                 }
             });
         }
@@ -4195,6 +4338,37 @@
                 state.zoom = clampZoom(zoomSlider.value);
                 saveSettings();
                 updateHud();
+            });
+        }
+
+        if (meteorSlider) {
+            meteorSlider.addEventListener("input", () => {
+                if (meteorSliderValue) meteorSliderValue.textContent = meteorSlider.value;
+            });
+            meteorSlider.addEventListener("change", () => {
+                const next = clampMeteorCount(meteorSlider.value);
+                if (next === state.meteorCount && isCustomGame()) return;
+                state.meteorCount = next;
+                state.difficulty = "custom";
+                syncHazardFlags();
+                saveSettings();
+                fillMeteors();
+                updateHud();
+            });
+        }
+
+        if (spikesSlider) {
+            spikesSlider.addEventListener("input", () => {
+                if (spikesSliderValue) spikesSliderValue.textContent = spikesSlider.value;
+            });
+            spikesSlider.addEventListener("change", () => {
+                const next = clampSpikeBalls(spikesSlider.value);
+                if (next === state.spikeBalls && isCustomGame()) return;
+                state.spikeBalls = next;
+                state.difficulty = "custom";
+                syncHazardFlags();
+                saveSettings();
+                restartGame();
             });
         }
 

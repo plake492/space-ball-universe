@@ -5,6 +5,9 @@
     const GOAL_STEP = 5;
     const BALLS_MIN = 25;
     const BALLS_MAX = 1000;
+    const SPIKE_RATE = 0.15;
+    const SPIKE_COUNT_MAX = 1000;
+    const METEOR_COUNT_MAX = 20;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
     const ZOOM_MIN = 1;
@@ -62,6 +65,10 @@
     const volumeSliderValue = document.getElementById("volume-slider-value");
     const zoomSlider = document.getElementById("zoom-slider");
     const zoomSliderValue = document.getElementById("zoom-slider-value");
+    const meteorSlider = document.getElementById("meteor-slider");
+    const meteorSliderValue = document.getElementById("meteor-slider-value");
+    const spikesSlider = document.getElementById("spikes-slider");
+    const spikesSliderValue = document.getElementById("spikes-slider-value");
     const boardOverlay = document.getElementById("board-overlay");
     const boardTable = document.getElementById("board-table");
     const boardList = document.getElementById("board-list");
@@ -101,6 +108,8 @@
         volume: 100,
         spikes: true,
         meteorOn: true,
+        meteorCount: 1,
+        spikeBalls: Math.round(START_BALLS * SPIKE_RATE),
         infiniteFuel: false,
         zoom: 1,
     };
@@ -393,6 +402,26 @@
         return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP));
     }
 
+    function clampMeteorCount(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(METEOR_COUNT_MAX, Math.max(0, n)) : 1;
+    }
+
+    function clampSpikeBalls(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(SPIKE_COUNT_MAX, Math.max(0, n)) : Math.round(START_BALLS * SPIKE_RATE);
+    }
+
+    function isCustomGame() {
+        return state.difficulty === "custom";
+    }
+
+    function syncHazardFlags() {
+        if (!isCustomGame()) return;
+        state.meteorOn = state.meteorCount > 0;
+        state.spikes = state.spikeBalls > 0;
+    }
+
     function normalizeName(value) {
         return String(value || "").replace(/\s+/g, " ").trim().slice(0, NAME_MAX);
     }
@@ -455,6 +484,8 @@
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
+        state.spikes = true;
+        state.meteorOn = true;
         saveSettings();
         updateHud();
     }
@@ -508,6 +539,16 @@
             state.volume = data.volume == null ? 100 : clampVolume(data.volume);
             state.spikes = data.spikes !== false;
             state.meteorOn = data.meteorOn !== false;
+            state.meteorCount = data.meteorCount == null
+                ? (state.meteorOn ? 1 : 0)
+                : clampMeteorCount(data.meteorCount);
+            state.spikeBalls = data.spikeBalls == null
+                ? (state.spikes ? Math.round(state.ballCount * SPIKE_RATE) : 0)
+                : clampSpikeBalls(data.spikeBalls);
+            if (state.difficulty === "custom") {
+                state.meteorOn = state.meteorCount > 0;
+                state.spikes = state.spikeBalls > 0;
+            }
             state.infiniteFuel = data.infiniteFuel === true;
             state.zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
         } catch {
@@ -537,6 +578,8 @@
                 volume: state.volume,
                 spikes: state.spikes,
                 meteorOn: state.meteorOn,
+                meteorCount: state.meteorCount,
+                spikeBalls: state.spikeBalls,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
             }));
@@ -560,6 +603,8 @@
                 trialMs: Number(data.trialMs) || 0,
                 spikes: data.spikes !== false,
                 meteorOn: data.meteorOn !== false,
+                meteorCount: data.meteorCount == null ? null : Number(data.meteorCount),
+                spikeBalls: data.spikeBalls == null ? null : Number(data.spikeBalls),
                 infiniteFuel: data.infiniteFuel === true,
             };
         } catch {
@@ -581,6 +626,8 @@
             && (!state.trial || play.trialMs === state.trialMs)
             && play.spikes === state.spikes
             && play.meteorOn === state.meteorOn
+            && (play.meteorCount == null || play.meteorCount === state.meteorCount)
+            && (play.spikeBalls == null || play.spikeBalls === state.spikeBalls)
             && play.infiniteFuel === state.infiniteFuel
             && playIsActive(play)
         );
@@ -730,6 +777,13 @@
         for (const button of document.querySelectorAll(".meteor-btn")) {
             button.classList.toggle("is-on", (button.dataset.meteor === "on") === state.meteorOn);
         }
+        const custom = isCustomGame();
+        for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !custom);
+        for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", custom);
+        if (meteorSlider) meteorSlider.value = String(state.meteorCount);
+        if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);
+        if (spikesSlider) spikesSlider.value = String(state.spikeBalls);
+        if (spikesSliderValue) spikesSliderValue.textContent = String(state.spikeBalls);
         for (const button of document.querySelectorAll(".fuel-btn")) {
             button.classList.toggle("is-on", (button.dataset.fuel === "on") === state.infiniteFuel);
         }
@@ -979,6 +1033,30 @@
     for (const button of document.querySelectorAll(".meteor-btn")) {
         button.addEventListener("click", () => {
             state.meteorOn = button.dataset.meteor === "on";
+            saveSettings();
+            updateHud();
+        });
+    }
+    if (meteorSlider) {
+        meteorSlider.addEventListener("input", () => {
+            if (meteorSliderValue) meteorSliderValue.textContent = meteorSlider.value;
+        });
+        meteorSlider.addEventListener("change", () => {
+            state.meteorCount = clampMeteorCount(meteorSlider.value);
+            state.difficulty = "custom";
+            syncHazardFlags();
+            saveSettings();
+            updateHud();
+        });
+    }
+    if (spikesSlider) {
+        spikesSlider.addEventListener("input", () => {
+            if (spikesSliderValue) spikesSliderValue.textContent = spikesSlider.value;
+        });
+        spikesSlider.addEventListener("change", () => {
+            state.spikeBalls = clampSpikeBalls(spikesSlider.value);
+            state.difficulty = "custom";
+            syncHazardFlags();
             saveSettings();
             updateHud();
         });

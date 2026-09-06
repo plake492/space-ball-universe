@@ -3193,6 +3193,10 @@
         settingsMenu.classList.remove("hidden");
         document.documentElement.classList.add("settings-open");
         document.body.classList.add("settings-open");
+        // Ship unlocks track lifetime points, which grow on every pickup. The full
+        // sweep runs here, when the settings UI becomes visible, rather than on
+        // every pickup as it used to.
+        updateHud();
         showSettingsPanel("");
         syncBoost();
         savePlay();

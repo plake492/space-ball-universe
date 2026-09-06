@@ -56,7 +56,6 @@
     const NEUTRON_ORBIT = 34;
     const NEUTRON_ORBIT_MAX = NEUTRON_ORBIT * 2.5;
     const NEUTRON_SPEED = 8.6;
-    const NEUTRON_PAIRS = 1;
     const NEUTRON_SWEEP = Math.round(250 * 2.33);
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 5;
@@ -828,10 +827,18 @@
         state.holes.sort((a, b) => holeNear(a) - holeNear(b));
     }
 
+    function neutronCount() {
+        if (state.world >= 20000) return 5;
+        if (state.world >= 15000) return 4;
+        if (state.world >= 10000) return 3;
+        return 2;
+    }
+
     function spawnNeutrons() {
         state.neutrons = [];
         const pad = 520;
-        for (let i = 0; i < NEUTRON_PAIRS; i += 1) {
+        const count = neutronCount();
+        for (let i = 0; i < count; i += 1) {
             const orbit = rand(NEUTRON_ORBIT, NEUTRON_ORBIT_MAX);
             const reach = orbit + NEUTRON_R;
             const minShip = reach + 720;

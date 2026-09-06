@@ -49,6 +49,11 @@
     const SHIELD_DROP_R = 36;
     const SHIELD_SHIP_R = 38;
     const SHIP_RADIUS = 22;
+    const CARGO_PER = 5;
+    const CARGO_R_MIN = 28;
+    const CARGO_R_MAX = 40;
+    const CARGO_SPIN = 0.02;
+    const CARGO_SCATTER_FRAMES = 60;
     const SHIP_SPEED = 840;
     const SHIP_ACCEL = 2000;
     const SHIP_DECEL = 1500;
@@ -1805,6 +1810,7 @@
     }
 
     function applyHazardHit() {
+        scatterCargoMoons();
         state.found = 0;
         state.score = 0;
         flashSpikeBorder();
@@ -2459,7 +2465,242 @@
         return Number.isFinite(near) ? Math.min(1, Math.max(0.18, near)) : 1;
     }
 
+    /* ---------- Gargantua-style hole (playground only) ----------
+       Geometry for a disk viewed a couple of degrees off its plane: the far
+       side sits above the shadow, the near side crosses in front, and light
+       from behind is lensed over the top and under the bottom into a
+       near-circular halo that melts into the disk at the left and right
+       extremes. The disk is many overlapping thin bands composited additively
+       so they fuse into one sheet instead of reading as separate rings. */
+    const NO_DASH = [];
+    const G_BANDS = 30;
+    const G_INNER = 1.52;   // inner disk edge, in shadow radii
+    const G_OUTER = 3.05;
+    const G_FLAT = 0.105;   // vertical squash at the inner edge
+    const G_FLARE = 0.55;   // disks thicken outward
+    const G_RAMP = [
+        [0.00, 255, 253, 248],
+        [0.10, 255, 243, 214],
+        [0.28, 255, 205, 132],
+        [0.52, 253, 156, 58],
+        [0.78, 218, 96, 26],
+        [1.00, 138, 44, 12],
+    ];
+
+    function gargColor(t) {
+        const v = t < 0 ? 0 : t > 1 ? 1 : t;
+        for (let i = 1; i < G_RAMP.length; i += 1) {
+            const b = G_RAMP[i];
+            if (v <= b[0]) {
+                const a = G_RAMP[i - 1];
+                const k = (v - a[0]) / (b[0] - a[0]);
+                return [
+                    Math.round(a[1] + (b[1] - a[1]) * k),
+                    Math.round(a[2] + (b[2] - a[2]) * k),
+                    Math.round(a[3] + (b[3] - a[3]) * k),
+                ];
+            }
+        }
+        const l = G_RAMP[G_RAMP.length - 1];
+        return [l[1], l[2], l[3]];
+    }
+
+    // Doppler beaming is fixed in space — one side always approaches — while the
+    // material streams through it, so this is cached and motion rides the dash.
+    function gargBandPaint(rx, t, gain, dir) {
+        const [r, g, b] = gargColor(t);
+        const a = (Math.pow(1 - t, 0.9) * 0.9 + 0.1) * gain;
+        const hot = 1.5;
+        const cold = 0.52;
+        const lo = dir > 0 ? hot : cold;
+        const hi = dir > 0 ? cold : hot;
+        const gr = ctx.createLinearGradient(-rx, 0, rx, 0);
+        const c = (m, al) => `rgba(${Math.min(255, Math.round(r * m))}, ${Math.min(255, Math.round(g * m))}, ${Math.min(255, Math.round(b * m))}, ${Math.max(0, Math.min(1, al))})`;
+        gr.addColorStop(0.00, c(1.10, a * lo * 0.55));
+        gr.addColorStop(0.22, c(1.06, a * lo));
+        gr.addColorStop(0.50, c(1.00, a * 0.72));
+        gr.addColorStop(0.78, c(0.96, a * hi));
+        gr.addColorStop(1.00, c(0.92, a * hi * 0.55));
+        return gr;
+    }
+
+    // Transparent at the horizontal extremes so it melts into the disk,
+    // brightest where it crests above and below the shadow.
+    function gargHaloPaint(rad, alpha, tint, warm) {
+        const [r, g, b] = gargColor(tint);
+        const cr = Math.min(255, Math.round(r * warm));
+        const cg = Math.min(255, Math.round(g * warm));
+        const cb = Math.min(255, Math.round(b * warm));
+        const gr = ctx.createLinearGradient(-rad, 0, rad, 0);
+        const stop = (at, mul) => gr.addColorStop(at, `rgba(${cr}, ${cg}, ${cb}, ${alpha * mul})`);
+        stop(0.00, 0);
+        stop(0.10, 0.05);
+        stop(0.26, 0.52);
+        stop(0.42, 0.96);
+        stop(0.50, 1);
+        stop(0.58, 0.96);
+        stop(0.74, 0.52);
+        stop(0.90, 0.05);
+        stop(1.00, 0);
+        return gr;
+    }
+
+    function ensureGarg(hole, r) {
+        if (hole.garg && hole.garg.r === r) return hole.garg;
+        // Spin direction comes off the existing seed so holes differ without
+        // changing what spawnHoles() stores.
+        const dir = (hole.spin || 0) > Math.PI ? 1 : -1;
+        const bands = [];
+        const step = (G_OUTER - G_INNER) / (G_BANDS - 1);
+        for (let i = 0; i < G_BANDS; i += 1) {
+            const t = i / (G_BANDS - 1);
+            const rr = G_INNER + (G_OUTER - G_INNER) * Math.pow(t, 1.25);
+            const rx = r * rr;
+            bands.push({
+                rx,
+                ry: rx * G_FLAT * (1 + G_FLARE * t),
+                width: r * step * 2.9,
+                paint: gargBandPaint(rx, t, 0.30, dir),
+                wisp: gargBandPaint(rx, t, 0.30, dir),
+                omega: Math.pow(rr, -1.5),
+                dash: r * (2.4 + 7.4 * t) * (1 + 0.35 * ((i * 7) % 5) / 5),
+                gap: r * (1.5 + 4.2 * t),
+            });
+        }
+
+        const warp = ctx.createRadialGradient(0, 0, r * 0.95, 0, 0, r * 6.0);
+        warp.addColorStop(0.00, "rgba(0, 0, 0, 0.88)");
+        warp.addColorStop(0.12, "rgba(1, 0, 4, 0.5)");
+        warp.addColorStop(0.30, "rgba(1, 0, 4, 0.22)");
+        warp.addColorStop(0.55, "rgba(0, 0, 0, 0.07)");
+        warp.addColorStop(1.00, "rgba(0, 0, 0, 0)");
+
+        const bloom = ctx.createRadialGradient(0, 0, r, 0, 0, r * 5.2);
+        bloom.addColorStop(0.00, "rgba(255, 190, 112, 0.11)");
+        bloom.addColorStop(0.18, "rgba(255, 158, 70, 0.062)");
+        bloom.addColorStop(0.40, "rgba(255, 126, 42, 0.028)");
+        bloom.addColorStop(0.66, "rgba(255, 108, 30, 0.01)");
+        bloom.addColorStop(1.00, "rgba(255, 104, 28, 0)");
+
+        hole.garg = {
+            r,
+            dir,
+            bands,
+            warp,
+            bloom,
+            haloCore: gargHaloPaint(r * 1.3, 0.95, 0.05, 1.02),
+            haloSoft: gargHaloPaint(r * 1.315, 0.3, 0.26, 1),
+            haloSecond: gargHaloPaint(r * 1.115, 0.55, 0.02, 1.04),
+        };
+        return hole.garg;
+    }
+
+    // Stroked as half-arcs rather than clipped at the centre line: a clip cuts
+    // the band flat where it emerges beside the shadow, while a round-capped
+    // half-arc carries its own thickness past the extremes.
+    function gargDisk(g, t, a0, a1) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "round";
+        for (let i = g.bands.length - 1; i >= 0; i -= 1) {
+            const b = g.bands[i];
+            ctx.setLineDash(NO_DASH);
+            ctx.lineWidth = b.width;
+            ctx.strokeStyle = b.paint;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, b.rx, b.ry, 0, a0, a1);
+            ctx.stroke();
+
+            // Filaments on every third band: enough to read as streaming
+            // material without stacking into a moire.
+            if (i % 3 === 0) {
+                ctx.setLineDash([b.dash, b.gap]);
+                ctx.lineDashOffset = -t * b.omega * g.dir * g.r * 2.2;
+                ctx.lineWidth = b.width * 0.5;
+                ctx.strokeStyle = b.wisp;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, b.rx, b.ry, 0, a0, a1);
+                ctx.stroke();
+            }
+        }
+        ctx.setLineDash(NO_DASH);
+        ctx.restore();
+    }
+
+    function gargHalo(g, r, a0, a1) {
+        const arc = (paint, rad, ry, w) => {
+            ctx.strokeStyle = paint;
+            ctx.lineWidth = w;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rad, ry, 0, a0, a1);
+            ctx.stroke();
+        };
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "butt";
+        arc(g.haloSoft, r * 1.315, r * 1.255, r * 0.2);
+        arc(g.haloCore, r * 1.3, r * 1.24, r * 0.065);
+        arc(g.haloSecond, r * 1.115, r * 1.075, r * 0.03);
+    }
+
+    function drawGargantua(hole, cam, now) {
+        const near = holeNear(hole);
+        const x = hole.x - cam.x;
+        const y = hole.y - cam.y;
+        const r = hole.r * (0.32 + 0.68 * near);
+        if (offView(x, y, r * 6.2, cam)) return;
+
+        const g = ensureGarg(hole, r);
+        const t = now / 1000;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(hole.angle);
+        ctx.globalAlpha = 0.16 + 0.84 * near;
+
+        ctx.fillStyle = g.warp;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = g.bloom;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 5.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        gargDisk(g, t, Math.PI, Math.PI * 2);   // far side, above the shadow
+        gargHalo(g, r, Math.PI, Math.PI * 2);   // lensed crest over the top
+
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = "rgba(255, 232, 186, 0.9)";
+        ctx.lineWidth = r * 0.026;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.028, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 168, 76, 0.22)";
+        ctx.lineWidth = r * 0.09;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.07, 0, Math.PI * 2);
+        ctx.stroke();
+
+        gargHalo(g, r, 0, Math.PI);             // lensed crest under the bottom
+        gargDisk(g, t, 0, Math.PI);             // near side, crossing in front
+
+        ctx.globalCompositeOperation = "source-over";
+        ctx.restore();
+    }
+
     function drawHole(hole, cam, now) {
+        if (PLAYGROUND) {
+            drawGargantua(hole, cam, now);
+            return;
+        }
         const near = holeNear(hole);
         const x = hole.x - cam.x;
         const y = hole.y - cam.y;
@@ -2954,6 +3195,116 @@
             ctx.fill();
         }
         ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    }
+
+    let cargoMoons = [];
+    let cargoSpin = 0;
+
+    function cargoMoonCount() {
+        return PLAYGROUND ? Math.floor(state.found / CARGO_PER) : 0;
+    }
+
+    function cargoScale() {
+        return isCompactUi() ? 0.72 : 1;
+    }
+
+    function cargoOrbitRadius(index) {
+        const scale = cargoScale();
+        return Math.min(CARGO_R_MAX, Math.max(CARGO_R_MIN, SHIP_RADIUS + 8 + index * 3)) * scale;
+    }
+
+    function makeCargoMoon(index) {
+        const src = state.taken[index * CARGO_PER] || state.taken[index] || null;
+        const paints = src && Array.isArray(src.paints) ? src.paints.slice() : null;
+        return {
+            color: (src && src.color) || "#7ec8ff",
+            paints: paints || ["#b8e0ff", "#7ec8ff", "#3d7ec8"],
+            angle: 0,
+            orbit: cargoOrbitRadius(index),
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            scatter: false,
+            life: 1,
+            frames: 0,
+        };
+    }
+
+    function syncCargoMoons() {
+        const want = cargoMoonCount();
+        const orbiting = cargoMoons.filter((moon) => !moon.scatter);
+        while (orbiting.length < want) {
+            const moon = makeCargoMoon(orbiting.length);
+            cargoMoons.push(moon);
+            orbiting.push(moon);
+        }
+        if (orbiting.length > want) {
+            let extra = orbiting.length - want;
+            for (let i = cargoMoons.length - 1; i >= 0 && extra > 0; i -= 1) {
+                if (cargoMoons[i].scatter) continue;
+                cargoMoons.splice(i, 1);
+                extra -= 1;
+            }
+        }
+    }
+
+    function scatterCargoMoons() {
+        if (!PLAYGROUND) return;
+        for (const moon of cargoMoons) {
+            if (moon.scatter) continue;
+            moon.scatter = true;
+            moon.life = 1;
+            moon.frames = CARGO_SCATTER_FRAMES;
+            const away = Math.hypot(moon.x, moon.y) || 1;
+            moon.vx = (moon.x / away) * (1.4 + Math.random() * 2.4) + (Math.random() * 4 - 2);
+            moon.vy = (moon.y / away) * (1.4 + Math.random() * 2.4) + (Math.random() * 4 - 2);
+        }
+    }
+
+    function updateCargoMoons(dt) {
+        if (!PLAYGROUND && !cargoMoons.length) return;
+        cargoSpin += CARGO_SPIN * (dt * 60);
+        syncCargoMoons();
+        const live = cargoMoons.filter((moon) => !moon.scatter).length;
+        let orbitIndex = 0;
+        for (let i = cargoMoons.length - 1; i >= 0; i -= 1) {
+            const moon = cargoMoons[i];
+            if (moon.scatter) {
+                moon.x += moon.vx;
+                moon.y += moon.vy;
+                moon.frames -= 1;
+                moon.life = Math.max(0, moon.frames / CARGO_SCATTER_FRAMES);
+                if (moon.frames <= 0) cargoMoons.splice(i, 1);
+                continue;
+            }
+            moon.orbit = cargoOrbitRadius(orbitIndex);
+            moon.angle = cargoSpin + (live ? (orbitIndex / live) * Math.PI * 2 : 0);
+            moon.x = Math.cos(moon.angle) * moon.orbit;
+            moon.y = Math.sin(moon.angle) * moon.orbit;
+            orbitIndex += 1;
+        }
+    }
+
+    function drawCargoMoons(cam) {
+        if (!cargoMoons.length) return;
+        const cx = cam.w / 2;
+        const cy = cam.h / 2;
+        const r = 5.5 * cargoScale();
+        for (const moon of cargoMoons) {
+            const paints = moon.paints;
+            ctx.save();
+            ctx.globalAlpha = moon.scatter ? moon.life : 1;
+            ctx.translate(cx + moon.x, cy + moon.y);
+            const fill = ctx.createRadialGradient(r * -0.28, r * -0.32, r * 0.1, 0, 0, r);
+            fill.addColorStop(0, paints[0] || moon.color);
+            fill.addColorStop(1, paints[paints.length - 1] || moon.color);
+            ctx.fillStyle = fill;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
     }
 
     function drawShip(moving, cam) {
@@ -3702,7 +4053,10 @@
         drawDrops(cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
+        if (!paused) updateCargoMoons(dt);
+        else if (cargoMoons.some((moon) => moon.scatter)) updateCargoMoons(dt);
         drawShip(moving, cam);
+        drawCargoMoons(cam);
         drawShipShield(now, cam);
         drawShieldRings(dt, cam);
         endWorld();
@@ -3934,6 +4288,7 @@
         state.shield = false;
         state.shieldRings = [];
         state.taken = [];
+        cargoMoons = [];
         state.pops = [];
         state.floaters = [];
         state.found = 0;

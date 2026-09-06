@@ -54,9 +54,10 @@
     const BALL_GAP = 12;
     const NEUTRON_R = 11;
     const NEUTRON_ORBIT = 34;
+    const NEUTRON_ORBIT_MAX = NEUTRON_ORBIT * 2.5;
     const NEUTRON_SPEED = 8.6;
     const NEUTRON_PAIRS = 1;
-    const NEUTRON_SWEEP = 250;
+    const NEUTRON_SWEEP = Math.round(250 * 2.33);
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 5;
     const ZOOM_STEP = 0.5;
@@ -431,6 +432,7 @@
                 neutrons: state.neutrons.map((pair) => ({
                     x: pair.x,
                     y: pair.y,
+                    orbit: pair.orbit,
                     spin: pair.spin,
                     tilt: pair.tilt,
                     alive: pair.alive ? [pair.alive[0] !== false, pair.alive[1] !== false] : [true, true],
@@ -830,7 +832,8 @@
         state.neutrons = [];
         const pad = 520;
         for (let i = 0; i < NEUTRON_PAIRS; i += 1) {
-            const reach = NEUTRON_ORBIT + NEUTRON_R;
+            const orbit = rand(NEUTRON_ORBIT, NEUTRON_ORBIT_MAX);
+            const reach = orbit + NEUTRON_R;
             const minShip = reach + 720;
             let x = 0;
             let y = 0;
@@ -850,7 +853,7 @@
                 x,
                 y,
                 r: NEUTRON_R,
-                orbit: NEUTRON_ORBIT,
+                orbit,
                 speed: NEUTRON_SPEED,
                 spin: rand(0, Math.PI * 2),
                 tilt: rand(0.32, 0.48),
@@ -1164,11 +1167,14 @@
             : [true, true];
         if (!alive[0] && !alive[1]) return null;
         const tilt = Number(pair.tilt);
+        const orbit = Number(pair.orbit);
         return {
             x,
             y,
             r: NEUTRON_R,
-            orbit: NEUTRON_ORBIT,
+            orbit: Number.isFinite(orbit)
+                ? Math.max(NEUTRON_ORBIT, Math.min(NEUTRON_ORBIT_MAX, orbit))
+                : NEUTRON_ORBIT,
             speed: NEUTRON_SPEED,
             spin: Number.isFinite(Number(pair.spin)) ? Number(pair.spin) : 0,
             tilt: Number.isFinite(tilt) ? Math.max(0.2, Math.min(0.7, tilt)) : 0.4,
@@ -1643,34 +1649,42 @@
         return !pair.alive || pair.alive[index] !== false;
     }
 
-    function hitNeutronStar(pair, index, now) {
-        const star = neutronStarAt(pair, now, index);
-        if (!pair.alive) pair.alive = [true, true];
-        pair.alive[index] = false;
-        state.pops.push({
-            x: star.x,
-            y: star.y,
-            r: 72,
-            grow: NEUTRON_SWEEP,
-            width: 16,
-            color: "#ffffff",
-            burst: true,
-            life: 1,
-        });
+    function hitNeutronPair(pair, now) {
+        const stars = [];
+        for (let i = 0; i < 2; i += 1) {
+            if (neutronAlive(pair, i)) stars.push(neutronStarAt(pair, now, i));
+        }
+        for (const star of stars) {
+            state.pops.push({
+                x: star.x,
+                y: star.y,
+                r: 72,
+                grow: NEUTRON_SWEEP,
+                width: 16,
+                color: "#ffffff",
+                burst: true,
+                life: 1,
+            });
+        }
         const sweep = NEUTRON_SWEEP * NEUTRON_SWEEP;
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
             if (ball.hasSpikes) continue;
-            const dx = ball.x - star.x;
-            const dy = ball.y - star.y;
-            if (dx * dx + dy * dy > sweep) continue;
+            let inBlast = false;
+            for (const star of stars) {
+                const dx = ball.x - star.x;
+                const dy = ball.y - star.y;
+                if (dx * dx + dy * dy <= sweep) {
+                    inBlast = true;
+                    break;
+                }
+            }
+            if (!inBlast) continue;
             collectPlanet(ball);
             state.balls.splice(i, 1);
         }
-        if (!pair.alive[0] && !pair.alive[1]) {
-            const at = state.neutrons.indexOf(pair);
-            if (at >= 0) state.neutrons.splice(at, 1);
-        }
+        const at = state.neutrons.indexOf(pair);
+        if (at >= 0) state.neutrons.splice(at, 1);
         playHit();
         saveSettings();
         updateScoreHud();
@@ -1688,7 +1702,7 @@
                 const dx = star.x - state.shipX;
                 const dy = star.y - state.shipY;
                 if (dx * dx + dy * dy <= hitR2) {
-                    hitNeutronStar(pair, i, now);
+                    hitNeutronPair(pair, now);
                     return;
                 }
             }

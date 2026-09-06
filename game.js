@@ -1980,12 +1980,13 @@
         engine.atmoGain = gain;
     }
 
-    function playCue(buffer) {
+    function playCue(buffer, rate) {
         if (!pageIsVisible() || !buffer || masterGain() <= 0) return;
         const ctx = engineContext();
         if (ctx.state === "suspended") ctx.resume();
         const source = ctx.createBufferSource();
         source.buffer = buffer;
+        source.playbackRate.value = rate || 1;
         const gain = ctx.createGain();
         gain.gain.value = masterGain();
         source.connect(gain);
@@ -1998,7 +1999,7 @@
     }
 
     function playCollide() {
-        playCue(engine.collide || engine.hit);
+        playCue(engine.collide || engine.hit, 1.33);
     }
 
     function engineRate() {

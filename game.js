@@ -935,45 +935,68 @@
         { r: 200, g: 130, b: 220 },
     ];
 
-    function galaxyCount() {
-        if (state.world >= 20000) return 5;
-        if (state.world >= 15000) return 4;
-        if (state.world >= 10000) return 3;
-        return 2;
+    const GALAXY_CELL = 1500;
+    const GALAXY_PAIR_GAP = 500;
+    const GALAXY_PAIR_CHANCE = 0.2;
+
+    function varyGalaxyTint(base) {
+        return {
+            r: Math.max(70, Math.min(255, Math.round(base.r + rand(-32, 32)))),
+            g: Math.max(70, Math.min(255, Math.round(base.g + rand(-32, 32)))),
+            b: Math.max(70, Math.min(255, Math.round(base.b + rand(-32, 32)))),
+        };
+    }
+
+    function galaxyTooClose(x, y, gap) {
+        return state.galaxies.some((galaxy) => Math.hypot(x - galaxy.x, y - galaxy.y) < gap);
+    }
+
+    function placeGalaxyInCell(left, top, width, height, minGap) {
+        const inset = 90;
+        const xMin = left + inset;
+        const xMax = left + width - inset;
+        const yMin = top + inset;
+        const yMax = top + height - inset;
+        if (xMax <= xMin || yMax <= yMin) return null;
+        let x = 0;
+        let y = 0;
+        let attempts = 0;
+        do {
+            x = rand(xMin, xMax);
+            y = rand(yMin, yMax);
+            attempts += 1;
+        } while (attempts < 80 && galaxyTooClose(x, y, minGap));
+        if (attempts >= 80 && galaxyTooClose(x, y, minGap)) return null;
+        const r = rand(220, 2400);
+        state.galaxies.push({
+            x,
+            y,
+            r,
+            tilt: rand(0, Math.PI * 2),
+            flat: rand(0.22, 0.86),
+            spin: rand(0.032, 0.085) * (Math.random() < 0.5 ? -1 : 1),
+            phase: rand(0, Math.PI * 2),
+            arms: 2 + Math.floor(Math.random() * 2),
+            wind: rand(3.1, 5.4),
+            tint: varyGalaxyTint(pick(GALAXY_TINTS)),
+            sprite: null,
+        });
+        return { x, y };
     }
 
     function spawnGalaxies() {
         state.galaxies = [];
         if (state.sky !== "galaxies") return;
-        const count = galaxyCount();
-        const sizes = [1600, 2000, 2600, 3200];
-        const pad = 900;
-        for (let i = 0; i < count; i += 1) {
-            const r = pick(sizes);
-            let x = 0;
-            let y = 0;
-            let attempts = 0;
-            do {
-                x = rand(pad, state.world - pad);
-                y = rand(pad, state.world - pad);
-                attempts += 1;
-            } while (
-                attempts < 120
-                && state.galaxies.some((galaxy) => Math.hypot(x - galaxy.x, y - galaxy.y) < r + galaxy.r * 1.8)
-            );
-            state.galaxies.push({
-                x,
-                y,
-                r,
-                tilt: rand(0, Math.PI * 2),
-                flat: rand(0.22, 0.86),
-                spin: rand(0.032, 0.085) * (Math.random() < 0.5 ? -1 : 1),
-                phase: rand(0, Math.PI * 2),
-                arms: 2 + Math.floor(Math.random() * 2),
-                wind: rand(3.1, 5.4),
-                tint: pick(GALAXY_TINTS),
-                sprite: null,
-            });
+        for (let top = 0; top < state.world; top += GALAXY_CELL) {
+            for (let left = 0; left < state.world; left += GALAXY_CELL) {
+                const width = Math.min(GALAXY_CELL, state.world - left);
+                const height = Math.min(GALAXY_CELL, state.world - top);
+                if (width < 280 || height < 280) continue;
+                placeGalaxyInCell(left, top, width, height, 0);
+                if (Math.random() < GALAXY_PAIR_CHANCE) {
+                    placeGalaxyInCell(left, top, width, height, GALAXY_PAIR_GAP);
+                }
+            }
         }
     }
 

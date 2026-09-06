@@ -74,9 +74,7 @@
     const NEUTRON_ORBIT_MAX = NEUTRON_ORBIT * 2.5;
     const NEUTRON_SPEED = 8.6;
     const NEUTRON_SWEEP = Math.round(250 * 2.66);
-    const ZOOM_MIN = 1;
-    const ZOOM_MAX = 5;
-    const ZOOM_STEP = 0.5;
+    const ZOOM_STEPS = [0.1, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     const ENGINE_SRC = "public/audio/ship/ship-sound.mp3";
     const ENGINE_LOOP_START = 0;
     const ENGINE_LOOP_END = 12.23;
@@ -258,7 +256,27 @@
     function clampZoom(value) {
         const n = Number(value);
         if (!Number.isFinite(n)) return 1;
-        return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP));
+        let best = ZOOM_STEPS[0];
+        let bestDist = Infinity;
+        for (const step of ZOOM_STEPS) {
+            const dist = Math.abs(n - step);
+            if (dist < bestDist) {
+                best = step;
+                bestDist = dist;
+            }
+        }
+        return best;
+    }
+
+    function zoomIndex(value) {
+        const i = ZOOM_STEPS.indexOf(clampZoom(value));
+        return i < 0 ? ZOOM_STEPS.indexOf(1) : i;
+    }
+
+    function zoomFromIndex(index) {
+        const i = Math.round(Number(index));
+        if (!Number.isFinite(i)) return 1;
+        return ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i))];
     }
 
     function clampMeteorCount(value) {
@@ -1863,7 +1881,7 @@
         }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
-        if (zoomSlider) zoomSlider.value = String(state.zoom);
+        if (zoomSlider) zoomSlider.value = String(zoomIndex(state.zoom));
         if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
         const trialToggle = document.getElementById("trial-toggle");
         if (trialToggle) {
@@ -1907,7 +1925,7 @@
             else if (key === "goal") {
                 el.max = String(state.ballCount);
                 el.value = String(state.goal);
-            } else if (key === "zoom") el.value = String(state.zoom);
+            } else if (key === "zoom") el.value = String(zoomIndex(state.zoom));
             else if (key === "volume") el.value = String(state.volume);
             else if (key === "meteors") el.value = String(state.meteorCount);
             else if (key === "spikes") el.value = String(state.spikeBalls);
@@ -4827,7 +4845,7 @@
                 if (key === "neutrons" && label) label.textContent = el.value;
                 if (SPEED_KEYS.includes(key) && label) label.textContent = formatSpeedMul(el.value);
                 if (key === "zoom") {
-                    state.zoom = clampZoom(el.value);
+                    state.zoom = zoomFromIndex(el.value);
                     if (label) label.textContent = `${state.zoom}×`;
                 }
                 if (key === "volume") {
@@ -4862,7 +4880,7 @@
                     return;
                 }
                 if (key === "zoom") {
-                    state.zoom = clampZoom(el.value);
+                    state.zoom = zoomFromIndex(el.value);
                     saveSettings();
                     updateHud();
                     return;
@@ -5167,11 +5185,11 @@
 
         if (zoomSlider) {
             zoomSlider.addEventListener("input", () => {
-                state.zoom = clampZoom(zoomSlider.value);
+                state.zoom = zoomFromIndex(zoomSlider.value);
                 if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
             });
             zoomSlider.addEventListener("change", () => {
-                state.zoom = clampZoom(zoomSlider.value);
+                state.zoom = zoomFromIndex(zoomSlider.value);
                 saveSettings();
                 updateHud();
             });

@@ -2565,83 +2565,105 @@
     }
 
     /* ---------- Gargantua-style hole (playground only) ----------
-       Geometry for a disk viewed a couple of degrees off its plane: the far
-       side sits above the shadow, the near side crosses in front, and light
-       from behind is lensed over the top and under the bottom into a
-       near-circular halo that melts into the disk at the left and right
-       extremes. The disk is many overlapping thin bands composited additively
-       so they fuse into one sheet instead of reading as separate rings. */
-    const NO_DASH = [];
-    const G_BANDS = 30;
+       The disk is a radial gradient painted on a squashed circle and baked once
+       into an offscreen canvas. Deliberately no strokes: a wide stroke along an
+       ellipse this eccentric folds over itself at the tips, where the radius of
+       curvature is a few px against a ~46px stroke, and that is what produced
+       the chevron artefacts along the disk edges. A gradient fill has no offset
+       curve, so it cannot self-intersect.
+
+       The far half is blitted above the centre line and the near half below it
+       with the shadow drawn between; the disk is symmetric about that line, so
+       the two halves reassemble it exactly. */
     const G_INNER = 1.52;   // inner disk edge, in shadow radii
-    const G_OUTER = 3.05;
-    const G_FLAT = 0.105;   // vertical squash at the inner edge
-    const G_FLARE = 0.55;   // disks thicken outward
-    const G_RAMP = [
-        [0.00, 255, 253, 248],
-        [0.10, 255, 243, 214],
-        [0.28, 255, 205, 132],
-        [0.52, 253, 156, 58],
-        [0.78, 218, 96, 26],
-        [1.00, 138, 44, 12],
-    ];
+    const G_OUTER = 3.15;
+    const G_FLAT = 0.15;    // vertical squash: near edge-on
+    const G_PAD = 3;
+    const STREAK_BANDS = 9;
+    const STREAKS = 5;
 
-    function gargColor(t) {
-        const v = t < 0 ? 0 : t > 1 ? 1 : t;
-        for (let i = 1; i < G_RAMP.length; i += 1) {
-            const b = G_RAMP[i];
-            if (v <= b[0]) {
-                const a = G_RAMP[i - 1];
-                const k = (v - a[0]) / (b[0] - a[0]);
-                return [
-                    Math.round(a[1] + (b[1] - a[1]) * k),
-                    Math.round(a[2] + (b[2] - a[2]) * k),
-                    Math.round(a[3] + (b[3] - a[3]) * k),
-                ];
-            }
-        }
-        const l = G_RAMP[G_RAMP.length - 1];
-        return [l[1], l[2], l[3]];
-    }
+    function buildGargDisk(r, dir) {
+        const outer = r * G_OUTER;
+        const ry = outer * G_FLAT;
+        const w = Math.ceil(outer * 2 + G_PAD * 2);
+        const h = Math.ceil(ry * 2 + G_PAD * 2);
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        const c = cv.getContext("2d");
+        c.translate(w / 2, h / 2);
 
-    // Doppler beaming is fixed in space — one side always approaches — while the
-    // material streams through it, so this is cached and motion rides the dash.
-    function gargBandPaint(rx, t, gain, dir) {
-        const [r, g, b] = gargColor(t);
-        const a = (Math.pow(1 - t, 0.9) * 0.9 + 0.1) * gain;
-        const hot = 1.5;
-        const cold = 0.52;
-        const lo = dir > 0 ? hot : cold;
-        const hi = dir > 0 ? cold : hot;
-        const gr = ctx.createLinearGradient(-rx, 0, rx, 0);
-        const c = (m, al) => `rgba(${Math.min(255, Math.round(r * m))}, ${Math.min(255, Math.round(g * m))}, ${Math.min(255, Math.round(b * m))}, ${Math.max(0, Math.min(1, al))})`;
-        gr.addColorStop(0.00, c(1.10, a * lo * 0.55));
-        gr.addColorStop(0.22, c(1.06, a * lo));
-        gr.addColorStop(0.50, c(1.00, a * 0.72));
-        gr.addColorStop(0.78, c(0.96, a * hi));
-        gr.addColorStop(1.00, c(0.92, a * hi * 0.55));
-        return gr;
+        c.save();
+        c.scale(1, G_FLAT);            // a circle here lands as the edge-on disk
+        const g = c.createRadialGradient(0, 0, 0, 0, 0, outer);
+        const inner = G_INNER / G_OUTER;
+        const at = (u) => inner + (1 - inner) * u;   // 0 at the ISCO, 1 at the rim
+        g.addColorStop(0, "rgba(255, 253, 248, 0)");
+        g.addColorStop(inner * 0.995, "rgba(255, 253, 248, 0)");
+        g.addColorStop(at(0), "rgba(255, 253, 248, 0.99)");
+        g.addColorStop(at(0.14), "rgba(255, 248, 230, 0.97)");
+        g.addColorStop(at(0.3), "rgba(255, 224, 170, 0.88)");
+        g.addColorStop(at(0.46), "rgba(255, 186, 102, 0.68)");
+        g.addColorStop(at(0.62), "rgba(246, 140, 50, 0.44)");
+        g.addColorStop(at(0.8), "rgba(206, 88, 24, 0.2)");
+        g.addColorStop(1, "rgba(138, 44, 12, 0)");
+        c.fillStyle = g;
+        c.beginPath();
+        c.arc(0, 0, outer, 0, Math.PI * 2);
+        c.fill();
+        // Second, partial exposure: the stroked build accumulated additively
+        // past 1.0 and blew the core to white. Baking it here restores that
+        // punch without paying for a second blit every frame.
+        c.globalCompositeOperation = "lighter";
+        c.globalAlpha = 0.6;
+        c.fill();
+        c.globalAlpha = 1;
+        c.globalCompositeOperation = "source-over";
+        c.restore();
+
+        // Doppler beaming is fixed in space — one side always approaches — so
+        // modulate the baked disk's alpha horizontally rather than animating it.
+        c.globalCompositeOperation = "destination-in";
+        const d = c.createLinearGradient(-outer, 0, outer, 0);
+        const lo = dir > 0 ? 1 : 0.42;
+        const hi = dir > 0 ? 0.42 : 1;
+        d.addColorStop(0, `rgba(0, 0, 0, ${lo * 0.72})`);
+        d.addColorStop(0.26, `rgba(0, 0, 0, ${lo})`);
+        d.addColorStop(0.5, `rgba(0, 0, 0, ${(lo + hi) * 0.5})`);
+        d.addColorStop(0.74, `rgba(0, 0, 0, ${hi})`);
+        d.addColorStop(1, `rgba(0, 0, 0, ${hi * 0.72})`);
+        c.fillStyle = d;
+        c.fillRect(-w / 2, -h / 2, w, h);
+
+        return { cv, w, h };
     }
 
     // Transparent at the horizontal extremes so it melts into the disk,
     // brightest where it crests above and below the shadow.
-    function gargHaloPaint(rad, alpha, tint, warm) {
-        const [r, g, b] = gargColor(tint);
-        const cr = Math.min(255, Math.round(r * warm));
-        const cg = Math.min(255, Math.round(g * warm));
-        const cb = Math.min(255, Math.round(b * warm));
+    function gargHaloPaint(rad, alpha, col) {
         const gr = ctx.createLinearGradient(-rad, 0, rad, 0);
-        const stop = (at, mul) => gr.addColorStop(at, `rgba(${cr}, ${cg}, ${cb}, ${alpha * mul})`);
-        stop(0.00, 0);
-        stop(0.10, 0.05);
+        const stop = (a, m) => gr.addColorStop(a, `rgba(${col}, ${alpha * m})`);
+        stop(0, 0);
+        stop(0.1, 0.05);
         stop(0.26, 0.52);
         stop(0.42, 0.96);
-        stop(0.50, 1);
+        stop(0.5, 1);
         stop(0.58, 0.96);
         stop(0.74, 0.52);
-        stop(0.90, 0.05);
-        stop(1.00, 0);
+        stop(0.9, 0.05);
+        stop(1, 0);
         return gr;
+    }
+
+    let gargClumpGrad = null;
+
+    function gargUnitGlow() {
+        if (gargClumpGrad) return gargClumpGrad;
+        gargClumpGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        gargClumpGrad.addColorStop(0, "rgba(255, 244, 222, 0.95)");
+        gargClumpGrad.addColorStop(0.45, "rgba(255, 226, 178, 0.42)");
+        gargClumpGrad.addColorStop(1, "rgba(255, 200, 140, 0)");
+        return gargClumpGrad;
     }
 
     function ensureGarg(hole, r) {
@@ -2649,116 +2671,117 @@
         // Spin direction comes off the existing seed so holes differ without
         // changing what spawnHoles() stores.
         const dir = (hole.spin || 0) > Math.PI ? 1 : -1;
-        const bands = [];
-        const step = (G_OUTER - G_INNER) / (G_BANDS - 1);
-        for (let i = 0; i < G_BANDS; i += 1) {
-            const t = i / (G_BANDS - 1);
-            const rr = G_INNER + (G_OUTER - G_INNER) * Math.pow(t, 1.25);
-            const rx = r * rr;
-            bands.push({
-                rx,
-                ry: rx * G_FLAT * (1 + G_FLARE * t),
-                width: r * step * 2.9,
-                paint: gargBandPaint(rx, t, 0.30, dir),
-                wisp: gargBandPaint(rx, t, 0.30, dir),
-                omega: Math.pow(rr, -1.5),
-                dash: r * (2.4 + 7.4 * t) * (1 + 0.35 * ((i * 7) % 5) / 5),
-                gap: r * (1.5 + 4.2 * t),
+        const disk = buildGargDisk(r, dir);
+
+        const streaks = [];
+        for (let i = 0; i < STREAK_BANDS; i += 1) {
+            const u = (i + 0.5) / STREAK_BANDS;
+            const rr = G_INNER + (G_OUTER - G_INNER) * Math.pow(u, 1.2);
+            streaks.push({
+                rx: r * rr,
+                ry: r * rr * G_FLAT,
+                long: r * rr * (0.16 + 0.1 * u),
+                thick: r * (0.02 + 0.03 * u),
+                omega: Math.pow(rr, -1.5),   // Keplerian: inner material laps outer
+                alpha: 0.55 * (1 - u * 0.45),
             });
         }
 
-        const warp = ctx.createRadialGradient(0, 0, r * 0.95, 0, 0, r * 6.0);
-        warp.addColorStop(0.00, "rgba(0, 0, 0, 0.88)");
+        const warp = ctx.createRadialGradient(0, 0, r * 0.95, 0, 0, r * 6);
+        warp.addColorStop(0, "rgba(0, 0, 0, 0.88)");
         warp.addColorStop(0.12, "rgba(1, 0, 4, 0.5)");
-        warp.addColorStop(0.30, "rgba(1, 0, 4, 0.22)");
+        warp.addColorStop(0.3, "rgba(1, 0, 4, 0.22)");
         warp.addColorStop(0.55, "rgba(0, 0, 0, 0.07)");
-        warp.addColorStop(1.00, "rgba(0, 0, 0, 0)");
+        warp.addColorStop(1, "rgba(0, 0, 0, 0)");
 
         const bloom = ctx.createRadialGradient(0, 0, r, 0, 0, r * 5.2);
-        bloom.addColorStop(0.00, "rgba(255, 190, 112, 0.11)");
-        bloom.addColorStop(0.18, "rgba(255, 158, 70, 0.062)");
-        bloom.addColorStop(0.40, "rgba(255, 126, 42, 0.028)");
-        bloom.addColorStop(0.66, "rgba(255, 108, 30, 0.01)");
-        bloom.addColorStop(1.00, "rgba(255, 104, 28, 0)");
+        bloom.addColorStop(0, "rgba(255, 190, 112, 0.12)");
+        bloom.addColorStop(0.18, "rgba(255, 158, 70, 0.066)");
+        bloom.addColorStop(0.4, "rgba(255, 126, 42, 0.03)");
+        bloom.addColorStop(0.66, "rgba(255, 108, 30, 0.011)");
+        bloom.addColorStop(1, "rgba(255, 104, 28, 0)");
 
-        hole.garg = {
-            r,
-            dir,
-            bands,
-            warp,
-            bloom,
-            haloRings: (function () {
-                const rings = [];
-                const N = 13;
-                const mid = 1.3;
-                const spread = 0.12;
-                for (let i = 0; i < N; i += 1) {
-                    const rr = 1.12 + (1.54 - 1.12) * (i / (N - 1));
-                    const w = Math.exp(-Math.pow((rr - mid) / spread, 2));
-                    rings.push({
-                        rx: r * rr,
-                        ry: r * rr * 0.955,
-                        lw: r * 0.085,
-                        paint: gargHaloPaint(r * rr, 0.26 * w, 0.1 + 0.34 * Math.abs(rr - mid) / spread, 1),
-                    });
-                }
-                rings.push({
-                    rx: r * mid,
-                    ry: r * mid * 0.955,
-                    lw: r * 0.016,
-                    paint: gargHaloPaint(r * mid, 0.45, 0.13, 1.02),
-                });
-                return rings;
-            })(),
-        };
+        // A gaussian stack of concentric arcs reads as glow; two hard-edged
+        // rings read as machined metal.
+        const rings = [];
+        const N = 13;
+        const mid = 1.3;
+        const spread = 0.12;
+        for (let i = 0; i < N; i += 1) {
+            const rr = 1.12 + (1.54 - 1.12) * (i / (N - 1));
+            const wgt = Math.exp(-Math.pow((rr - mid) / spread, 2));
+            rings.push({
+                rx: r * rr,
+                ry: r * rr * 0.955,
+                lw: r * 0.085,
+                paint: gargHaloPaint(r * rr, 0.26 * wgt, "255, 224, 168"),
+            });
+        }
+        rings.push({
+            rx: r * mid,
+            ry: r * mid * 0.955,
+            lw: r * 0.016,
+            paint: gargHaloPaint(r * mid, 0.45, "255, 236, 196"),
+        });
+
+        hole.garg = { r, dir, disk, streaks, warp, bloom, rings };
         return hole.garg;
     }
 
-    // Stroked as half-arcs rather than clipped at the centre line: a clip cuts
-    // the band flat where it emerges beside the shadow, while a round-capped
-    // half-arc carries its own thickness past the extremes.
-    function gargDisk(g, t, a0, a1) {
+    function gargDiskHalf(g, top) {
+        const lim = g.r * 8;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(-lim, top ? -lim : 0, lim * 2, lim);
+        ctx.clip();
         ctx.globalCompositeOperation = "lighter";
-        ctx.lineCap = "butt";
-        for (let i = g.bands.length - 1; i >= 0; i -= 1) {
-            const b = g.bands[i];
-            ctx.setLineDash(NO_DASH);
-            ctx.lineWidth = b.width;
-            ctx.strokeStyle = b.paint;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, b.rx, b.ry, 0, a0, a1);
-            ctx.stroke();
-
-            // Filaments on every third band: enough to read as streaming
-            // material without stacking into a moire.
-            if (i % 3 === 0) {
-                ctx.setLineDash([b.dash, b.gap]);
-                ctx.lineDashOffset = -t * b.omega * g.dir * g.r * 2.2;
-                ctx.lineWidth = b.width * 0.5;
-                ctx.strokeStyle = b.wisp;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, b.rx, b.ry, 0, a0, a1);
-                ctx.stroke();
-            }
-        }
-        ctx.setLineDash(NO_DASH);
+        ctx.drawImage(g.disk.cv, -g.disk.w / 2, -g.disk.h / 2);
         ctx.restore();
     }
 
-    function gargHalo(g, r, a0, a1) {
-        const arc = (paint, rad, ry, w) => {
-            ctx.strokeStyle = paint;
-            ctx.lineWidth = w;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, rad, ry, 0, a0, a1);
-            ctx.stroke();
-        };
+    // Soft stretched blobs rather than stroked arcs: an arc across an ellipse
+    // this flat is a straight bar with hard ends, while a radial gradient has
+    // no edge to show.
+    function gargStreaks(g, t, a0, a1) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = gargUnitGlow();
+        const span = a1 - a0;
+        for (let i = 0; i < g.streaks.length; i += 1) {
+            const b = g.streaks[i];
+            const phase = t * b.omega * g.dir * 0.9;
+            for (let k = 0; k < STREAKS; k += 1) {
+                let o = (phase + (k * span) / STREAKS) % span;
+                if (o < 0) o += span;
+                const th = a0 + o;
+                // Zero at the horizontal extremes, where the disk is edge-on.
+                const fade = Math.pow(Math.abs(Math.sin(th)), 1.2);
+                if (fade < 0.02) continue;
+                ctx.save();
+                ctx.translate(b.rx * Math.cos(th), b.ry * Math.sin(th));
+                ctx.rotate(Math.atan2(b.ry * Math.cos(th), -b.rx * Math.sin(th)));
+                ctx.scale(b.long, b.thick);
+                ctx.globalAlpha = fade * b.alpha;
+                ctx.beginPath();
+                ctx.arc(0, 0, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    function gargHalo(g, a0, a1) {
         ctx.globalCompositeOperation = "lighter";
         ctx.lineCap = "butt";
-        for (let i = 0; i < g.haloRings.length; i += 1) {
-            const h = g.haloRings[i];
-            arc(h.paint, h.rx, h.ry, h.lw);
+        for (let i = 0; i < g.rings.length; i += 1) {
+            const h = g.rings[i];
+            ctx.strokeStyle = h.paint;
+            ctx.lineWidth = h.lw;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, h.rx, h.ry, 0, a0, a1);
+            ctx.stroke();
         }
     }
 
@@ -2788,8 +2811,9 @@
         ctx.arc(0, 0, r * 5.2, 0, Math.PI * 2);
         ctx.fill();
 
-        gargDisk(g, t, Math.PI, Math.PI * 2);   // far side, above the shadow
-        gargHalo(g, r, Math.PI, Math.PI * 2);   // lensed crest over the top
+        gargDiskHalf(g, true);                    // far side, above the shadow
+        gargStreaks(g, t, Math.PI, Math.PI * 2);
+        gargHalo(g, Math.PI, Math.PI * 2);        // lensed crest over the top
 
         ctx.globalCompositeOperation = "source-over";
         ctx.fillStyle = "#000000";
@@ -2803,14 +2827,15 @@
         ctx.beginPath();
         ctx.arc(0, 0, r * 1.028, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.strokeStyle = "rgba(255, 168, 76, 0.22)";
+        ctx.strokeStyle = "rgba(255, 168, 76, 0.2)";
         ctx.lineWidth = r * 0.09;
         ctx.beginPath();
         ctx.arc(0, 0, r * 1.07, 0, Math.PI * 2);
         ctx.stroke();
 
-        gargHalo(g, r, 0, Math.PI);             // lensed crest under the bottom
-        gargDisk(g, t, 0, Math.PI);             // near side, crossing in front
+        gargHalo(g, 0, Math.PI);                  // lensed crest under the bottom
+        gargDiskHalf(g, false);                   // near side, crossing in front
+        gargStreaks(g, t, 0, Math.PI);
 
         ctx.globalCompositeOperation = "source-over";
         ctx.restore();
@@ -4063,7 +4088,7 @@
 
         miniCtx.save();
         miniCtx.beginPath();
-        miniCtx.rect(origin.x, origin.y, worldPx, worldPx);
+        miniCtx.rect(originX, originY, worldPx, worldPx);
         miniCtx.clip();
         for (const comet of state.comets) {
             const p = toMinimap(comet.x, comet.y, size, scale);
@@ -4114,6 +4139,10 @@
             miniCtx.restore();
         }
         miniCtx.restore();
+
+        miniCtx.strokeStyle = "#000000";
+        miniCtx.lineWidth = Math.max(1, 2 * mark);
+        miniCtx.strokeRect(originX, originY, worldPx, worldPx);
 
         const cx = size / 2;
         const cy = size / 2;

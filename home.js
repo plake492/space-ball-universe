@@ -9,6 +9,9 @@
     const SPIKE_COUNT_MAX = 1000;
     const METEOR_COUNT_MAX = 20;
     const COMET_COUNT_MAX = 300;
+    const COMET_POINTS_MAX = 3000000;
+    const COMET_POINTS_STEP = 10000;
+    const COMET_POINTS_START = 60000;
     const NEUTRON_PAIR_MAX = 20;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
@@ -73,6 +76,8 @@
     const spikesSliderValue = document.getElementById("spikes-slider-value");
     const cometSlider = document.getElementById("comet-slider");
     const cometSliderValue = document.getElementById("comet-slider-value");
+    const cometPointsSlider = document.getElementById("comet-points-slider");
+    const cometPointsSliderValue = document.getElementById("comet-points-slider-value");
     const neutronSlider = document.getElementById("neutron-slider");
     const neutronSliderValue = document.getElementById("neutron-slider-value");
     const boardOverlay = document.getElementById("board-overlay");
@@ -117,6 +122,7 @@
         meteorCount: 1,
         spikeBalls: Math.round(START_BALLS * SPIKE_RATE),
         cometCount: 0,
+        cometPoints: COMET_POINTS_START,
         neutronPairs: 5,
         infiniteFuel: false,
         zoom: 1,
@@ -432,6 +438,15 @@
         return Number.isFinite(n) ? Math.min(COMET_COUNT_MAX, Math.max(0, n)) : 0;
     }
 
+    function clampCometPoints(value) {
+        const n = Math.round(Number(value) / COMET_POINTS_STEP) * COMET_POINTS_STEP;
+        return Number.isFinite(n) ? Math.min(COMET_POINTS_MAX, Math.max(0, n)) : COMET_POINTS_START;
+    }
+
+    function formatCometPoints(value) {
+        return clampCometPoints(value).toLocaleString();
+    }
+
     function clampNeutronPairs(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(NEUTRON_PAIR_MAX, Math.max(0, n)) : defaultNeutronPairs(START_WORLD);
@@ -640,6 +655,7 @@
                 ? (state.spikes ? Math.round(state.ballCount * SPIKE_RATE) : 0)
                 : clampSpikeBalls(data.spikeBalls);
             state.cometCount = data.cometCount == null ? 0 : clampCometCount(data.cometCount);
+            state.cometPoints = data.cometPoints == null ? COMET_POINTS_START : clampCometPoints(data.cometPoints);
             state.neutronPairs = data.neutronPairs == null
                 ? defaultNeutronPairs(state.world)
                 : clampNeutronPairs(data.neutronPairs);
@@ -679,6 +695,7 @@
                 meteorCount: state.meteorCount,
                 spikeBalls: state.spikeBalls,
                 cometCount: state.cometCount,
+                cometPoints: state.cometPoints,
                 neutronPairs: state.neutronPairs,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
@@ -706,6 +723,7 @@
                 meteorCount: data.meteorCount == null ? null : Number(data.meteorCount),
                 spikeBalls: data.spikeBalls == null ? null : Number(data.spikeBalls),
                 cometCount: data.cometCount == null ? null : Number(data.cometCount),
+                cometPoints: data.cometPoints == null ? null : Number(data.cometPoints),
                 neutronPairs: data.neutronPairs == null ? null : Number(data.neutronPairs),
                 infiniteFuel: data.infiniteFuel === true,
             };
@@ -731,6 +749,7 @@
             && (play.meteorCount == null || play.meteorCount === state.meteorCount)
             && (play.spikeBalls == null || play.spikeBalls === state.spikeBalls)
             && (play.cometCount == null || play.cometCount === state.cometCount)
+            && (play.cometPoints == null || play.cometPoints === state.cometPoints)
             && (play.neutronPairs == null || play.neutronPairs === state.neutronPairs)
             && play.infiniteFuel === state.infiniteFuel
             && playIsActive(play)
@@ -890,6 +909,8 @@
         if (spikesSliderValue) spikesSliderValue.textContent = String(state.spikeBalls);
         if (cometSlider) cometSlider.value = String(state.cometCount);
         if (cometSliderValue) cometSliderValue.textContent = String(state.cometCount);
+        if (cometPointsSlider) cometPointsSlider.value = String(state.cometPoints);
+        if (cometPointsSliderValue) cometPointsSliderValue.textContent = formatCometPoints(state.cometPoints);
         if (neutronSlider) neutronSlider.value = String(state.neutronPairs);
         if (neutronSliderValue) neutronSliderValue.textContent = String(state.neutronPairs);
         for (const button of document.querySelectorAll(".fuel-btn")) {
@@ -1175,6 +1196,17 @@
         });
         cometSlider.addEventListener("change", () => {
             state.cometCount = clampCometCount(cometSlider.value);
+            state.difficulty = "custom";
+            saveSettings();
+            updateHud();
+        });
+    }
+    if (cometPointsSlider) {
+        cometPointsSlider.addEventListener("input", () => {
+            if (cometPointsSliderValue) cometPointsSliderValue.textContent = formatCometPoints(cometPointsSlider.value);
+        });
+        cometPointsSlider.addEventListener("change", () => {
+            state.cometPoints = clampCometPoints(cometPointsSlider.value);
             state.difficulty = "custom";
             saveSettings();
             updateHud();

@@ -1241,6 +1241,11 @@ body.home {
     border-color: rgba(255, 190, 190, 0.35);
 }
 
+.home-sandbox {
+    background: rgba(64, 196, 168, 0.38);
+    border-color: rgba(180, 255, 230, 0.35);
+}
+
 .home-ships {
     position: fixed;
     right: max(16px, env(safe-area-inset-right));

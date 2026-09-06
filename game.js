@@ -56,7 +56,7 @@
     const NEUTRON_ORBIT = 34;
     const NEUTRON_ORBIT_MAX = NEUTRON_ORBIT * 2.5;
     const NEUTRON_SPEED = 8.6;
-    const NEUTRON_SWEEP = Math.round(250 * 2.33);
+    const NEUTRON_SWEEP = Math.round(250 * 2.66);
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 5;
     const ZOOM_STEP = 0.5;
@@ -105,6 +105,7 @@
         ],
     };
     const PALETTE_NAMES = Object.keys(PALETTES);
+    const SKY_NAMES = ["stars", "galaxies"];
     const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.png",
@@ -220,6 +221,7 @@
             const pulse = data.pulse === true;
             const nebula = data.nebula !== false;
             const starDrift = data.starDrift !== false;
+            const sky = SKY_NAMES.includes(data.sky) ? data.sky : "stars";
             const lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             const reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -244,6 +246,7 @@
                     pulse,
                     nebula,
                     starDrift,
+                    sky,
                     ship,
                     name,
                     lifetime,
@@ -259,9 +262,9 @@
                     zoom,
                 };
             }
-            return { world, ballCount, goal, palette, pulse, nebula, starDrift, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
+            return { world, ballCount, goal, palette, pulse, nebula, starDrift, sky, ship, name, lifetime, reqShips, difficulty, trial, trialMs, audio, volume, spikes, meteorOn, infiniteFuel, zoom };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, infiniteFuel: false, zoom: 1 };
         }
     }
 
@@ -275,6 +278,7 @@
                 pulse: state.pulse,
                 nebula: state.nebula,
                 starDrift: state.starDrift,
+                sky: state.sky,
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
@@ -566,6 +570,7 @@
         holes: [],
         neutrons: [],
         nebulae: [],
+        galaxies: [],
         comets: [],
         cometSpawns: 0,
         meteors: [],
@@ -583,6 +588,7 @@
         pulse: saved.pulse,
         nebula: saved.nebula !== false,
         starDrift: saved.starDrift !== false,
+        sky: SKY_NAMES.includes(saved.sky) ? saved.sky : "stars",
         ship: saved.ship,
         name: saved.name,
         lifetime: saved.lifetime,
@@ -917,6 +923,57 @@
         }
     }
 
+    const GALAXY_TINTS = [
+        { r: 210, g: 176, b: 255 },
+        { r: 110, g: 168, b: 255 },
+        { r: 255, g: 168, b: 132 },
+        { r: 150, g: 220, b: 255 },
+        { r: 255, g: 206, b: 140 },
+        { r: 200, g: 130, b: 220 },
+    ];
+
+    function galaxyCount() {
+        if (state.world >= 20000) return 5;
+        if (state.world >= 15000) return 4;
+        if (state.world >= 10000) return 3;
+        return 2;
+    }
+
+    function spawnGalaxies() {
+        state.galaxies = [];
+        if (state.sky !== "galaxies") return;
+        const count = galaxyCount();
+        const sizes = [1600, 2000, 2600, 3200];
+        const pad = 900;
+        for (let i = 0; i < count; i += 1) {
+            const r = pick(sizes);
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = rand(pad, state.world - pad);
+                y = rand(pad, state.world - pad);
+                attempts += 1;
+            } while (
+                attempts < 120
+                && state.galaxies.some((galaxy) => Math.hypot(x - galaxy.x, y - galaxy.y) < r + galaxy.r * 1.8)
+            );
+            state.galaxies.push({
+                x,
+                y,
+                r,
+                tilt: rand(0, Math.PI * 2),
+                flat: rand(0.22, 0.86),
+                spin: rand(0.032, 0.085) * (Math.random() < 0.5 ? -1 : 1),
+                phase: rand(0, Math.PI * 2),
+                arms: 2 + Math.floor(Math.random() * 2),
+                wind: rand(3.1, 5.4),
+                tint: pick(GALAXY_TINTS),
+                sprite: null,
+            });
+        }
+    }
+
     const COMET_CHECK = 15000;
     const COMET_AFTER = 30000;
     const COMET_CHANCE = 0.1;
@@ -1080,6 +1137,7 @@
         spawnHoles();
         spawnNeutrons();
         spawnNebulae();
+        spawnGalaxies();
         spawnComets();
         spawnMeteors();
     }
@@ -1347,6 +1405,9 @@
         }
         for (const button of document.querySelectorAll(".star-btn")) {
             button.classList.toggle("is-on", (button.dataset.stars === "on") === state.starDrift);
+        }
+        for (const button of document.querySelectorAll(".sky-btn")) {
+            button.classList.toggle("is-on", button.dataset.sky === state.sky);
         }
         for (const button of document.querySelectorAll(".req-btn")) {
             button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
@@ -2019,15 +2080,21 @@
     // two trig calls and a template-string allocation per star per frame, which at
     // high zoom runs to a couple of thousand stars.
     const STAR_CELL = 160;
+    const STAR_CELL_WIDE = 380;
     const STAR_CELL_CACHE_MAX = 12000;
     const starCells = new Map();
 
-    function starCell(gx, gy) {
-        const key = (gx + 1e6) * 4e6 + (gy + 1e6);
+    function starFieldCell() {
+        return state.sky === "galaxies" ? STAR_CELL_WIDE : STAR_CELL;
+    }
+
+    function starCell(gx, gy, cell) {
+        const key = cell * 1e13 + (gx + 1e6) * 4e6 + (gy + 1e6);
         const cached = starCells.get(key);
         if (cached) return cached;
         if (starCells.size >= STAR_CELL_CACHE_MAX) starCells.clear();
-        const count = 1 + Math.floor(hash2(gx, gy) * 3);
+        const sparse = cell > STAR_CELL;
+        const count = sparse ? (hash2(gx, gy) > 0.62 ? 1 : 0) : 1 + Math.floor(hash2(gx, gy) * 3);
         const stars = [];
         for (let i = 0; i < count; i += 1) {
             const depth = hash2(gx * 2.7, gy + i * 5.1);
@@ -2035,8 +2102,8 @@
             const turn = -0.35 + (hash2(i + gx, gy * 4.2) - 0.5) * 0.65;
             const twinkle = 0.45 + hash2(gx * 3.1, gy + i) * 0.55;
             stars.push({
-                bx: hash2(gx + i * 19.1, gy + 7.3) * STAR_CELL,
-                by: hash2(gx + 4.8, gy + i * 13.7) * STAR_CELL,
+                bx: hash2(gx + i * 19.1, gy + 7.3) * cell,
+                by: hash2(gx + 4.8, gy + i * 13.7) * cell,
                 vx: Math.cos(turn) * speed,
                 vy: Math.sin(turn) * speed,
                 size: 0.6 + hash2(i + gx, gy * 2.2) * 1.8,
@@ -2048,7 +2115,7 @@
     }
 
     function drawStars(cam, now) {
-        const cell = STAR_CELL;
+        const cell = starFieldCell();
         const left = Math.floor((cam.x - 40) / cell);
         const right = Math.ceil((cam.x + cam.w + 40) / cell);
         const top = Math.floor((cam.y - 40) / cell);
@@ -2058,7 +2125,7 @@
 
         for (let gy = top; gy <= bottom; gy += 1) {
             for (let gx = left; gx <= right; gx += 1) {
-                const stars = starCell(gx, gy);
+                const stars = starCell(gx, gy, cell);
                 for (let i = 0; i < stars.length; i += 1) {
                     const star = stars[i];
                     let x;
@@ -2771,8 +2838,80 @@
             ctx.fillRect(0, 0, cam.w, cam.h);
             drawNebulae(cam);
         }
+        drawGalaxies(cam, now);
         drawStars(cam, now);
         drawBorder(cam);
+    }
+
+    function paintGalaxySprite(galaxy) {
+        if (galaxy.sprite) return galaxy.sprite;
+        const dim = 280;
+        const canvas = document.createElement("canvas");
+        canvas.width = dim;
+        canvas.height = dim;
+        const g = canvas.getContext("2d");
+        const mid = dim / 2;
+        const r = dim * 0.46;
+        const { r: cr, g: cg, b: cb } = galaxy.tint;
+        g.translate(mid, mid);
+        g.globalCompositeOperation = "lighter";
+        const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
+        halo.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, 0.2)`);
+        halo.addColorStop(0.42, `rgba(${cr}, ${cg}, ${cb}, 0.08)`);
+        halo.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+        g.fillStyle = halo;
+        g.beginPath();
+        g.arc(0, 0, r, 0, Math.PI * 2);
+        g.fill();
+        for (let arm = 0; arm < galaxy.arms; arm += 1) {
+            const base = (arm / galaxy.arms) * Math.PI * 2;
+            for (let s = 0; s < 72; s += 1) {
+                const t = s / 72;
+                const a = base + t * galaxy.wind;
+                const rad = t * r;
+                const px = Math.cos(a) * rad;
+                const py = Math.sin(a) * rad;
+                const blob = 2.1 + (1 - t) * 4.6;
+                const alpha = 0.17 * (1 - t * 0.5);
+                const glow = g.createRadialGradient(px, py, 0, px, py, blob * 2.5);
+                glow.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${alpha})`);
+                glow.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+                g.fillStyle = glow;
+                g.beginPath();
+                g.arc(px, py, blob * 2.5, 0, Math.PI * 2);
+                g.fill();
+            }
+        }
+        const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.2);
+        core.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+        core.addColorStop(0.32, `rgba(${cr}, ${cg}, ${cb}, 0.55)`);
+        core.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+        g.fillStyle = core;
+        g.beginPath();
+        g.arc(0, 0, r * 0.2, 0, Math.PI * 2);
+        g.fill();
+        galaxy.sprite = canvas;
+        return canvas;
+    }
+
+    function drawGalaxies(cam, now) {
+        if (state.sky !== "galaxies") return;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const galaxy of state.galaxies) {
+            const x = galaxy.x - cam.x;
+            const y = galaxy.y - cam.y;
+            if (offView(x, y, galaxy.r * 1.15, cam)) continue;
+            const sprite = paintGalaxySprite(galaxy);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(galaxy.tilt);
+            ctx.scale(1, galaxy.flat);
+            ctx.rotate(galaxy.phase + now * 0.001 * galaxy.spin);
+            ctx.drawImage(sprite, -galaxy.r, -galaxy.r, galaxy.r * 2, galaxy.r * 2);
+            ctx.restore();
+        }
+        ctx.restore();
     }
 
     function drawNebulae(cam) {
@@ -3391,6 +3530,7 @@
         state.holes = [];
         state.neutrons = [];
         state.nebulae = [];
+        state.galaxies = [];
         state.comets = [];
         state.cometSpawns = 0;
         state.meteors = [];
@@ -3679,6 +3819,17 @@
                 const next = button.dataset.stars === "on";
                 if (next === state.starDrift) return;
                 state.starDrift = next;
+                saveSettings();
+                updateHud();
+            });
+        }
+
+        for (const button of document.querySelectorAll(".sky-btn")) {
+            button.addEventListener("click", () => {
+                const next = button.dataset.sky;
+                if (!SKY_NAMES.includes(next) || next === state.sky) return;
+                state.sky = next;
+                if (state.sky === "galaxies" && !state.galaxies.length) spawnGalaxies();
                 saveSettings();
                 updateHud();
             });

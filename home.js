@@ -24,6 +24,15 @@
     const BOARD_MAX = 25;
     const NAME_MAX = 20;
     const PALETTE_NAMES = ["rainbow", "space", "dark"];
+    const SKY_NAMES = ["stars", "galaxies"];
+    const GALAXY_TINTS = [
+        { r: 210, g: 176, b: 255 },
+        { r: 110, g: 168, b: 255 },
+        { r: 255, g: 168, b: 132 },
+        { r: 150, g: 220, b: 255 },
+        { r: 255, g: 206, b: 140 },
+        { r: 200, g: 130, b: 220 },
+    ];
     const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.png",
@@ -75,6 +84,7 @@
         pulse: false,
         nebula: true,
         starDrift: true,
+        sky: "stars",
         ship: "classic",
         name: "",
         lifetime: 0,
@@ -114,6 +124,7 @@
         ctx: null,
         back: null,
         stars: [],
+        galaxies: [],
         width: 0,
         height: 0,
         last: 0,
@@ -123,13 +134,16 @@
 
     function buildHomeStars(width, height) {
         const stars = [];
-        const cell = 72;
+        const sparse = state.sky === "galaxies";
+        const cell = sparse ? 168 : 72;
         const cols = Math.ceil(width / cell) + 1;
         const rows = Math.ceil(height / cell) + 1;
         const heading = -0.35;
         for (let gy = 0; gy < rows; gy += 1) {
             for (let gx = 0; gx < cols; gx += 1) {
-                const count = 1 + Math.floor(hash2(gx + 3.1, gy + 8.4) * 2);
+                const count = sparse
+                    ? (hash2(gx + 3.1, gy + 8.4) > 0.58 ? 1 : 0)
+                    : 1 + Math.floor(hash2(gx + 3.1, gy + 8.4) * 2);
                 for (let i = 0; i < count; i += 1) {
                     const depth = hash2(gx * 2.7, gy + i * 5.1);
                     const speed = 3.5 + depth * 18;
@@ -146,6 +160,115 @@
             }
         }
         return stars;
+    }
+
+    function paintGalaxySprite(galaxy) {
+        if (galaxy.sprite) return galaxy.sprite;
+        const dim = 280;
+        const canvas = document.createElement("canvas");
+        canvas.width = dim;
+        canvas.height = dim;
+        const g = canvas.getContext("2d");
+        const mid = dim / 2;
+        const r = dim * 0.46;
+        const { r: cr, g: cg, b: cb } = galaxy.tint;
+        g.translate(mid, mid);
+        g.globalCompositeOperation = "lighter";
+        const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
+        halo.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, 0.2)`);
+        halo.addColorStop(0.42, `rgba(${cr}, ${cg}, ${cb}, 0.08)`);
+        halo.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+        g.fillStyle = halo;
+        g.beginPath();
+        g.arc(0, 0, r, 0, Math.PI * 2);
+        g.fill();
+        for (let arm = 0; arm < galaxy.arms; arm += 1) {
+            const base = (arm / galaxy.arms) * Math.PI * 2;
+            for (let s = 0; s < 72; s += 1) {
+                const t = s / 72;
+                const a = base + t * galaxy.wind;
+                const rad = t * r;
+                const px = Math.cos(a) * rad;
+                const py = Math.sin(a) * rad;
+                const blob = 2.1 + (1 - t) * 4.6;
+                const alpha = 0.17 * (1 - t * 0.5);
+                const glow = g.createRadialGradient(px, py, 0, px, py, blob * 2.5);
+                glow.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${alpha})`);
+                glow.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+                g.fillStyle = glow;
+                g.beginPath();
+                g.arc(px, py, blob * 2.5, 0, Math.PI * 2);
+                g.fill();
+            }
+        }
+        const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.2);
+        core.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+        core.addColorStop(0.32, `rgba(${cr}, ${cg}, ${cb}, 0.55)`);
+        core.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+        g.fillStyle = core;
+        g.beginPath();
+        g.arc(0, 0, r * 0.2, 0, Math.PI * 2);
+        g.fill();
+        galaxy.sprite = canvas;
+        return canvas;
+    }
+
+    function buildHomeGalaxies(width, height) {
+        if (state.sky !== "galaxies") return [];
+        const galaxies = [];
+        const count = 3;
+        const minR = Math.min(width, height) * 0.22;
+        const maxR = Math.min(width, height) * 0.38;
+        for (let i = 0; i < count; i += 1) {
+            const r = minR + hash2(i + 2.2, 9.1) * (maxR - minR);
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = r + hash2(i * 11.3 + attempts, 4.8) * (width - r * 2);
+                y = r + hash2(i * 7.7 + attempts, 13.2) * (height - r * 2);
+                attempts += 1;
+            } while (
+                attempts < 40
+                && galaxies.some((galaxy) => Math.hypot(x - galaxy.x, y - galaxy.y) < r + galaxy.r * 1.35)
+            );
+            galaxies.push({
+                x,
+                y,
+                r,
+                tilt: hash2(i, 1.4) * Math.PI * 2,
+                flat: 0.24 + hash2(i, 3.8) * 0.62,
+                spin: (0.032 + hash2(i, 6.1) * 0.05) * (hash2(i, 8.9) < 0.5 ? -1 : 1),
+                phase: hash2(i, 12.4) * Math.PI * 2,
+                arms: 2 + Math.floor(hash2(i, 15.2) * 2),
+                wind: 3.1 + hash2(i, 18.6) * 2.3,
+                tint: GALAXY_TINTS[Math.floor(hash2(i, 21.7) * GALAXY_TINTS.length)],
+                sprite: null,
+            });
+        }
+        return galaxies;
+    }
+
+    function drawHomeGalaxies(now) {
+        const ctx = homeSky.ctx;
+        if (!ctx || state.sky !== "galaxies") return;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const galaxy of homeSky.galaxies) {
+            const sprite = paintGalaxySprite(galaxy);
+            ctx.save();
+            ctx.translate(galaxy.x, galaxy.y);
+            ctx.rotate(galaxy.tilt);
+            ctx.scale(1, galaxy.flat);
+            ctx.rotate(galaxy.phase + now * 0.001 * galaxy.spin);
+            ctx.drawImage(sprite, -galaxy.r, -galaxy.r, galaxy.r * 2, galaxy.r * 2);
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
+    function skyAnimating() {
+        return state.starDrift || state.sky === "galaxies";
     }
 
     function paintHomeBackdrop(width, height) {
@@ -205,12 +328,13 @@
         homeSky.height = height;
         homeSky.back = paintHomeBackdrop(width, height);
         homeSky.stars = buildHomeStars(width, height);
+        homeSky.galaxies = buildHomeGalaxies(width, height);
         homeSky.last = 0;
-        if (!state.starDrift) {
+        if (!skyAnimating()) {
             homeSky.running = false;
             if (homeSky.frame) cancelAnimationFrame(homeSky.frame);
             homeSky.frame = 0;
-            drawHomeStars(0);
+            drawHomeStars(0, performance.now());
             return;
         }
         if (!homeSky.running) {
@@ -219,7 +343,7 @@
         }
     }
 
-    function drawHomeStars(dt) {
+    function drawHomeStars(dt, now) {
         const ctx = homeSky.ctx;
         if (!ctx) return;
         const width = homeSky.width;
@@ -229,8 +353,9 @@
             ctx.fillStyle = "#050217";
             ctx.fillRect(0, 0, width, height);
         }
+        drawHomeGalaxies(now || 0);
         for (const star of homeSky.stars) {
-            if (dt) {
+            if (dt && state.starDrift) {
                 star.x += star.vx * dt;
                 star.y += star.vy * dt;
                 if (star.x < -4) star.x = width + 4;
@@ -247,7 +372,7 @@
 
     function tickHomeSky(now) {
         const ctx = homeSky.ctx;
-        if (!ctx || !state.starDrift) {
+        if (!ctx || !skyAnimating()) {
             homeSky.running = false;
             return;
         }
@@ -258,7 +383,7 @@
         }
         const dt = homeSky.last ? Math.min(0.05, (now - homeSky.last) / 1000) : 0;
         homeSky.last = now;
-        drawHomeStars(dt);
+        drawHomeStars(dt, now);
     }
 
     function clampZoom(value) {
@@ -359,6 +484,7 @@
             state.pulse = data.pulse === true;
             state.nebula = data.nebula !== false;
             state.starDrift = data.starDrift !== false;
+            state.sky = SKY_NAMES.includes(data.sky) ? data.sky : "stars";
             state.lifetime = Math.max(0, Math.round(Number(data.lifetime) || 0));
             state.reqShips = data.reqShips !== false;
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
@@ -398,6 +524,7 @@
                 pulse: state.pulse,
                 nebula: state.nebula,
                 starDrift: state.starDrift,
+                sky: state.sky,
                 ship: state.ship,
                 name: state.name,
                 lifetime: state.lifetime,
@@ -573,6 +700,9 @@
         }
         for (const button of document.querySelectorAll(".star-btn")) {
             button.classList.toggle("is-on", (button.dataset.stars === "on") === state.starDrift);
+        }
+        for (const button of document.querySelectorAll(".sky-btn")) {
+            button.classList.toggle("is-on", button.dataset.sky === state.sky);
         }
         for (const button of document.querySelectorAll(".req-btn")) {
             button.classList.toggle("is-on", (button.dataset.req === "on") === state.reqShips);
@@ -814,6 +944,15 @@
     for (const button of document.querySelectorAll(".star-btn")) {
         button.addEventListener("click", () => {
             state.starDrift = button.dataset.stars === "on";
+            saveSettings();
+            paintHomeSky();
+            updateHud();
+        });
+    }
+    for (const button of document.querySelectorAll(".sky-btn")) {
+        button.addEventListener("click", () => {
+            if (!SKY_NAMES.includes(button.dataset.sky)) return;
+            state.sky = button.dataset.sky;
             saveSettings();
             paintHomeSky();
             updateHud();

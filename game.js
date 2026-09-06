@@ -935,7 +935,7 @@
         { r: 200, g: 130, b: 220 },
     ];
 
-    const GALAXY_CELL = 3000;
+    const GALAXY_CELL = 3500;
     const GALAXY_PAIR_GAP = 500;
     const GALAXY_PAIR_CHANCE = 0.2;
 
@@ -968,16 +968,18 @@
         } while (attempts < 80 && galaxyTooClose(x, y, minGap));
         if (attempts >= 80 && galaxyTooClose(x, y, minGap)) return null;
         const r = rand(220, 2400);
+        const kind = Math.random() < 0.5 ? "classic" : (Math.random() < 0.5 ? "andromeda" : "milky");
         state.galaxies.push({
             x,
             y,
             r,
+            kind,
             tilt: rand(0, Math.PI * 2),
-            flat: rand(0.22, 0.86),
+            flat: kind === "classic" ? rand(0.22, 0.86) : rand(0.16, 0.46),
             spin: rand(0.032, 0.085) * (Math.random() < 0.5 ? -1 : 1),
             phase: rand(0, Math.PI * 2),
-            arms: 2 + Math.floor(Math.random() * 2),
-            wind: rand(3.1, 5.4),
+            arms: kind === "classic" ? 2 + Math.floor(Math.random() * 2) : 2,
+            wind: kind === "classic" ? rand(3.1, 5.4) : rand(4.4, 6.2),
             tint: varyGalaxyTint(pick(GALAXY_TINTS)),
             sprite: null,
         });
@@ -2916,15 +2918,24 @@
 
     function paintGalaxySprite(galaxy) {
         if (galaxy.sprite) return galaxy.sprite;
-        const dim = 280;
+        const dim = 320;
         const canvas = document.createElement("canvas");
         canvas.width = dim;
         canvas.height = dim;
         const g = canvas.getContext("2d");
         const mid = dim / 2;
         const r = dim * 0.46;
-        const { r: cr, g: cg, b: cb } = galaxy.tint;
         g.translate(mid, mid);
+        const kind = galaxy.kind || "classic";
+        if (kind === "andromeda") paintAndromedaGalaxy(g, r, galaxy);
+        else if (kind === "milky") paintMilkyGalaxy(g, r, galaxy);
+        else paintClassicGalaxy(g, r, galaxy);
+        galaxy.sprite = canvas;
+        return canvas;
+    }
+
+    function paintClassicGalaxy(g, r, galaxy) {
+        const { r: cr, g: cg, b: cb } = galaxy.tint;
         g.globalCompositeOperation = "lighter";
         const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
         halo.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, 0.2)`);
@@ -2961,8 +2972,106 @@
         g.beginPath();
         g.arc(0, 0, r * 0.2, 0, Math.PI * 2);
         g.fill();
-        galaxy.sprite = canvas;
-        return canvas;
+    }
+
+    function paintGalaxyArms(g, r, galaxy, inner, outer, samples) {
+        const arms = galaxy.arms || 2;
+        for (let arm = 0; arm < arms; arm += 1) {
+            const base = (arm / arms) * Math.PI * 2;
+            for (let s = 0; s < samples; s += 1) {
+                const t = s / samples;
+                const a = base + t * galaxy.wind;
+                const rad = t * r;
+                const px = Math.cos(a) * rad;
+                const py = Math.sin(a) * rad;
+                const blob = 1.8 + (1 - t) * 5.2;
+                const mix = t * t;
+                const cr = Math.round(inner.r + (outer.r - inner.r) * mix);
+                const cg = Math.round(inner.g + (outer.g - inner.g) * mix);
+                const cb = Math.round(inner.b + (outer.b - inner.b) * mix);
+                const alpha = 0.2 * (1 - t * 0.42);
+                const glow = g.createRadialGradient(px, py, 0, px, py, blob * 2.6);
+                glow.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${alpha})`);
+                glow.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+                g.fillStyle = glow;
+                g.beginPath();
+                g.arc(px, py, blob * 2.6, 0, Math.PI * 2);
+                g.fill();
+            }
+        }
+    }
+
+    function paintGalaxyDust(g, r, tilt, width) {
+        g.save();
+        g.globalCompositeOperation = "source-over";
+        g.rotate(tilt);
+        const dust = g.createLinearGradient(0, -r * width, 0, r * width);
+        dust.addColorStop(0, "rgba(6, 2, 10, 0)");
+        dust.addColorStop(0.35, "rgba(10, 4, 14, 0.38)");
+        dust.addColorStop(0.5, "rgba(18, 8, 16, 0.52)");
+        dust.addColorStop(0.65, "rgba(10, 4, 14, 0.38)");
+        dust.addColorStop(1, "rgba(6, 2, 10, 0)");
+        g.fillStyle = dust;
+        g.beginPath();
+        g.ellipse(0, 0, r * 0.92, r * width, 0, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+    }
+
+    function paintAndromedaGalaxy(g, r, galaxy) {
+        g.globalCompositeOperation = "lighter";
+        const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
+        halo.addColorStop(0, "rgba(255, 232, 196, 0.16)");
+        halo.addColorStop(0.38, "rgba(150, 186, 255, 0.1)");
+        halo.addColorStop(1, "rgba(90, 140, 220, 0)");
+        g.fillStyle = halo;
+        g.beginPath();
+        g.arc(0, 0, r, 0, Math.PI * 2);
+        g.fill();
+        paintGalaxyArms(g, r, galaxy, { r: 255, g: 214, b: 168 }, { r: 120, g: 168, b: 255 }, 96);
+        const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.3);
+        core.addColorStop(0, "rgba(255, 252, 240, 0.98)");
+        core.addColorStop(0.28, "rgba(255, 220, 160, 0.7)");
+        core.addColorStop(0.62, "rgba(210, 170, 120, 0.22)");
+        core.addColorStop(1, "rgba(180, 140, 90, 0)");
+        g.fillStyle = core;
+        g.beginPath();
+        g.arc(0, 0, r * 0.3, 0, Math.PI * 2);
+        g.fill();
+        paintGalaxyDust(g, r, 0.12, 0.055);
+    }
+
+    function paintMilkyGalaxy(g, r, galaxy) {
+        g.globalCompositeOperation = "lighter";
+        const halo = g.createRadialGradient(0, 0, 0, 0, 0, r);
+        halo.addColorStop(0, "rgba(255, 214, 150, 0.18)");
+        halo.addColorStop(0.4, "rgba(180, 160, 255, 0.08)");
+        halo.addColorStop(1, "rgba(80, 90, 160, 0)");
+        g.fillStyle = halo;
+        g.beginPath();
+        g.arc(0, 0, r, 0, Math.PI * 2);
+        g.fill();
+        g.save();
+        g.rotate(0.18);
+        const bar = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.42);
+        bar.addColorStop(0, "rgba(255, 236, 190, 0.55)");
+        bar.addColorStop(0.55, "rgba(255, 190, 120, 0.22)");
+        bar.addColorStop(1, "rgba(255, 170, 90, 0)");
+        g.fillStyle = bar;
+        g.beginPath();
+        g.ellipse(0, 0, r * 0.42, r * 0.11, 0, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+        paintGalaxyArms(g, r, galaxy, { r: 255, g: 196, b: 130 }, { r: 160, g: 190, b: 255 }, 88);
+        const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.22);
+        core.addColorStop(0, "rgba(255, 250, 230, 0.96)");
+        core.addColorStop(0.4, "rgba(255, 200, 120, 0.58)");
+        core.addColorStop(1, "rgba(220, 140, 70, 0)");
+        g.fillStyle = core;
+        g.beginPath();
+        g.arc(0, 0, r * 0.22, 0, Math.PI * 2);
+        g.fill();
+        paintGalaxyDust(g, r, -0.08, 0.07);
     }
 
     function drawGalaxies(cam, now) {

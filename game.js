@@ -41,7 +41,7 @@
     const SPIKE_RATE = 0.15;
     const SPIKE_COUNT_MAX = 1000;
     const METEOR_COUNT_MAX = 20;
-    const COMET_COUNT_MAX = 20;
+    const COMET_COUNT_MAX = 300;
     const NEUTRON_PAIR_MAX = 20;
     const SPIKE_REACH = 1.4;
     const SPIKE_TRIAL_MS = 10000;
@@ -257,6 +257,84 @@
     function clampNeutronPairs(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(NEUTRON_PAIR_MAX, Math.max(0, n)) : defaultNeutronPairs(START_WORLD);
+    }
+
+    function rangeValueFromClientX(el, clientX) {
+        const min = Number(el.min);
+        const max = Number(el.max);
+        const step = Number(el.step);
+        const lo = Number.isFinite(min) ? min : 0;
+        const hi = Number.isFinite(max) ? max : 100;
+        const inc = Number.isFinite(step) && step > 0 ? step : 1;
+        const rect = el.getBoundingClientRect();
+        const pad = Math.min(16, rect.width / 4);
+        const usable = Math.max(1, rect.width - pad * 2);
+        const t = (clientX - (rect.left + pad)) / usable;
+        const raw = lo + Math.min(1, Math.max(0, t)) * (hi - lo);
+        const snapped = lo + Math.round((raw - lo) / inc) * inc;
+        const places = (String(inc).split(".")[1] || "").length;
+        return Number(Math.min(hi, Math.max(lo, snapped)).toFixed(places));
+    }
+
+    function bindFineRangeInputs() {
+        for (const el of document.querySelectorAll("input[type='range']")) {
+            if (el.dataset.fineRange === "1") continue;
+            el.dataset.fineRange = "1";
+            let dragging = false;
+            let pointerId = null;
+
+            const pointX = (event) => {
+                if (event.clientX != null) return event.clientX;
+                const touch = event.changedTouches?.[0] || event.touches?.[0];
+                return touch ? touch.clientX : null;
+            };
+
+            const apply = (event) => {
+                const x = pointX(event);
+                if (x == null) return;
+                const next = String(rangeValueFromClientX(el, x));
+                if (el.value === next) return;
+                el.value = next;
+                el.dispatchEvent(new Event("input", { bubbles: true }));
+            };
+
+            const finish = (event) => {
+                if (!dragging) return;
+                if (pointerId != null && event.pointerId != null && event.pointerId !== pointerId) return;
+                dragging = false;
+                pointerId = null;
+                apply(event);
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+            };
+
+            el.addEventListener("pointerdown", (event) => {
+                if (event.pointerType === "mouse" && event.button !== 0) return;
+                dragging = true;
+                pointerId = event.pointerId;
+                try { el.setPointerCapture(event.pointerId); } catch (_) {}
+                apply(event);
+                event.preventDefault();
+            });
+            el.addEventListener("pointermove", (event) => {
+                if (!dragging || event.pointerId !== pointerId) return;
+                apply(event);
+                event.preventDefault();
+            });
+            el.addEventListener("pointerup", finish);
+            el.addEventListener("pointercancel", finish);
+            el.addEventListener("touchstart", (event) => {
+                dragging = true;
+                apply(event);
+                event.preventDefault();
+            }, { passive: false });
+            el.addEventListener("touchmove", (event) => {
+                if (!dragging) return;
+                apply(event);
+                event.preventDefault();
+            }, { passive: false });
+            el.addEventListener("touchend", finish);
+            el.addEventListener("touchcancel", finish);
+        }
     }
 
     function isCustomGame() {
@@ -5017,6 +5095,10 @@
 
         document.addEventListener("touchmove", (event) => {
             if (pageZoomed() && event.touches.length > 1) return;
+            if (event.target.closest("input[type='range']")) {
+                event.preventDefault();
+                return;
+            }
             if (state.menuOpen || state.boardOpen || event.target.closest("#settings-menu") || event.target.closest("#board-overlay")) {
                 if (event.touches.length > 1) event.preventDefault();
                 return;
@@ -5104,6 +5186,7 @@
     bindPad();
     bindHud();
     preventBrowserGestures();
+    bindFineRangeInputs();
     window.addEventListener("resize", scheduleResize);
     window.addEventListener("orientationchange", scheduleResize);
     document.addEventListener("fullscreenchange", scheduleResize);

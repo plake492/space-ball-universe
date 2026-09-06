@@ -4,7 +4,7 @@
     const GOAL_MIN = 5;
     const GOAL_STEP = 5;
     const BALLS_MIN = 25;
-    const BALLS_MAX = 250;
+    const BALLS_MAX = 1000;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
     const ZOOM_MIN = 1;

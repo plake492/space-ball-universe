@@ -935,7 +935,7 @@
         { r: 200, g: 130, b: 220 },
     ];
 
-    const GALAXY_CELL = 1500;
+    const GALAXY_CELL = 3000;
     const GALAXY_PAIR_GAP = 500;
     const GALAXY_PAIR_CHANCE = 0.2;
 

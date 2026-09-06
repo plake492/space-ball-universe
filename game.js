@@ -52,6 +52,10 @@
     const BOOST_REFILL = 7.5;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
+    const NEUTRON_R = 11;
+    const NEUTRON_ORBIT = 34;
+    const NEUTRON_SPEED = 8.6;
+    const NEUTRON_PAIRS = 1;
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 5;
     const ZOOM_STEP = 0.5;
@@ -542,6 +546,7 @@
         heading: -Math.PI / 2,
         balls: [],
         holes: [],
+        neutrons: [],
         nebulae: [],
         comets: [],
         cometSpawns: 0,
@@ -745,6 +750,17 @@
         return false;
     }
 
+    function neutronReach(pair) {
+        return (pair.orbit || NEUTRON_ORBIT) + (pair.r || NEUTRON_R) + 48;
+    }
+
+    function tooCloseToNeutrons(x, y, r) {
+        for (const pair of state.neutrons) {
+            if (Math.hypot(x - pair.x, y - pair.y) < r + neutronReach(pair)) return true;
+        }
+        return false;
+    }
+
     function tooCloseToDrops(x, y, r, gap) {
         const pad = gap == null ? state.world * 0.22 : gap;
         for (const drop of state.drops) {
@@ -791,6 +807,38 @@
         // Draw order depends only on `near`, which is fixed here, so sort once
         // rather than copying and re-sorting the list on every frame.
         state.holes.sort((a, b) => holeNear(a) - holeNear(b));
+    }
+
+    function spawnNeutrons() {
+        state.neutrons = [];
+        const pad = 520;
+        for (let i = 0; i < NEUTRON_PAIRS; i += 1) {
+            const reach = NEUTRON_ORBIT + NEUTRON_R;
+            const minShip = reach + 720;
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = rand(pad, state.world - pad);
+                y = rand(pad, state.world - pad);
+                attempts += 1;
+            } while (
+                (
+                    Math.hypot(x - state.shipX, y - state.shipY) < minShip
+                    || tooCloseToHoles(x, y, reach * 1.4)
+                    || tooCloseToNeutrons(x, y, reach * 1.6)
+                ) && attempts < 240
+            );
+            state.neutrons.push({
+                x,
+                y,
+                r: NEUTRON_R,
+                orbit: NEUTRON_ORBIT,
+                speed: NEUTRON_SPEED,
+                spin: rand(0, Math.PI * 2),
+                tilt: rand(0.32, 0.48),
+            });
+        }
     }
 
     const NEBULA_TINTS = [
@@ -1002,6 +1050,7 @@
 
     function spawnDecor() {
         spawnHoles();
+        spawnNeutrons();
         spawnNebulae();
         spawnComets();
         spawnMeteors();
@@ -1020,7 +1069,7 @@
             y = rand(MAX_BALL, state.world - MAX_BALL);
             attempts += 1;
         } while (
-            (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r)) &&
+            (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r) || tooCloseToNeutrons(x, y, r)) &&
             attempts < 200
         );
 
@@ -1066,6 +1115,7 @@
                 Math.hypot(x - state.shipX, y - state.shipY) < minShip
                 || tooCloseToBalls(x, y, r)
                 || tooCloseToHoles(x, y, r)
+                || tooCloseToNeutrons(x, y, r)
                 || tooCloseToDrops(x, y, r, attempts < 160 ? far : near)
             ) && attempts < 280
         );
@@ -2626,6 +2676,51 @@
         for (const hole of state.holes) drawHole(hole, cam, now);
     }
 
+    function neutronStarAt(pair, now, index) {
+        const a = pair.spin + (now / 1000) * pair.speed + index * Math.PI;
+        return {
+            x: pair.x + Math.cos(a) * pair.orbit,
+            y: pair.y + Math.sin(a) * pair.orbit * pair.tilt,
+            depth: Math.sin(a),
+        };
+    }
+
+    function drawNeutronStar(x, y, r, cam) {
+        const sx = x - cam.x;
+        const sy = y - cam.y;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 4.6);
+        glow.addColorStop(0, "rgba(255, 255, 255, 1)");
+        glow.addColorStop(0.16, "rgba(255, 255, 255, 0.95)");
+        glow.addColorStop(0.4, "rgba(200, 225, 255, 0.42)");
+        glow.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(sx, sy, r * 4.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "#ffffff";
+        ctx.shadowBlur = r * 2.4;
+        ctx.beginPath();
+        ctx.arc(sx, sy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawNeutrons(cam, now) {
+        for (const pair of state.neutrons) {
+            const reach = pair.orbit + pair.r * 4.6;
+            if (offView(pair.x - cam.x, pair.y - cam.y, reach, cam)) continue;
+            const a = neutronStarAt(pair, now, 0);
+            const b = neutronStarAt(pair, now, 1);
+            const first = a.depth <= b.depth ? a : b;
+            const second = a.depth <= b.depth ? b : a;
+            drawNeutronStar(first.x, first.y, pair.r, cam);
+            drawNeutronStar(second.x, second.y, pair.r, cam);
+        }
+    }
+
     function drawComets(cam) {
         ctx.save();
         ctx.beginPath();
@@ -2907,6 +3002,7 @@
         beginWorld(cam);
         drawSpace(cam, now);
         drawHoles(cam, now);
+        drawNeutrons(cam, now);
         drawComets(cam);
         drawMeteors(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
@@ -3135,6 +3231,7 @@
         state.boostFuel = 1;
         state.balls = [];
         state.holes = [];
+        state.neutrons = [];
         state.nebulae = [];
         state.comets = [];
         state.cometSpawns = 0;

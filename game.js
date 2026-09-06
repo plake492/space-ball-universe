@@ -3201,7 +3201,8 @@
     let cargoSpin = 0;
 
     function cargoMoonCount() {
-        return PLAYGROUND ? Math.floor(state.found / CARGO_PER) : 0;
+        if (!PLAYGROUND || state.found <= 0) return 0;
+        return Math.ceil(state.found / CARGO_PER);
     }
 
     function cargoScale() {
@@ -3286,16 +3287,18 @@
         }
     }
 
-    function drawCargoMoons(cam) {
+    function drawCargoMoons() {
         if (!cargoMoons.length) return;
-        const cx = cam.w / 2;
-        const cy = cam.h / 2;
-        const r = 5.5 * cargoScale();
+        const cx = state.width / 2;
+        const cy = state.height / 2;
+        const r = 8 * cargoScale();
         for (const moon of cargoMoons) {
             const paints = moon.paints;
             ctx.save();
             ctx.globalAlpha = moon.scatter ? moon.life : 1;
             ctx.translate(cx + moon.x, cy + moon.y);
+            ctx.shadowColor = moon.color;
+            ctx.shadowBlur = 10;
             const fill = ctx.createRadialGradient(r * -0.28, r * -0.32, r * 0.1, 0, 0, r);
             fill.addColorStop(0, paints[0] || moon.color);
             fill.addColorStop(1, paints[paints.length - 1] || moon.color);
@@ -4056,10 +4059,10 @@
         if (!paused) updateCargoMoons(dt);
         else if (cargoMoons.some((moon) => moon.scatter)) updateCargoMoons(dt);
         drawShip(moving, cam);
-        drawCargoMoons(cam);
         drawShipShield(now, cam);
         drawShieldRings(dt, cam);
         endWorld();
+        drawCargoMoons();
         drawMinimap(now);
         updateTimer(now);
         setCoords();

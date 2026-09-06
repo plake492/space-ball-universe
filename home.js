@@ -13,6 +13,10 @@
     const COMET_POINTS_STEP = 10000;
     const COMET_POINTS_START = 60000;
     const NEUTRON_PAIR_MAX = 20;
+    const SPEED_KEYS = ["shipSpeed", "cometSpeed", "meteorSpeed", "neutronSpeed", "cargoSpeed"];
+    const SPEED_MUL_MIN = 0;
+    const SPEED_MUL_MAX = 10;
+    const SPEED_MUL_START = 1;
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
     const ZOOM_MIN = 1;
@@ -125,6 +129,11 @@
         cometCount: 0,
         cometPoints: COMET_POINTS_START,
         neutronPairs: 5,
+        shipSpeed: SPEED_MUL_START,
+        cometSpeed: SPEED_MUL_START,
+        meteorSpeed: SPEED_MUL_START,
+        neutronSpeed: SPEED_MUL_START,
+        cargoSpeed: SPEED_MUL_START,
         infiniteFuel: false,
         zoom: 1,
     };
@@ -444,6 +453,24 @@
         return Number.isFinite(n) ? Math.min(COMET_POINTS_MAX, Math.max(0, n)) : COMET_POINTS_START;
     }
 
+    function clampSpeedMul(value) {
+        const n = Math.round(Number(value) * 10) / 10;
+        return Number.isFinite(n) ? Math.min(SPEED_MUL_MAX, Math.max(SPEED_MUL_MIN, n)) : SPEED_MUL_START;
+    }
+
+    function formatSpeedMul(value) {
+        const n = clampSpeedMul(value);
+        return `${Number.isInteger(n) ? String(n) : n.toFixed(1)}×`;
+    }
+
+    function speedsFrom(data) {
+        const out = {};
+        for (const key of SPEED_KEYS) {
+            out[key] = data[key] == null ? SPEED_MUL_START : clampSpeedMul(data[key]);
+        }
+        return out;
+    }
+
     function formatCometPoints(value) {
         return clampCometPoints(value).toLocaleString();
     }
@@ -683,6 +710,7 @@
             state.neutronPairs = data.neutronPairs == null
                 ? defaultNeutronPairs(state.world)
                 : clampNeutronPairs(data.neutronPairs);
+            Object.assign(state, speedsFrom(data));
             if (state.difficulty === "custom") {
                 state.meteorOn = state.meteorCount > 0;
                 state.spikes = state.spikeBalls > 0;
@@ -724,6 +752,7 @@
                 neutronPairs: state.neutronPairs,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
+                ...speedsFrom(state),
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -750,6 +779,11 @@
                 cometCount: data.cometCount == null ? null : Number(data.cometCount),
                 cometPoints: data.cometPoints == null ? null : Number(data.cometPoints),
                 neutronPairs: data.neutronPairs == null ? null : Number(data.neutronPairs),
+                shipSpeed: data.shipSpeed == null ? null : Number(data.shipSpeed),
+                cometSpeed: data.cometSpeed == null ? null : Number(data.cometSpeed),
+                meteorSpeed: data.meteorSpeed == null ? null : Number(data.meteorSpeed),
+                neutronSpeed: data.neutronSpeed == null ? null : Number(data.neutronSpeed),
+                cargoSpeed: data.cargoSpeed == null ? null : Number(data.cargoSpeed),
                 infiniteFuel: data.infiniteFuel === true,
             };
         } catch {
@@ -776,6 +810,7 @@
             && (play.cometCount == null || play.cometCount === state.cometCount)
             && (play.cometPoints == null || play.cometPoints === state.cometPoints)
             && (play.neutronPairs == null || play.neutronPairs === state.neutronPairs)
+            && SPEED_KEYS.every((key) => play[key] == null || play[key] === state[key])
             && play.infiniteFuel === state.infiniteFuel
             && playIsActive(play)
         );
@@ -944,6 +979,13 @@
         if (cometPointsSliderValue) cometPointsSliderValue.textContent = formatCometPoints(state.cometPoints);
         if (neutronSlider) neutronSlider.value = String(state.neutronPairs);
         if (neutronSliderValue) neutronSliderValue.textContent = String(state.neutronPairs);
+        for (const key of SPEED_KEYS) {
+            const id = `${key.replace(/Speed$/, "-speed")}-slider`;
+            const slider = document.getElementById(id);
+            const label = document.getElementById(`${id}-value`);
+            if (slider) slider.value = String(state[key]);
+            if (label) label.textContent = formatSpeedMul(state[key]);
+        }
         for (const button of document.querySelectorAll(".fuel-btn")) {
             button.classList.toggle("is-on", (button.dataset.fuel === "on") === state.infiniteFuel);
         }
@@ -1251,6 +1293,21 @@
         });
         neutronSlider.addEventListener("change", () => {
             state.neutronPairs = clampNeutronPairs(neutronSlider.value);
+            state.difficulty = "custom";
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const key of SPEED_KEYS) {
+        const id = `${key.replace(/Speed$/, "-speed")}-slider`;
+        const slider = document.getElementById(id);
+        const label = document.getElementById(`${id}-value`);
+        if (!slider) continue;
+        slider.addEventListener("input", () => {
+            if (label) label.textContent = formatSpeedMul(slider.value);
+        });
+        slider.addEventListener("change", () => {
+            state[key] = clampSpeedMul(slider.value);
             state.difficulty = "custom";
             saveSettings();
             updateHud();

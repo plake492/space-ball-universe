@@ -46,6 +46,10 @@
     const COMET_POINTS_STEP = 10000;
     const COMET_POINTS_START = 60000;
     const NEUTRON_PAIR_MAX = 20;
+    const SPEED_KEYS = ["shipSpeed", "cometSpeed", "meteorSpeed", "neutronSpeed", "cargoSpeed"];
+    const SPEED_MUL_MIN = 0;
+    const SPEED_MUL_MAX = 10;
+    const SPEED_MUL_START = 1;
     const SPIKE_REACH = 1.4;
     const SPIKE_TRIAL_MS = 10000;
     const DROP_RATE = 0.05;
@@ -284,6 +288,28 @@
         return Number.isFinite(n) ? Math.min(COMET_POINTS_MAX, Math.max(0, n)) : COMET_POINTS_START;
     }
 
+    function clampSpeedMul(value) {
+        const n = Math.round(Number(value) * 10) / 10;
+        return Number.isFinite(n) ? Math.min(SPEED_MUL_MAX, Math.max(SPEED_MUL_MIN, n)) : SPEED_MUL_START;
+    }
+
+    function formatSpeedMul(value) {
+        const n = clampSpeedMul(value);
+        return `${Number.isInteger(n) ? String(n) : n.toFixed(1)}×`;
+    }
+
+    function speedsFrom(data) {
+        const out = {};
+        for (const key of SPEED_KEYS) {
+            out[key] = data[key] == null ? SPEED_MUL_START : clampSpeedMul(data[key]);
+        }
+        return out;
+    }
+
+    function speedMul(key) {
+        return isCustomGame() ? state[key] : SPEED_MUL_START;
+    }
+
     function formatCometPoints(value) {
         return clampCometPoints(value).toLocaleString();
     }
@@ -413,6 +439,7 @@
                 : clampNeutronPairs(data.neutronPairs);
             const infiniteFuel = data.infiniteFuel === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
+            const speeds = speedsFrom(data);
             if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
@@ -443,6 +470,7 @@
                     neutronPairs,
                     infiniteFuel,
                     zoom,
+                    ...speeds,
                 };
             }
             return {
@@ -473,9 +501,10 @@
                 neutronPairs,
                 infiniteFuel,
                 zoom,
+                ...speeds,
             };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), infiniteFuel: false, zoom: 1 };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), infiniteFuel: false, zoom: 1, ...speedsFrom({}) };
         }
     }
 
@@ -509,6 +538,7 @@
                 neutronPairs: state.neutronPairs,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
+                ...speedsFrom(state),
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -654,6 +684,7 @@
                 cometPoints: state.cometPoints,
                 neutronPairs: state.neutronPairs,
                 infiniteFuel: state.infiniteFuel,
+                ...speedsFrom(state),
                 neutrons: state.neutrons.map((pair) => ({
                     x: pair.x,
                     y: pair.y,
@@ -683,6 +714,9 @@
             if (data.cometCount != null && Number(data.cometCount) !== state.cometCount) return null;
             if (data.cometPoints != null && Number(data.cometPoints) !== state.cometPoints) return null;
             if (data.neutronPairs != null && Number(data.neutronPairs) !== state.neutronPairs) return null;
+            for (const key of SPEED_KEYS) {
+                if (data[key] != null && Number(data[key]) !== state[key]) return null;
+            }
             if (Boolean(data.infiniteFuel) !== state.infiniteFuel) return null;
             if (!Array.isArray(data.balls)) return null;
             const balls = [];
@@ -834,6 +868,7 @@
             : clampSpikeBalls(saved.spikeBalls),
         cometCount: saved.cometCount == null ? 0 : clampCometCount(saved.cometCount),
         cometPoints: saved.cometPoints == null ? COMET_POINTS_START : clampCometPoints(saved.cometPoints),
+        ...speedsFrom(saved),
         neutronPairs: saved.neutronPairs == null
             ? defaultNeutronPairs(saved.world)
             : clampNeutronPairs(saved.neutronPairs),
@@ -1306,11 +1341,11 @@
     }
 
     function cometSpeedMul() {
-        return 1 + 0.5 * difficultyT();
+        return isCustomGame() ? 1 : 1 + 0.5 * difficultyT();
     }
 
     function meteorSpeedMul() {
-        return 1 + 0.5 * difficultyT();
+        return isCustomGame() ? 1 : 1 + 0.5 * difficultyT();
     }
 
     function meteorWait() {
@@ -1419,12 +1454,13 @@
         state.meteors.push(makeMeteor());
     }
 
-    function moveFlyers(list, dt) {
+    function moveFlyers(list, dt, mul) {
+        const speed = Number.isFinite(mul) ? mul : 1;
         for (let i = list.length - 1; i >= 0; i -= 1) {
             const flyer = list[i];
-            flyer.x += flyer.vx * dt;
-            flyer.y += flyer.vy * dt;
-            if (flyer.spinRate) flyer.spin += flyer.spinRate * dt;
+            flyer.x += flyer.vx * dt * speed;
+            flyer.y += flyer.vy * dt * speed;
+            if (flyer.spinRate) flyer.spin += flyer.spinRate * dt * speed;
             const pad = flyer.tail + 280;
             if (flyer.x < -pad || flyer.y < -pad || flyer.x > state.world + pad || flyer.y > state.world + pad) {
                 list.splice(i, 1);
@@ -1439,11 +1475,11 @@
                 state.comets = [];
                 return;
             }
-            moveFlyers(state.comets, dt);
+            moveFlyers(state.comets, dt, speedMul("cometSpeed"));
             fillComets();
             return;
         }
-        moveFlyers(state.comets, dt);
+        moveFlyers(state.comets, dt, speedMul("cometSpeed"));
         if (state.cometSpawns >= COMET_LIMIT || now < nextCometAt) return;
         if (Math.random() < COMET_CHANCE) {
             state.comets.push(makeComet());
@@ -1461,12 +1497,12 @@
                 state.meteors = [];
                 return;
             }
-            moveFlyers(state.meteors, dt);
+            moveFlyers(state.meteors, dt, speedMul("meteorSpeed"));
             fillMeteors();
             return;
         }
         if (!state.meteorOn) return;
-        moveFlyers(state.meteors, dt);
+        moveFlyers(state.meteors, dt, speedMul("meteorSpeed"));
         if (now >= nextMeteorAt) {
             nextMeteorAt = now + meteorWait();
             state.meteors.push(makeMeteor());
@@ -1819,6 +1855,12 @@
         if (cometPointsSliderValue) cometPointsSliderValue.textContent = formatCometPoints(state.cometPoints);
         if (neutronSlider) neutronSlider.value = String(state.neutronPairs);
         if (neutronSliderValue) neutronSliderValue.textContent = String(state.neutronPairs);
+        for (const key of SPEED_KEYS) {
+            const slider = document.getElementById(`${key.replace("Speed", "-speed")}-slider`);
+            const label = document.getElementById(`${key.replace("Speed", "-speed")}-slider-value`);
+            if (slider) slider.value = String(state[key]);
+            if (label) label.textContent = formatSpeedMul(state[key]);
+        }
     }
 
     function syncPlaygroundRanges() {
@@ -1835,6 +1877,7 @@
             else if (key === "comets") el.value = String(state.cometCount);
             else if (key === "cometPoints") el.value = String(state.cometPoints);
             else if (key === "neutrons") el.value = String(state.neutronPairs);
+            else if (SPEED_KEYS.includes(key)) el.value = String(state[key]);
             const label = document.querySelector(`[data-pg-value="${key}"]`);
             if (!label) continue;
             if (key === "zoom") label.textContent = `${state.zoom}×`;
@@ -1846,6 +1889,7 @@
             else if (key === "comets") label.textContent = String(state.cometCount);
             else if (key === "cometPoints") label.textContent = formatCometPoints(state.cometPoints);
             else if (key === "neutrons") label.textContent = String(state.neutronPairs);
+            else if (SPEED_KEYS.includes(key)) label.textContent = formatSpeedMul(state[key]);
         }
     }
 
@@ -2239,13 +2283,15 @@
             vy /= length;
             state.heading = Math.atan2(vy, vx);
             const usingStick = stick.vx !== 0 || stick.vy !== 0;
-            target = SHIP_SPEED * (usingStick ? stick.speed : 1) * (state.boost ? 2 : 1);
+            target = SHIP_SPEED * speedMul("shipSpeed") * (usingStick ? stick.speed : 1) * (state.boost ? 2 : 1);
         }
 
+        const shipAccel = SHIP_ACCEL * Math.max(speedMul("shipSpeed"), SPEED_MUL_START);
+        const shipDecel = SHIP_DECEL * Math.max(speedMul("shipSpeed"), SPEED_MUL_START);
         if (target > state.speed) {
-            state.speed = Math.min(target, state.speed + SHIP_ACCEL * dt);
+            state.speed = Math.min(target, state.speed + shipAccel * dt);
         } else {
-            state.speed = Math.max(target, state.speed - SHIP_DECEL * dt);
+            state.speed = Math.max(target, state.speed - shipDecel * dt);
         }
 
         if (state.speed > 0) {
@@ -3370,7 +3416,7 @@
 
     function updateCargoMoons(dt) {
         if (!cargoMoons.length && cargoMoonCount() <= 0) return;
-        cargoSpin += CARGO_SPIN * (dt * 60);
+        cargoSpin += CARGO_SPIN * speedMul("cargoSpeed") * (dt * 60);
         syncCargoMoons();
         const live = cargoMoons.filter((moon) => !moon.scatter).length;
         let orbitIndex = 0;
@@ -3835,7 +3881,7 @@
     }
 
     function neutronStarAt(pair, now, index) {
-        const a = pair.spin + (now / 1000) * pair.speed + index * Math.PI;
+        const a = pair.spin + (now / 1000) * pair.speed * speedMul("neutronSpeed") + index * Math.PI;
         return {
             x: pair.x + Math.cos(a) * pair.orbit,
             y: pair.y + Math.sin(a) * pair.orbit * pair.tilt,
@@ -4742,6 +4788,7 @@
                 if (key === "comets" && label) label.textContent = el.value;
                 if (key === "cometPoints" && label) label.textContent = formatCometPoints(el.value);
                 if (key === "neutrons" && label) label.textContent = el.value;
+                if (SPEED_KEYS.includes(key) && label) label.textContent = formatSpeedMul(el.value);
                 if (key === "zoom") {
                     state.zoom = clampZoom(el.value);
                     if (label) label.textContent = `${state.zoom}×`;
@@ -4852,6 +4899,18 @@
                     state.difficulty = "custom";
                     saveSettings();
                     restartGame();
+                    return;
+                }
+                if (SPEED_KEYS.includes(key)) {
+                    const next = clampSpeedMul(el.value);
+                    if (next === state[key] && isCustomGame()) {
+                        syncPlaygroundRanges();
+                        return;
+                    }
+                    state[key] = next;
+                    state.difficulty = "custom";
+                    saveSettings();
+                    updateHud();
                 }
             });
         }
@@ -5148,6 +5207,24 @@
                 state.difficulty = "custom";
                 saveSettings();
                 restartGame();
+            });
+        }
+
+        for (const key of SPEED_KEYS) {
+            const id = `${key.replace(/Speed$/, "-speed")}-slider`;
+            const slider = document.getElementById(id);
+            const label = document.getElementById(`${id}-value`);
+            if (!slider) continue;
+            slider.addEventListener("input", () => {
+                if (label) label.textContent = formatSpeedMul(slider.value);
+            });
+            slider.addEventListener("change", () => {
+                const next = clampSpeedMul(slider.value);
+                if (next === state[key] && isCustomGame()) return;
+                state[key] = next;
+                state.difficulty = "custom";
+                saveSettings();
+                updateHud();
             });
         }
 

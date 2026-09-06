@@ -628,6 +628,32 @@
         if (homeDiffWorld) homeDiffWorld.textContent = worldLabel(preset.world);
     }
 
+    function customDefaults() {
+        return {
+            world: START_WORLD,
+            ballCount: START_BALLS,
+            goal: START_GOAL,
+            spikeBalls: Math.round(START_BALLS * SPIKE_RATE),
+            spikes: true,
+            meteorCount: 1,
+            meteorOn: true,
+            cometCount: 0,
+            cometPoints: COMET_POINTS_START,
+            neutronPairs: defaultNeutronPairs(START_WORLD),
+            infiniteFuel: false,
+            zoom: 1,
+            ...speedsFrom({}),
+        };
+    }
+
+    function resetCustomSettings() {
+        Object.assign(state, customDefaults());
+        state.difficulty = "custom";
+        syncHazardFlags();
+        saveSettings();
+        updateHud();
+    }
+
     function applyDifficulty(id) {
         if (id === "custom") {
             state.difficulty = "custom";
@@ -1154,6 +1180,9 @@
 
     for (const button of document.querySelectorAll(".diff-btn")) {
         button.addEventListener("click", () => applyDifficulty(button.dataset.diff));
+    }
+    for (const button of document.querySelectorAll(".custom-reset")) {
+        button.addEventListener("click", () => resetCustomSettings());
     }
     document.getElementById("trial-toggle").addEventListener("click", () => {
         state.trial = !state.trial;

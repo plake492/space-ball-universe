@@ -353,6 +353,7 @@ body.board-open {
 }
 
 .settings-board,
+.settings-defaults,
 .settings-reset {
     display: block;
     width: 100%;
@@ -1548,6 +1549,7 @@ body.home {
     }
 
     .settings-board,
+    .settings-defaults,
     .settings-reset {
         min-height: 40px;
         border-radius: 10px;

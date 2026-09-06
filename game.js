@@ -1704,6 +1704,43 @@
         return "";
     }
 
+    function customDefaults() {
+        return {
+            world: START_WORLD,
+            ballCount: START_BALLS,
+            goal: START_GOAL,
+            spikeBalls: Math.round(START_BALLS * SPIKE_RATE),
+            spikes: true,
+            meteorCount: 1,
+            meteorOn: true,
+            cometCount: 0,
+            cometPoints: COMET_POINTS_START,
+            neutronPairs: defaultNeutronPairs(START_WORLD),
+            infiniteFuel: false,
+            zoom: 1,
+            ...speedsFrom({}),
+        };
+    }
+
+    function resetCustomSettings() {
+        const next = customDefaults();
+        const restart = next.world !== state.world
+            || next.ballCount !== state.ballCount
+            || next.spikeBalls !== state.spikeBalls
+            || next.neutronPairs !== state.neutronPairs;
+        Object.assign(state, next);
+        state.difficulty = "custom";
+        syncHazardFlags();
+        saveSettings();
+        if (restart) {
+            restartGame();
+            return;
+        }
+        fillComets();
+        fillMeteors();
+        updateHud();
+    }
+
     function applyDifficulty(id) {
         if (id === "custom") {
             state.difficulty = "custom";
@@ -5020,6 +5057,10 @@
 
         for (const button of document.querySelectorAll(".diff-btn")) {
             button.addEventListener("click", () => applyDifficulty(button.dataset.diff));
+        }
+
+        for (const button of document.querySelectorAll(".custom-reset")) {
+            button.addEventListener("click", () => resetCustomSettings());
         }
 
         for (const button of document.querySelectorAll(".world-btn")) {

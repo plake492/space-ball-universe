@@ -215,7 +215,10 @@
                     <section class="settings-block">
                         <div class="settings-heading">
                             <p class="label">Zoom</p>
-                            <p class="value"><span data-pg-value="zoom">1×</span></p>
+                            <p class="value zoom-value">
+                                <input type="number" class="zoom-input" min="0.01" max="100" step="any" value="1" inputmode="decimal" aria-label="Camera zoom amount">
+                                <span aria-hidden="true">×</span>
+                            </p>
                         </div>
                         <input type="range" data-pg-range="zoom" min="0" max="11" step="1" value="2" aria-label="Camera zoom">
                     </section>
@@ -519,7 +522,10 @@
                         <section class="settings-block">
                             <div class="settings-heading">
                                 <p class="label">Zoom</p>
-                                <p class="value"><span id="zoom-slider-value">1×</span></p>
+                                <p class="value zoom-value">
+                                    <input type="number" class="zoom-input" id="zoom-input" min="0.01" max="100" step="any" value="1" inputmode="decimal" aria-label="Camera zoom amount">
+                                    <span aria-hidden="true">×</span>
+                                </p>
                             </div>
                             <input type="range" id="zoom-slider" min="0" max="11" step="1" value="2" aria-label="Camera zoom">
                         </section>

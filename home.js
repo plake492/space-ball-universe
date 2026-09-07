@@ -20,6 +20,8 @@
     const START_WORLD = 20000;
     const WORLD_SIZES = [5000, 10000, 15000, 20000];
     const ZOOM_STEPS = [0.1, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const ZOOM_MIN = 0.01;
+    const ZOOM_MAX = 100;
     const TRIAL_MS = [60000, 300000, 600000];
     const DIFFICULTIES = {
         easy: { world: 5000, ballCount: 40, goal: 25 },
@@ -73,7 +75,6 @@
     const volumeSlider = document.getElementById("volume-slider");
     const volumeSliderValue = document.getElementById("volume-slider-value");
     const zoomSlider = document.getElementById("zoom-slider");
-    const zoomSliderValue = document.getElementById("zoom-slider-value");
     const meteorSlider = document.getElementById("meteor-slider");
     const meteorSliderValue = document.getElementById("meteor-slider-value");
     const spikesSlider = document.getElementById("spikes-slider");
@@ -422,28 +423,67 @@
 
     function clampZoom(value) {
         const n = Number(value);
-        if (!Number.isFinite(n)) return 1;
-        let best = ZOOM_STEPS[0];
+        if (!Number.isFinite(n) || n <= 0) return 1;
+        return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n));
+    }
+
+    function formatZoom(value) {
+        return String(Math.round(clampZoom(value) * 1000) / 1000);
+    }
+
+    function parseZoomInput(raw) {
+        const text = String(raw).trim();
+        if (!text || text === "." || text === "-") return null;
+        const n = Number(text);
+        if (!Number.isFinite(n) || n <= 0) return null;
+        return clampZoom(n);
+    }
+
+    function zoomIndex(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return ZOOM_STEPS.indexOf(1);
+        let best = 0;
         let bestDist = Infinity;
-        for (const step of ZOOM_STEPS) {
-            const dist = Math.abs(n - step);
+        for (let i = 0; i < ZOOM_STEPS.length; i += 1) {
+            const dist = Math.abs(n - ZOOM_STEPS[i]);
             if (dist < bestDist) {
-                best = step;
+                best = i;
                 bestDist = dist;
             }
         }
         return best;
     }
 
-    function zoomIndex(value) {
-        const i = ZOOM_STEPS.indexOf(clampZoom(value));
-        return i < 0 ? ZOOM_STEPS.indexOf(1) : i;
-    }
-
     function zoomFromIndex(index) {
         const i = Math.round(Number(index));
         if (!Number.isFinite(i)) return 1;
         return ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i))];
+    }
+
+    function syncZoomControls(except) {
+        const z = clampZoom(state.zoom);
+        if (zoomSlider) zoomSlider.value = String(zoomIndex(z));
+        for (const el of document.querySelectorAll(".zoom-input")) {
+            if (el === except || document.activeElement === el) continue;
+            el.value = formatZoom(z);
+        }
+    }
+
+    function setZoomFromSlider(index) {
+        state.zoom = zoomFromIndex(index);
+        syncZoomControls();
+    }
+
+    function setZoomFromInput(el, commit) {
+        const next = parseZoomInput(el.value);
+        if (next == null) {
+            if (commit) el.value = formatZoom(state.zoom);
+            return false;
+        }
+        state.zoom = next;
+        if (commit) el.value = formatZoom(next);
+        syncZoomControls(el);
+        return true;
     }
 
     function clampMeteorCount(value) {
@@ -1037,8 +1077,7 @@
         }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
-        if (zoomSlider) zoomSlider.value = String(zoomIndex(state.zoom));
-        if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
+        syncZoomControls();
         updateHome();
     }
 
@@ -1382,13 +1421,25 @@
     }
     if (zoomSlider) {
         zoomSlider.addEventListener("input", () => {
-            state.zoom = zoomFromIndex(zoomSlider.value);
-            if (zoomSliderValue) zoomSliderValue.textContent = `${state.zoom}×`;
+            setZoomFromSlider(zoomSlider.value);
         });
         zoomSlider.addEventListener("change", () => {
-            state.zoom = zoomFromIndex(zoomSlider.value);
+            setZoomFromSlider(zoomSlider.value);
             saveSettings();
             updateHud();
+        });
+    }
+    for (const el of document.querySelectorAll(".zoom-input")) {
+        el.addEventListener("input", () => {
+            setZoomFromInput(el, false);
+        });
+        el.addEventListener("change", () => {
+            setZoomFromInput(el, true);
+            saveSettings();
+            updateHud();
+        });
+        el.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") el.blur();
         });
     }
     let pendingBuy = "";

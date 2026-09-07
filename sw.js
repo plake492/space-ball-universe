@@ -1,4 +1,4 @@
-const CACHE = "harlie-space-v143";
+const CACHE = "harlie-space-v144";
 const ASSETS = [
     "./",
     "./index.html",
@@ -26,6 +26,8 @@ const ASSETS = [
     "./public/images/ships/guitar.webp",
     "./public/images/ships/selah-harlie.webp",
     "./public/images/ships/harlie-ship-1.webp",
+    "./public/images/ships/papa.webp",
+    "./public/images/ships/jj.webp",
 ];
 
 // Audio is ~9MB and cache.addAll() is all-or-nothing, so precaching it stalled

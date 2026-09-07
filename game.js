@@ -119,7 +119,7 @@
     };
     const PALETTE_NAMES = Object.keys(PALETTES);
     const SKY_NAMES = ["stars", "galaxies"];
-    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1"];
+    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1", "papa", "jj"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.webp",
         cat: "public/images/ships/cat.webp",
@@ -132,6 +132,8 @@
         guitar: "public/images/ships/guitar.webp",
         "selah-harlie": "public/images/ships/selah-harlie.webp",
         "harlie-ship-1": "public/images/ships/harlie-ship-1.webp",
+        papa: "public/images/ships/papa.webp",
+        jj: "public/images/ships/jj.webp",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
     const SHIP_COST_START = 5000;

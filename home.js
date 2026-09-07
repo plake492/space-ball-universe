@@ -43,7 +43,7 @@
         { r: 255, g: 206, b: 140 },
         { r: 200, g: 130, b: 220 },
     ];
-    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1"];
+    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1", "papa", "jj"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.webp",
         cat: "public/images/ships/cat.webp",
@@ -56,6 +56,8 @@
         guitar: "public/images/ships/guitar.webp",
         "selah-harlie": "public/images/ships/selah-harlie.webp",
         "harlie-ship-1": "public/images/ships/harlie-ship-1.webp",
+        papa: "public/images/ships/papa.webp",
+        jj: "public/images/ships/jj.webp",
     };
     const CLASSIC_SHIP_SVG = `<svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>`;
     const SHIP_COST_START = 5000;

@@ -50,219 +50,259 @@
     <div class="playground-dock">
         <button type="button" class="playground-toggle" id="playground-toggle" aria-expanded="true" aria-controls="playground-panel">Sandbox</button>
         <div class="playground-panel" id="playground-panel">
-            <section class="settings-block">
-                <p class="label">Difficulty</p>
-                <div class="diff-choices" role="group" aria-label="Difficulty">
-                    <button type="button" class="diff-btn" data-diff="easy">Easy</button>
-                    <button type="button" class="diff-btn" data-diff="medium">Medium</button>
-                    <button type="button" class="diff-btn" data-diff="hard">Hard</button>
-                    <button type="button" class="diff-btn" data-diff="extra">Extra</button>
-                    <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
-                    <button type="button" class="diff-btn" data-diff="custom">Custom</button>
+            <details class="settings-fold" open>
+                <summary>Hunt</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block">
+                        <p class="label">Difficulty</p>
+                        <div class="diff-choices" role="group" aria-label="Difficulty">
+                            <button type="button" class="diff-btn" data-diff="easy">Easy</button>
+                            <button type="button" class="diff-btn" data-diff="medium">Medium</button>
+                            <button type="button" class="diff-btn" data-diff="hard">Hard</button>
+                            <button type="button" class="diff-btn" data-diff="extra">Extra</button>
+                            <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
+                            <button type="button" class="diff-btn" data-diff="custom">Custom</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Balls</p>
+                            <p class="value"><span data-pg-value="balls">75</span></p>
+                        </div>
+                        <input type="range" data-pg-range="balls" min="25" max="1000" step="5" value="75" aria-label="Balls in the game">
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Goal</p>
+                            <p class="value"><span data-pg-value="goal">75</span></p>
+                        </div>
+                        <input type="range" data-pg-range="goal" min="5" max="1000" step="5" value="75" aria-label="Balls to win">
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">World size</p>
+                        <div class="world-sizes" role="group" aria-label="World size">
+                            <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
+                            <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
+                            <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
+                            <button type="button" class="world-btn" data-world="20000" data-size="xl">xl</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Time trial</p>
+                        <button type="button" class="trial-toggle" id="trial-toggle" aria-pressed="false">Time trial</button>
+                        <div class="trial-times hidden" id="trial-times" role="group" aria-label="Time trial length">
+                            <button type="button" class="trial-btn" data-trial="60000">1 min</button>
+                            <button type="button" class="trial-btn" data-trial="300000">5 min</button>
+                            <button type="button" class="trial-btn" data-trial="600000">10 min</button>
+                        </div>
+                    </section>
                 </div>
-            </section>
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Balls</p>
-                    <p class="value"><span data-pg-value="balls">75</span></p>
+            </details>
+            <details class="settings-fold">
+                <summary>Spike balls</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block preset-only">
+                        <p class="label">Spike balls</p>
+                        <div class="pulse-choices" role="group" aria-label="Spike balls">
+                            <button type="button" class="spike-btn" data-spikes="on">On</button>
+                            <button type="button" class="spike-btn" data-spikes="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block custom-only hidden">
+                        <div class="settings-heading">
+                            <p class="label">Count</p>
+                            <p class="value"><span data-pg-value="spikes">11</span></p>
+                        </div>
+                        <input type="range" data-pg-range="spikes" min="0" max="1000" step="1" value="11" aria-label="Spike balls">
+                    </section>
                 </div>
-                <input type="range" data-pg-range="balls" min="25" max="1000" step="5" value="75" aria-label="Balls in the game">
-            </section>
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Goal</p>
-                    <p class="value"><span data-pg-value="goal">75</span></p>
+            </details>
+            <details class="settings-fold">
+                <summary>Meteors</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block preset-only">
+                        <p class="label">Meteors</p>
+                        <div class="pulse-choices" role="group" aria-label="Meteors">
+                            <button type="button" class="meteor-btn" data-meteor="on">On</button>
+                            <button type="button" class="meteor-btn" data-meteor="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block custom-only hidden">
+                        <div class="settings-heading">
+                            <p class="label">Count</p>
+                            <p class="value"><span data-pg-value="meteors">1</span></p>
+                        </div>
+                        <input type="range" data-pg-range="meteors" min="0" max="20" step="1" value="1" aria-label="Meteors on the board">
+                    </section>
+                    <section class="settings-block custom-only hidden">
+                        <div class="settings-heading">
+                            <p class="label">Speed</p>
+                            <p class="value"><span data-pg-value="meteorSpeed">1×</span></p>
+                        </div>
+                        <input type="range" data-pg-range="meteorSpeed" min="0" max="10" step="0.1" value="1" aria-label="Meteor speed">
+                    </section>
                 </div>
-                <input type="range" data-pg-range="goal" min="5" max="1000" step="5" value="75" aria-label="Balls to win">
-            </section>
-            <section class="settings-block">
-                <p class="label">World size</p>
-                <div class="world-sizes" role="group" aria-label="World size">
-                    <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
-                    <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
-                    <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
-                    <button type="button" class="world-btn" data-world="20000" data-size="xl">xl</button>
+            </details>
+            <details class="settings-fold custom-only hidden">
+                <summary>Comets</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Count</p>
+                            <p class="value"><span data-pg-value="comets">0</span></p>
+                        </div>
+                        <input type="range" data-pg-range="comets" min="0" max="300" step="1" value="0" aria-label="Comets on the board">
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Points</p>
+                            <p class="value"><span data-pg-value="cometPoints">60,000</span></p>
+                        </div>
+                        <input type="range" data-pg-range="cometPoints" min="0" max="3000000" step="10000" value="60000" aria-label="Points per comet">
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Speed</p>
+                            <p class="value"><span data-pg-value="cometSpeed">1×</span></p>
+                        </div>
+                        <input type="range" data-pg-range="cometSpeed" min="0" max="10" step="0.1" value="1" aria-label="Comet speed">
+                    </section>
                 </div>
-            </section>
-            <section class="settings-block">
-                <p class="label">Time trial</p>
-                <button type="button" class="trial-toggle" id="trial-toggle" aria-pressed="false">Time trial</button>
-                <div class="trial-times hidden" id="trial-times" role="group" aria-label="Time trial length">
-                    <button type="button" class="trial-btn" data-trial="60000">1 min</button>
-                    <button type="button" class="trial-btn" data-trial="300000">5 min</button>
-                    <button type="button" class="trial-btn" data-trial="600000">10 min</button>
+            </details>
+            <details class="settings-fold custom-only hidden">
+                <summary>Neutron stars</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Pairs</p>
+                            <p class="value"><span data-pg-value="neutrons">5</span></p>
+                        </div>
+                        <input type="range" data-pg-range="neutrons" min="0" max="20" step="1" value="5" aria-label="Neutron star pairs">
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Speed</p>
+                            <p class="value"><span data-pg-value="neutronSpeed">1×</span></p>
+                        </div>
+                        <input type="range" data-pg-range="neutronSpeed" min="0" max="10" step="0.1" value="1" aria-label="Neutron star speed">
+                    </section>
                 </div>
-            </section>
-            <section class="settings-block preset-only">
-                <p class="label">Spike balls</p>
-                <div class="pulse-choices" role="group" aria-label="Spike balls">
-                    <button type="button" class="spike-btn" data-spikes="on">On</button>
-                    <button type="button" class="spike-btn" data-spikes="off">Off</button>
+            </details>
+            <details class="settings-fold">
+                <summary>Ship</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block custom-only hidden">
+                        <div class="settings-heading">
+                            <p class="label">Speed</p>
+                            <p class="value"><span data-pg-value="shipSpeed">1×</span></p>
+                        </div>
+                        <input type="range" data-pg-range="shipSpeed" min="0" max="10" step="0.1" value="1" aria-label="Ship speed">
+                    </section>
+                    <section class="settings-block custom-only hidden">
+                        <div class="settings-heading">
+                            <p class="label">Planet orbit</p>
+                            <p class="value"><span data-pg-value="cargoSpeed">1×</span></p>
+                        </div>
+                        <input type="range" data-pg-range="cargoSpeed" min="0" max="10" step="0.1" value="1" aria-label="Orbiting planet speed">
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Infinite fuel</p>
+                        <div class="pulse-choices" role="group" aria-label="Infinite fuel">
+                            <button type="button" class="fuel-btn" data-fuel="on">On</button>
+                            <button type="button" class="fuel-btn" data-fuel="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Zoom</p>
+                            <p class="value"><span data-pg-value="zoom">1×</span></p>
+                        </div>
+                        <input type="range" data-pg-range="zoom" min="0" max="11" step="1" value="2" aria-label="Camera zoom">
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Ship</p>
+                        <div class="ship-choices playground-ships" role="group" aria-label="Ship">
+                            <button type="button" class="ship-btn" data-ship="classic" aria-label="Classic ship">
+                                <svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>
+                            </button>
+                            <button type="button" class="ship-btn" data-ship="ship-1" aria-label="Crew ship"><img src="public/images/ships/ship-1.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="cat" aria-label="Cat ship"><img src="public/images/ships/cat.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="wolf" aria-label="Wolf ship"><img src="public/images/ships/wolf.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="cube" aria-label="Cube ship"><img src="public/images/ships/cube.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="hello-kitty" aria-label="Hello Kitty ship"><img src="public/images/ships/hello-kitty.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="ufo" aria-label="UFO ship"><img src="public/images/ships/ufo.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="harlie" aria-label="Harlie ship"><img src="public/images/ships/harlie.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="selah" aria-label="Selah ship"><img src="public/images/ships/selah.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="guitar" aria-label="Guitar ship"><img src="public/images/ships/guitar.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="selah-harlie" aria-label="Selah and Harlie ship"><img src="public/images/ships/selah-harlie.webp" alt=""></button>
+                            <button type="button" class="ship-btn" data-ship="harlie-ship-1" aria-label="Harlie ship 1"><img src="public/images/ships/harlie-ship-1.webp" alt=""></button>
+                        </div>
+                    </section>
                 </div>
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Spike balls</p>
-                    <p class="value"><span data-pg-value="spikes">11</span></p>
-                </div>
-                <input type="range" data-pg-range="spikes" min="0" max="1000" step="1" value="11" aria-label="Spike balls">
-            </section>
-            <section class="settings-block preset-only">
-                <p class="label">Meteors</p>
-                <div class="pulse-choices" role="group" aria-label="Meteors">
-                    <button type="button" class="meteor-btn" data-meteor="on">On</button>
-                    <button type="button" class="meteor-btn" data-meteor="off">Off</button>
-                </div>
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Meteors</p>
-                    <p class="value"><span data-pg-value="meteors">1</span></p>
-                </div>
-                <input type="range" data-pg-range="meteors" min="0" max="20" step="1" value="1" aria-label="Meteors on the board">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Comets</p>
-                    <p class="value"><span data-pg-value="comets">0</span></p>
-                </div>
-                <input type="range" data-pg-range="comets" min="0" max="300" step="1" value="0" aria-label="Comets on the board">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Comet points</p>
-                    <p class="value"><span data-pg-value="cometPoints">60,000</span></p>
-                </div>
-                <input type="range" data-pg-range="cometPoints" min="0" max="3000000" step="10000" value="60000" aria-label="Points per comet">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Neutron stars</p>
-                    <p class="value"><span data-pg-value="neutrons">5</span></p>
-                </div>
-                <input type="range" data-pg-range="neutrons" min="0" max="20" step="1" value="5" aria-label="Neutron star pairs">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Ship speed</p>
-                    <p class="value"><span data-pg-value="shipSpeed">1×</span></p>
-                </div>
-                <input type="range" data-pg-range="shipSpeed" min="0" max="10" step="0.1" value="1" aria-label="Ship speed">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Comet speed</p>
-                    <p class="value"><span data-pg-value="cometSpeed">1×</span></p>
-                </div>
-                <input type="range" data-pg-range="cometSpeed" min="0" max="10" step="0.1" value="1" aria-label="Comet speed">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Meteor speed</p>
-                    <p class="value"><span data-pg-value="meteorSpeed">1×</span></p>
-                </div>
-                <input type="range" data-pg-range="meteorSpeed" min="0" max="10" step="0.1" value="1" aria-label="Meteor speed">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Neutron speed</p>
-                    <p class="value"><span data-pg-value="neutronSpeed">1×</span></p>
-                </div>
-                <input type="range" data-pg-range="neutronSpeed" min="0" max="10" step="0.1" value="1" aria-label="Neutron star speed">
-            </section>
-            <section class="settings-block custom-only hidden">
-                <div class="settings-heading">
-                    <p class="label">Planet orbit</p>
-                    <p class="value"><span data-pg-value="cargoSpeed">1×</span></p>
-                </div>
-                <input type="range" data-pg-range="cargoSpeed" min="0" max="10" step="0.1" value="1" aria-label="Orbiting planet speed">
-            </section>
+            </details>
             <section class="settings-block custom-only hidden">
                 <button type="button" class="settings-defaults custom-reset">Reset defaults</button>
             </section>
-            <section class="settings-block">
-                <p class="label">Infinite fuel</p>
-                <div class="pulse-choices" role="group" aria-label="Infinite fuel">
-                    <button type="button" class="fuel-btn" data-fuel="on">On</button>
-                    <button type="button" class="fuel-btn" data-fuel="off">Off</button>
+            <details class="settings-fold">
+                <summary>Visuals</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block">
+                        <p class="label">Colors</p>
+                        <div class="palette-choices" role="group" aria-label="Color palette">
+                            <button type="button" class="palette-btn" data-palette="rainbow">Rainbow</button>
+                            <button type="button" class="palette-btn" data-palette="space">Space</button>
+                            <button type="button" class="palette-btn" data-palette="dark">Dark</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Pulse</p>
+                        <div class="pulse-choices" role="group" aria-label="Ball pulse">
+                            <button type="button" class="pulse-btn" data-pulse="on">On</button>
+                            <button type="button" class="pulse-btn" data-pulse="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Nebula</p>
+                        <div class="pulse-choices" role="group" aria-label="Nebula">
+                            <button type="button" class="nebula-btn" data-nebula="on">On</button>
+                            <button type="button" class="nebula-btn" data-nebula="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Moving stars</p>
+                        <div class="pulse-choices" role="group" aria-label="Moving stars">
+                            <button type="button" class="star-btn" data-stars="on">On</button>
+                            <button type="button" class="star-btn" data-stars="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <p class="label">Background</p>
+                        <div class="pulse-choices" role="group" aria-label="Background">
+                            <button type="button" class="sky-btn" data-sky="stars">Stars</button>
+                            <button type="button" class="sky-btn" data-sky="galaxies">Galaxies</button>
+                        </div>
+                    </section>
                 </div>
-            </section>
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Zoom</p>
-                    <p class="value"><span data-pg-value="zoom">1×</span></p>
+            </details>
+            <details class="settings-fold">
+                <summary>Audio</summary>
+                <div class="settings-fold-body">
+                    <section class="settings-block">
+                        <p class="label">Audio</p>
+                        <div class="pulse-choices" role="group" aria-label="Audio">
+                            <button type="button" class="audio-btn" data-audio="on">On</button>
+                            <button type="button" class="audio-btn" data-audio="off">Off</button>
+                        </div>
+                    </section>
+                    <section class="settings-block">
+                        <div class="settings-heading">
+                            <p class="label">Volume</p>
+                            <p class="value"><span data-pg-value="volume">100</span></p>
+                        </div>
+                        <input type="range" data-pg-range="volume" min="0" max="100" step="1" value="100" aria-label="Volume">
+                    </section>
                 </div>
-                <input type="range" data-pg-range="zoom" min="0" max="11" step="1" value="2" aria-label="Camera zoom">
-            </section>
-            <section class="settings-block">
-                <p class="label">Colors</p>
-                <div class="palette-choices" role="group" aria-label="Color palette">
-                    <button type="button" class="palette-btn" data-palette="rainbow">Rainbow</button>
-                    <button type="button" class="palette-btn" data-palette="space">Space</button>
-                    <button type="button" class="palette-btn" data-palette="dark">Dark</button>
-                </div>
-            </section>
-            <section class="settings-block">
-                <p class="label">Pulse</p>
-                <div class="pulse-choices" role="group" aria-label="Ball pulse">
-                    <button type="button" class="pulse-btn" data-pulse="on">On</button>
-                    <button type="button" class="pulse-btn" data-pulse="off">Off</button>
-                </div>
-            </section>
-            <section class="settings-block">
-                <p class="label">Nebula</p>
-                <div class="pulse-choices" role="group" aria-label="Nebula">
-                    <button type="button" class="nebula-btn" data-nebula="on">On</button>
-                    <button type="button" class="nebula-btn" data-nebula="off">Off</button>
-                </div>
-            </section>
-            <section class="settings-block">
-                <p class="label">Moving stars</p>
-                <div class="pulse-choices" role="group" aria-label="Moving stars">
-                    <button type="button" class="star-btn" data-stars="on">On</button>
-                    <button type="button" class="star-btn" data-stars="off">Off</button>
-                </div>
-            </section>
-            <section class="settings-block">
-                <p class="label">Background</p>
-                <div class="pulse-choices" role="group" aria-label="Background">
-                    <button type="button" class="sky-btn" data-sky="stars">Stars</button>
-                    <button type="button" class="sky-btn" data-sky="galaxies">Galaxies</button>
-                </div>
-            </section>
-            <section class="settings-block">
-                <p class="label">Audio</p>
-                <div class="pulse-choices" role="group" aria-label="Audio">
-                    <button type="button" class="audio-btn" data-audio="on">On</button>
-                    <button type="button" class="audio-btn" data-audio="off">Off</button>
-                </div>
-            </section>
-            <section class="settings-block">
-                <div class="settings-heading">
-                    <p class="label">Volume</p>
-                    <p class="value"><span data-pg-value="volume">100</span></p>
-                </div>
-                <input type="range" data-pg-range="volume" min="0" max="100" step="1" value="100" aria-label="Volume">
-            </section>
-            <section class="settings-block">
-                <p class="label">Ship</p>
-                <div class="ship-choices playground-ships" role="group" aria-label="Ship">
-                    <button type="button" class="ship-btn" data-ship="classic" aria-label="Classic ship">
-                        <svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>
-                    </button>
-                    <button type="button" class="ship-btn" data-ship="ship-1" aria-label="Crew ship"><img src="public/images/ships/ship-1.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="cat" aria-label="Cat ship"><img src="public/images/ships/cat.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="wolf" aria-label="Wolf ship"><img src="public/images/ships/wolf.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="cube" aria-label="Cube ship"><img src="public/images/ships/cube.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="hello-kitty" aria-label="Hello Kitty ship"><img src="public/images/ships/hello-kitty.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="ufo" aria-label="UFO ship"><img src="public/images/ships/ufo.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="harlie" aria-label="Harlie ship"><img src="public/images/ships/harlie.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="selah" aria-label="Selah ship"><img src="public/images/ships/selah.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="guitar" aria-label="Guitar ship"><img src="public/images/ships/guitar.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="selah-harlie" aria-label="Selah and Harlie ship"><img src="public/images/ships/selah-harlie.webp" alt=""></button>
-                    <button type="button" class="ship-btn" data-ship="harlie-ship-1" aria-label="Harlie ship 1"><img src="public/images/ships/harlie-ship-1.webp" alt=""></button>
-                </div>
-            </section>
+            </details>
             <button type="button" class="playground-restart" id="playground-restart">Restart world</button>
         </div>
     </div>
@@ -321,140 +361,170 @@
             </div>
 
             <div class="settings-panel hidden" data-panel="game">
-                <section class="settings-block">
-                    <p class="label">Difficulty</p>
-                    <div class="diff-choices" role="group" aria-label="Difficulty">
-                        <button type="button" class="diff-btn" data-diff="easy">Easy</button>
-                        <button type="button" class="diff-btn" data-diff="medium">Medium</button>
-                        <button type="button" class="diff-btn" data-diff="hard">Hard</button>
-                        <button type="button" class="diff-btn" data-diff="extra">Extra hard</button>
-                        <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
-                        <button type="button" class="diff-btn" data-diff="custom">Custom</button>
+                <details class="settings-fold" open>
+                    <summary>Hunt</summary>
+                    <div class="settings-fold-body">
+                        <section class="settings-block">
+                            <p class="label">Difficulty</p>
+                            <div class="diff-choices" role="group" aria-label="Difficulty">
+                                <button type="button" class="diff-btn" data-diff="easy">Easy</button>
+                                <button type="button" class="diff-btn" data-diff="medium">Medium</button>
+                                <button type="button" class="diff-btn" data-diff="hard">Hard</button>
+                                <button type="button" class="diff-btn" data-diff="extra">Extra hard</button>
+                                <button type="button" class="diff-btn" data-diff="extreme">Extreme</button>
+                                <button type="button" class="diff-btn" data-diff="custom">Custom</button>
+                            </div>
+                        </section>
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Balls</p>
+                                <p class="value"><span id="balls-slider-value">75</span></p>
+                            </div>
+                            <input type="range" id="balls-slider" min="25" max="1000" step="5" value="75" aria-label="Balls in the game">
+                        </section>
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Goal</p>
+                                <p class="value"><span id="goal-slider-value">75</span></p>
+                            </div>
+                            <input type="range" id="goal-slider" min="5" max="1000" step="5" value="75" aria-label="Balls to win">
+                        </section>
+                        <section class="settings-block">
+                            <p class="label">World size</p>
+                            <div class="world-sizes" role="group" aria-label="World size">
+                                <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
+                                <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
+                                <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
+                                <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
+                            </div>
+                        </section>
                     </div>
-                </section>
-                <section class="settings-block">
-                    <div class="settings-heading">
-                        <p class="label">Balls</p>
-                        <p class="value"><span id="balls-slider-value">75</span></p>
+                </details>
+                <details class="settings-fold">
+                    <summary>Spike balls</summary>
+                    <div class="settings-fold-body">
+                        <section class="settings-block preset-only">
+                            <p class="label">Spike balls</p>
+                            <div class="pulse-choices" role="group" aria-label="Spike balls">
+                                <button type="button" class="spike-btn is-on" data-spikes="on">On</button>
+                                <button type="button" class="spike-btn" data-spikes="off">Off</button>
+                            </div>
+                        </section>
+                        <section class="settings-block custom-only hidden">
+                            <div class="settings-heading">
+                                <p class="label">Count</p>
+                                <p class="value"><span id="spikes-slider-value">11</span></p>
+                            </div>
+                            <input type="range" id="spikes-slider" min="0" max="1000" step="1" value="11" aria-label="Spike balls">
+                        </section>
                     </div>
-                    <input type="range" id="balls-slider" min="25" max="1000" step="5" value="75" aria-label="Balls in the game">
-                </section>
-                <section class="settings-block">
-                    <div class="settings-heading">
-                        <p class="label">Goal</p>
-                        <p class="value"><span id="goal-slider-value">75</span></p>
+                </details>
+                <details class="settings-fold">
+                    <summary>Meteors</summary>
+                    <div class="settings-fold-body">
+                        <section class="settings-block preset-only">
+                            <p class="label">Meteors</p>
+                            <div class="pulse-choices" role="group" aria-label="Meteors">
+                                <button type="button" class="meteor-btn is-on" data-meteor="on">On</button>
+                                <button type="button" class="meteor-btn" data-meteor="off">Off</button>
+                            </div>
+                        </section>
+                        <section class="settings-block custom-only hidden">
+                            <div class="settings-heading">
+                                <p class="label">Count</p>
+                                <p class="value"><span id="meteor-slider-value">1</span></p>
+                            </div>
+                            <input type="range" id="meteor-slider" min="0" max="20" step="1" value="1" aria-label="Meteors on the board">
+                        </section>
+                        <section class="settings-block custom-only hidden">
+                            <div class="settings-heading">
+                                <p class="label">Speed</p>
+                                <p class="value"><span id="meteor-speed-slider-value">1×</span></p>
+                            </div>
+                            <input type="range" id="meteor-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Meteor speed">
+                        </section>
                     </div>
-                    <input type="range" id="goal-slider" min="5" max="1000" step="5" value="75" aria-label="Balls to win">
-                </section>
-                <section class="settings-block">
-                    <p class="label">World size</p>
-                    <div class="world-sizes" role="group" aria-label="World size">
-                        <button type="button" class="world-btn" data-world="5000" data-size="sm">sm</button>
-                        <button type="button" class="world-btn" data-world="10000" data-size="md">md</button>
-                        <button type="button" class="world-btn" data-world="15000" data-size="lg">lg</button>
-                        <button type="button" class="world-btn is-on" data-world="20000" data-size="xl">xl</button>
+                </details>
+                <details class="settings-fold custom-only hidden">
+                    <summary>Comets</summary>
+                    <div class="settings-fold-body">
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Count</p>
+                                <p class="value"><span id="comet-slider-value">0</span></p>
+                            </div>
+                            <input type="range" id="comet-slider" min="0" max="300" step="1" value="0" aria-label="Comets on the board">
+                        </section>
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Points</p>
+                                <p class="value"><span id="comet-points-slider-value">60,000</span></p>
+                            </div>
+                            <input type="range" id="comet-points-slider" min="0" max="3000000" step="10000" value="60000" aria-label="Points per comet">
+                        </section>
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Speed</p>
+                                <p class="value"><span id="comet-speed-slider-value">1×</span></p>
+                            </div>
+                            <input type="range" id="comet-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Comet speed">
+                        </section>
                     </div>
-                </section>
-                <section class="settings-block preset-only">
-                    <p class="label">Spike balls</p>
-                    <div class="pulse-choices" role="group" aria-label="Spike balls">
-                        <button type="button" class="spike-btn is-on" data-spikes="on">On</button>
-                        <button type="button" class="spike-btn" data-spikes="off">Off</button>
+                </details>
+                <details class="settings-fold custom-only hidden">
+                    <summary>Neutron stars</summary>
+                    <div class="settings-fold-body">
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Pairs</p>
+                                <p class="value"><span id="neutron-slider-value">5</span></p>
+                            </div>
+                            <input type="range" id="neutron-slider" min="0" max="20" step="1" value="5" aria-label="Neutron star pairs">
+                        </section>
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Speed</p>
+                                <p class="value"><span id="neutron-speed-slider-value">1×</span></p>
+                            </div>
+                            <input type="range" id="neutron-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Neutron star speed">
+                        </section>
                     </div>
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Spike balls</p>
-                        <p class="value"><span id="spikes-slider-value">11</span></p>
+                </details>
+                <details class="settings-fold">
+                    <summary>Ship</summary>
+                    <div class="settings-fold-body">
+                        <section class="settings-block custom-only hidden">
+                            <div class="settings-heading">
+                                <p class="label">Speed</p>
+                                <p class="value"><span id="ship-speed-slider-value">1×</span></p>
+                            </div>
+                            <input type="range" id="ship-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Ship speed">
+                        </section>
+                        <section class="settings-block custom-only hidden">
+                            <div class="settings-heading">
+                                <p class="label">Planet orbit</p>
+                                <p class="value"><span id="cargo-speed-slider-value">1×</span></p>
+                            </div>
+                            <input type="range" id="cargo-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Orbiting planet speed">
+                        </section>
+                        <section class="settings-block">
+                            <p class="label">Infinite fuel</p>
+                            <div class="pulse-choices" role="group" aria-label="Infinite fuel">
+                                <button type="button" class="fuel-btn" data-fuel="on">On</button>
+                                <button type="button" class="fuel-btn is-on" data-fuel="off">Off</button>
+                            </div>
+                        </section>
+                        <section class="settings-block">
+                            <div class="settings-heading">
+                                <p class="label">Zoom</p>
+                                <p class="value"><span id="zoom-slider-value">1×</span></p>
+                            </div>
+                            <input type="range" id="zoom-slider" min="0" max="11" step="1" value="2" aria-label="Camera zoom">
+                        </section>
                     </div>
-                    <input type="range" id="spikes-slider" min="0" max="1000" step="1" value="11" aria-label="Spike balls">
-                </section>
-                <section class="settings-block preset-only">
-                    <p class="label">Meteors</p>
-                    <div class="pulse-choices" role="group" aria-label="Meteors">
-                        <button type="button" class="meteor-btn is-on" data-meteor="on">On</button>
-                        <button type="button" class="meteor-btn" data-meteor="off">Off</button>
-                    </div>
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Meteors</p>
-                        <p class="value"><span id="meteor-slider-value">1</span></p>
-                    </div>
-                    <input type="range" id="meteor-slider" min="0" max="20" step="1" value="1" aria-label="Meteors on the board">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Comets</p>
-                        <p class="value"><span id="comet-slider-value">0</span></p>
-                    </div>
-                    <input type="range" id="comet-slider" min="0" max="300" step="1" value="0" aria-label="Comets on the board">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Comet points</p>
-                        <p class="value"><span id="comet-points-slider-value">60,000</span></p>
-                    </div>
-                    <input type="range" id="comet-points-slider" min="0" max="3000000" step="10000" value="60000" aria-label="Points per comet">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Neutron stars</p>
-                        <p class="value"><span id="neutron-slider-value">5</span></p>
-                    </div>
-                    <input type="range" id="neutron-slider" min="0" max="20" step="1" value="5" aria-label="Neutron star pairs">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Ship speed</p>
-                        <p class="value"><span id="ship-speed-slider-value">1×</span></p>
-                    </div>
-                    <input type="range" id="ship-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Ship speed">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Comet speed</p>
-                        <p class="value"><span id="comet-speed-slider-value">1×</span></p>
-                    </div>
-                    <input type="range" id="comet-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Comet speed">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Meteor speed</p>
-                        <p class="value"><span id="meteor-speed-slider-value">1×</span></p>
-                    </div>
-                    <input type="range" id="meteor-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Meteor speed">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Neutron speed</p>
-                        <p class="value"><span id="neutron-speed-slider-value">1×</span></p>
-                    </div>
-                    <input type="range" id="neutron-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Neutron star speed">
-                </section>
-                <section class="settings-block custom-only hidden">
-                    <div class="settings-heading">
-                        <p class="label">Planet orbit</p>
-                        <p class="value"><span id="cargo-speed-slider-value">1×</span></p>
-                    </div>
-                    <input type="range" id="cargo-speed-slider" min="0" max="10" step="0.1" value="1" aria-label="Orbiting planet speed">
-                </section>
+                </details>
                 <section class="settings-block custom-only hidden">
                     <button type="button" class="settings-defaults custom-reset">Reset defaults</button>
-                </section>
-                <section class="settings-block">
-                    <p class="label">Infinite fuel</p>
-                    <div class="pulse-choices" role="group" aria-label="Infinite fuel">
-                        <button type="button" class="fuel-btn" data-fuel="on">On</button>
-                        <button type="button" class="fuel-btn is-on" data-fuel="off">Off</button>
-                    </div>
-                </section>
-                <section class="settings-block">
-                    <div class="settings-heading">
-                        <p class="label">Zoom</p>
-                        <p class="value"><span id="zoom-slider-value">1×</span></p>
-                    </div>
-                    <input type="range" id="zoom-slider" min="0" max="11" step="1" value="2" aria-label="Camera zoom">
                 </section>
             </div>
 

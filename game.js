@@ -68,8 +68,8 @@
     const BOOST_DRAIN = 5;
     const BOOST_REFILL = 7.5;
     const HOLE_PULL_REACH = 100;
-    const HOLE_PULL_CRUISE = 0.05;
-    const HOLE_PULL_CORE = 0.1;
+    const HOLE_PULL_CRUISE = 0.0525;
+    const HOLE_PULL_CORE = 0.105;
     const HOLE_SWALLOW_R = 10;
     const HOLE_STRETCH_MAX = 2.6;
     const SPAWN_CLEARANCE = 15;

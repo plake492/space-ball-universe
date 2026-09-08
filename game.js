@@ -67,6 +67,9 @@
     const SHIP_DECEL = 1500;
     const BOOST_DRAIN = 5;
     const BOOST_REFILL = 7.5;
+    const HOLE_PULL_REACH = 100;
+    const HOLE_PULL_CRUISE = 1.2;
+    const HOLE_PULL_CORE = 1.7;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
     const NEUTRON_R = 11;
@@ -1106,6 +1109,18 @@
             if (Math.hypot(x - hole.x, y - hole.y) < r + hole.r + 80) return true;
         }
         return false;
+    }
+
+    function holeShadowR(hole) {
+        return hole.r * (0.32 + 0.68 * holeNear(hole));
+    }
+
+    function holeSwallowR(hole) {
+        return holeShadowR(hole) + SHIP_RADIUS;
+    }
+
+    function holePullR(hole) {
+        return holeSwallowR(hole) + HOLE_PULL_REACH;
     }
 
     function neutronReach(pair) {
@@ -2401,6 +2416,83 @@
         state.shipX = Math.min(max, Math.max(min, state.shipX));
         state.shipY = Math.min(max, Math.max(min, state.shipY));
         return state.speed > 12;
+    }
+
+    function clampShipToWorld() {
+        const min = SHIP_RADIUS + 8;
+        const max = state.world - SHIP_RADIUS - 8;
+        state.shipX = Math.min(max, Math.max(min, state.shipX));
+        state.shipY = Math.min(max, Math.max(min, state.shipY));
+    }
+
+    function holeTooCloseToSpawn(x, y, pad) {
+        for (const hole of state.holes) {
+            if (Math.hypot(x - hole.x, y - hole.y) < holePullR(hole) + pad) return true;
+        }
+        return false;
+    }
+
+    function teleportShipFromHole() {
+        const min = SHIP_RADIUS + 80;
+        const max = state.world - SHIP_RADIUS - 80;
+        let x = state.shipX;
+        let y = state.shipY;
+        let attempts = 0;
+        do {
+            x = rand(min, max);
+            y = rand(min, max);
+            attempts += 1;
+        } while (
+            (holeTooCloseToSpawn(x, y, 220) || tooCloseToNeutrons(x, y, SHIP_RADIUS + 80) || tooCloseToBalls(x, y, SHIP_RADIUS + 40)) &&
+            attempts < 240
+        );
+        state.shipX = Math.min(max, Math.max(min, x));
+        state.shipY = Math.min(max, Math.max(min, y));
+        state.speed = 0;
+        state.heading = rand(0, Math.PI * 2);
+    }
+
+    function swallowShip() {
+        if (state.shield) {
+            state.shield = false;
+            state.shieldRings.push({ life: 1 });
+        }
+        returnTakenPlanets();
+        applyHazardHit();
+        teleportShipFromHole();
+        savePlay();
+    }
+
+    function applyHoleGravity(dt) {
+        let best = null;
+        let bestDist = Infinity;
+        for (const hole of state.holes) {
+            const dist = Math.hypot(state.shipX - hole.x, state.shipY - hole.y);
+            if (dist < holePullR(hole) && dist < bestDist) {
+                best = hole;
+                bestDist = dist;
+            }
+        }
+        if (!best) return false;
+        const swallow = holeSwallowR(best);
+        if (bestDist <= swallow) {
+            swallowShip();
+            return false;
+        }
+        const nx = (best.x - state.shipX) / bestDist;
+        const ny = (best.y - state.shipY) / bestDist;
+        const span = Math.max(1, holePullR(best) - swallow);
+        const t = Math.min(1, Math.max(0, 1 - (bestDist - swallow) / span));
+        const cruise = SHIP_SPEED * Math.max(speedMul("shipSpeed"), SPEED_MUL_START);
+        const pull = cruise * (HOLE_PULL_CRUISE + (HOLE_PULL_CORE - HOLE_PULL_CRUISE) * t);
+        state.shipX += nx * pull * dt;
+        state.shipY += ny * pull * dt;
+        clampShipToWorld();
+        if (Math.hypot(state.shipX - best.x, state.shipY - best.y) <= swallow) {
+            swallowShip();
+            return false;
+        }
+        return true;
     }
 
     const engine = {
@@ -4448,8 +4540,12 @@
         last = now;
 
         const paused = state.menuOpen || state.won || state.resumeOpen || state.boardOpen;
-        const moving = paused ? false : moveShip(dt);
-        if (!paused) collectIfHit(now);
+        let moving = false;
+        if (!paused) {
+            moving = moveShip(dt);
+            moving = applyHoleGravity(dt) || moving;
+            collectIfHit(now);
+        }
         updateEngine(moving);
         const cam = camera();
 

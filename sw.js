@@ -1,4 +1,4 @@
-const CACHE = "harlie-space-v148";
+const CACHE = "harlie-space-v149";
 const ASSETS = [
     "./",
     "./index.html",

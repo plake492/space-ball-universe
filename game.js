@@ -68,8 +68,9 @@
     const BOOST_DRAIN = 5;
     const BOOST_REFILL = 7.5;
     const HOLE_PULL_REACH = 100;
-    const HOLE_PULL_CRUISE = 0.18;
-    const HOLE_PULL_CORE = 0.35;
+    const HOLE_PULL_CRUISE = 0.05;
+    const HOLE_PULL_CORE = 0.1;
+    const HOLE_SWALLOW_R = 10;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
     const NEUTRON_R = 11;
@@ -1115,12 +1116,12 @@
         return hole.r * (0.32 + 0.68 * holeNear(hole));
     }
 
-    function holeSwallowR(hole) {
-        return holeShadowR(hole) + SHIP_RADIUS;
+    function holeSwallowR() {
+        return HOLE_SWALLOW_R;
     }
 
     function holePullR(hole) {
-        return holeSwallowR(hole) + HOLE_PULL_REACH;
+        return holeShadowR(hole) + SHIP_RADIUS + HOLE_PULL_REACH;
     }
 
     function neutronReach(pair) {
@@ -2479,7 +2480,7 @@
     function applyHoleGravity(dt, held) {
         const well = nearestHoleWell();
         if (!well) return false;
-        const swallow = holeSwallowR(well.hole);
+        const swallow = holeSwallowR();
         if (well.dist <= swallow) {
             swallowShip();
             return false;

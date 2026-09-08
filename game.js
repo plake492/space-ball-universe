@@ -71,6 +71,7 @@
     const HOLE_PULL_CRUISE = 0.05;
     const HOLE_PULL_CORE = 0.1;
     const HOLE_SWALLOW_R = 10;
+    const HOLE_STRETCH_MAX = 2.6;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
     const NEUTRON_R = 11;
@@ -2466,6 +2467,29 @@
         savePlay();
     }
 
+    function holeStretch() {
+        const well = nearestHoleWell();
+        if (!well) return null;
+        const swallow = holeSwallowR();
+        const span = Math.max(1, holePullR(well.hole) - swallow);
+        const t = Math.min(1, Math.max(0, 1 - (well.dist - swallow) / span));
+        const fall = t * t;
+        const along = 1 + fall * HOLE_STRETCH_MAX;
+        return {
+            angle: Math.atan2(well.hole.y - state.shipY, well.hole.x - state.shipX),
+            along,
+            across: 1 / Math.sqrt(along),
+        };
+    }
+
+    function applyHoleStretch() {
+        const stretch = holeStretch();
+        if (!stretch) return;
+        ctx.rotate(stretch.angle);
+        ctx.scale(stretch.along, stretch.across);
+        ctx.rotate(-stretch.angle);
+    }
+
     function nearestHoleWell() {
         let best = null;
         let bestDist = Infinity;
@@ -3675,6 +3699,7 @@
     function drawShip(moving, cam) {
         ctx.save();
         ctx.translate(cam.w / 2, cam.h / 2);
+        applyHoleStretch();
         const img = state.ship !== "classic" ? loadShipImage(state.ship) : null;
         if (img && img.complete && img.naturalWidth) {
             drawImageShip(img, moving);

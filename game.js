@@ -68,8 +68,8 @@
     const BOOST_DRAIN = 5;
     const BOOST_REFILL = 7.5;
     const HOLE_PULL_REACH = 100;
-    const HOLE_PULL_CRUISE = 1.2;
-    const HOLE_PULL_CORE = 1.7;
+    const HOLE_PULL_CRUISE = 0.18;
+    const HOLE_PULL_CORE = 0.35;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
     const NEUTRON_R = 11;
@@ -2463,7 +2463,7 @@
         savePlay();
     }
 
-    function applyHoleGravity(dt) {
+    function nearestHoleWell() {
         let best = null;
         let bestDist = Infinity;
         for (const hole of state.holes) {
@@ -2473,22 +2473,37 @@
                 bestDist = dist;
             }
         }
-        if (!best) return false;
-        const swallow = holeSwallowR(best);
-        if (bestDist <= swallow) {
+        return best ? { hole: best, dist: bestDist } : null;
+    }
+
+    function applyHoleGravity(dt, held) {
+        const well = nearestHoleWell();
+        if (!well) return false;
+        const swallow = holeSwallowR(well.hole);
+        if (well.dist <= swallow) {
             swallowShip();
             return false;
         }
-        const nx = (best.x - state.shipX) / bestDist;
-        const ny = (best.y - state.shipY) / bestDist;
-        const span = Math.max(1, holePullR(best) - swallow);
-        const t = Math.min(1, Math.max(0, 1 - (bestDist - swallow) / span));
+        const nx = (well.hole.x - state.shipX) / well.dist;
+        const ny = (well.hole.y - state.shipY) / well.dist;
+        const span = Math.max(1, holePullR(well.hole) - swallow);
+        const t = Math.min(1, Math.max(0, 1 - (well.dist - swallow) / span));
         const cruise = SHIP_SPEED * Math.max(speedMul("shipSpeed"), SPEED_MUL_START);
         const pull = cruise * (HOLE_PULL_CRUISE + (HOLE_PULL_CORE - HOLE_PULL_CRUISE) * t);
         state.shipX += nx * pull * dt;
         state.shipY += ny * pull * dt;
+        if (!state.boost && held && held.hole === well.hole && held.dist > swallow) {
+            const awayX = state.shipX - well.hole.x;
+            const awayY = state.shipY - well.hole.y;
+            const away = Math.hypot(awayX, awayY);
+            if (away > held.dist && away > 0.001) {
+                const scale = held.dist / away;
+                state.shipX = well.hole.x + awayX * scale;
+                state.shipY = well.hole.y + awayY * scale;
+            }
+        }
         clampShipToWorld();
-        if (Math.hypot(state.shipX - best.x, state.shipY - best.y) <= swallow) {
+        if (Math.hypot(state.shipX - well.hole.x, state.shipY - well.hole.y) <= swallow) {
             swallowShip();
             return false;
         }
@@ -4542,8 +4557,9 @@
         const paused = state.menuOpen || state.won || state.resumeOpen || state.boardOpen;
         let moving = false;
         if (!paused) {
+            const holeHold = nearestHoleWell();
             moving = moveShip(dt);
-            moving = applyHoleGravity(dt) || moving;
+            moving = applyHoleGravity(dt, holeHold) || moving;
             collectIfHit(now);
         }
         updateEngine(moving);

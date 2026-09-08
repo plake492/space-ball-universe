@@ -1430,6 +1430,9 @@
         });
     }
     for (const el of document.querySelectorAll(".zoom-input")) {
+        el.addEventListener("focus", () => {
+            el.select();
+        });
         el.addEventListener("input", () => {
             setZoomFromInput(el, false);
         });
@@ -1438,8 +1441,16 @@
             saveSettings();
             updateHud();
         });
+        el.addEventListener("blur", () => {
+            setZoomFromInput(el, true);
+            saveSettings();
+            updateHud();
+        });
         el.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") el.blur();
+            if (event.key === "Enter") {
+                event.preventDefault();
+                el.blur();
+            }
         });
     }
     let pendingBuy = "";

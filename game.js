@@ -378,7 +378,7 @@
     }
 
     function speedMul(key) {
-        return isCustomGame() ? state[key] : SPEED_MUL_START;
+        return isTunableGame() ? state[key] : SPEED_MUL_START;
     }
 
     function formatCometPoints(value) {
@@ -471,6 +471,15 @@
         return state.difficulty === "giant";
     }
 
+    function isTunableGame() {
+        return isCustomGame() || isGiantGame();
+    }
+
+    function markTuned() {
+        if (isGiantGame()) return;
+        state.difficulty = "custom";
+    }
+
     function planetScale() {
         return isGiantGame() ? 2 : 1;
     }
@@ -551,9 +560,8 @@
             const infiniteFuel = data.infiniteFuel === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             const speeds = speedsFrom(data);
-            if (difficulty && difficulty !== "custom") {
+            if (difficulty && difficulty !== "custom" && difficulty !== "giant") {
                 const preset = DIFFICULTIES[difficulty];
-                const giant = difficulty === "giant";
                 return {
                     world: preset.world,
                     ballCount: preset.ballCount,
@@ -573,18 +581,19 @@
                     trialMs,
                     audio,
                     volume,
-                    spikes: giant ? false : spikes,
-                    meteorOn: giant ? false : meteorOn,
-                    meteorCount: giant ? 0 : meteorCount,
-                    spikeBalls: giant ? 0 : spikeBalls,
-                    cometCount: giant ? 0 : cometCount,
+                    spikes,
+                    meteorOn,
+                    meteorCount,
+                    spikeBalls,
+                    cometCount,
                     cometPoints,
-                    neutronPairs: giant ? 0 : neutronPairs,
+                    neutronPairs,
                     infiniteFuel,
                     zoom,
                     ...speeds,
                 };
             }
+            const giant = difficulty === "giant";
             return {
                 world,
                 ballCount,
@@ -604,13 +613,13 @@
                 trialMs,
                 audio,
                 volume,
-                spikes: difficulty === "custom" ? spikeBalls > 0 : spikes,
-                meteorOn: difficulty === "custom" ? meteorCount > 0 : meteorOn,
-                meteorCount,
-                spikeBalls,
-                cometCount,
+                spikes: giant ? false : difficulty === "custom" ? spikeBalls > 0 : spikes,
+                meteorOn: giant ? false : difficulty === "custom" ? meteorCount > 0 : meteorOn,
+                meteorCount: giant ? 0 : meteorCount,
+                spikeBalls: giant ? 0 : spikeBalls,
+                cometCount: giant ? 0 : cometCount,
                 cometPoints,
-                neutronPairs,
+                neutronPairs: giant ? 0 : neutronPairs,
                 infiniteFuel,
                 zoom,
                 ...speeds,
@@ -665,7 +674,7 @@
         let best = BALL_TYPES[0];
         let bestDist = Infinity;
         for (const type of BALL_TYPES) {
-            const dist = Math.abs(type.size / 2 - r);
+            const dist = Math.abs(type.size / 2 * planetScale() - r);
             if (dist < bestDist) {
                 best = type;
                 bestDist = dist;
@@ -677,7 +686,8 @@
     function normalizeBall(ball) {
         if (!ball || !Number.isFinite(Number(ball.x)) || !Number.isFinite(Number(ball.y))) return null;
         const type = ballTypeFor(ball);
-        const r = type ? type.size / 2 : Number(ball.r);
+        const base = type ? type.size / 2 : Number(ball.r);
+        const r = base * planetScale();
         if (!Number.isFinite(r) || r <= 0) return null;
         return ensurePlanetLook({
             x: Number(ball.x),
@@ -1836,6 +1846,7 @@
 
     function matchingDifficulty() {
         for (const [id, preset] of Object.entries(DIFFICULTIES)) {
+            if (id === "giant") continue;
             if (preset.world === state.world && preset.ballCount === state.ballCount && preset.goal === state.goal) {
                 return id;
             }
@@ -1861,7 +1872,36 @@
         };
     }
 
+    function giantDefaults() {
+        const preset = DIFFICULTIES.giant;
+        return {
+            world: preset.world,
+            ballCount: preset.ballCount,
+            goal: preset.goal,
+            spikeBalls: 0,
+            spikes: false,
+            meteorCount: 0,
+            meteorOn: false,
+            cometCount: 0,
+            cometPoints: COMET_POINTS_START,
+            neutronPairs: 0,
+            infiniteFuel: false,
+            zoom: 1,
+            ...speedsFrom({}),
+        };
+    }
+
     function resetCustomSettings() {
+        if (isGiantGame()) {
+            const next = giantDefaults();
+            const restart = next.world !== state.world || next.ballCount !== state.ballCount;
+            Object.assign(state, next);
+            applyGiantHazards();
+            saveSettings();
+            if (restart) restartGame();
+            else updateHud();
+            return;
+        }
         const next = customDefaults();
         const restart = next.world !== state.world
             || next.ballCount !== state.ballCount
@@ -2026,9 +2066,10 @@
     }
 
     function syncCustomHazards() {
-        const custom = isCustomGame();
-        for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !custom);
-        for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", custom);
+        const tune = isTunableGame();
+        document.body.classList.toggle("giant-mode", isGiantGame());
+        for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !tune);
+        for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", tune);
         if (meteorSlider) meteorSlider.value = String(state.meteorCount);
         if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);
         if (spikesSlider) spikesSlider.value = String(state.spikeBalls);
@@ -5123,7 +5164,7 @@
                     if (next === state.ballCount) return;
                     state.ballCount = next;
                     state.goal = clampGoal(state.goal);
-                    state.difficulty = "custom";
+                    markTuned();
                     saveSettings();
                     restartGame();
                     return;
@@ -5135,7 +5176,7 @@
                         return;
                     }
                     state.goal = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     saveSettings();
                     updateHud();
                     maybeWin();
@@ -5161,7 +5202,7 @@
                         return;
                     }
                     state.meteorCount = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     syncHazardFlags();
                     saveSettings();
                     fillMeteors();
@@ -5175,7 +5216,7 @@
                         return;
                     }
                     state.spikeBalls = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     syncHazardFlags();
                     saveSettings();
                     restartGame();
@@ -5188,7 +5229,7 @@
                         return;
                     }
                     state.cometCount = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     saveSettings();
                     fillComets();
                     updateHud();
@@ -5201,7 +5242,7 @@
                         return;
                     }
                     state.cometPoints = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     saveSettings();
                     updateHud();
                     return;
@@ -5213,7 +5254,7 @@
                         return;
                     }
                     state.neutronPairs = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     saveSettings();
                     restartGame();
                     return;
@@ -5225,7 +5266,7 @@
                         return;
                     }
                     state[key] = next;
-                    state.difficulty = "custom";
+                    markTuned();
                     saveSettings();
                     updateHud();
                 }
@@ -5313,7 +5354,7 @@
             if (next === state.ballCount) return;
             state.ballCount = next;
             state.goal = clampGoal(state.goal);
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             restartGame();
         });
@@ -5329,7 +5370,7 @@
                 return;
             }
             state.goal = next;
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             updateHud();
             maybeWin();
@@ -5348,7 +5389,7 @@
                 const next = Number(button.dataset.world);
                 if (next === state.world) return;
                 state.world = next;
-                state.difficulty = "custom";
+                markTuned();
                 saveSettings();
                 restartGame();
             });
@@ -5488,7 +5529,7 @@
                 const next = clampMeteorCount(meteorSlider.value);
                 if (next === state.meteorCount && isCustomGame()) return;
                 state.meteorCount = next;
-                state.difficulty = "custom";
+                markTuned();
                 syncHazardFlags();
                 saveSettings();
                 fillMeteors();
@@ -5504,7 +5545,7 @@
                 const next = clampSpikeBalls(spikesSlider.value);
                 if (next === state.spikeBalls && isCustomGame()) return;
                 state.spikeBalls = next;
-                state.difficulty = "custom";
+                markTuned();
                 syncHazardFlags();
                 saveSettings();
                 restartGame();
@@ -5519,7 +5560,7 @@
                 const next = clampCometCount(cometSlider.value);
                 if (next === state.cometCount && isCustomGame()) return;
                 state.cometCount = next;
-                state.difficulty = "custom";
+                markTuned();
                 saveSettings();
                 fillComets();
                 updateHud();
@@ -5534,7 +5575,7 @@
                 const next = clampCometPoints(cometPointsSlider.value);
                 if (next === state.cometPoints && isCustomGame()) return;
                 state.cometPoints = next;
-                state.difficulty = "custom";
+                markTuned();
                 saveSettings();
                 updateHud();
             });
@@ -5548,7 +5589,7 @@
                 const next = clampNeutronPairs(neutronSlider.value);
                 if (next === state.neutronPairs && isCustomGame()) return;
                 state.neutronPairs = next;
-                state.difficulty = "custom";
+                markTuned();
                 saveSettings();
                 restartGame();
             });
@@ -5566,7 +5607,7 @@
                 const next = clampSpeedMul(slider.value);
                 if (next === state[key] && isCustomGame()) return;
                 state[key] = next;
-                state.difficulty = "custom";
+                markTuned();
                 saveSettings();
                 updateHud();
             });

@@ -621,6 +621,15 @@
         return state.difficulty === "giant";
     }
 
+    function isTunableGame() {
+        return isCustomGame() || isGiantGame();
+    }
+
+    function markTuned() {
+        if (isGiantGame()) return;
+        state.difficulty = "custom";
+    }
+
     function formatScore(value) {
         const n = Number(value);
         if (!Number.isFinite(n) || n >= SCORE_MAX) return "MAX";
@@ -688,6 +697,7 @@
 
     function matchingDifficulty() {
         for (const [id, preset] of Object.entries(DIFFICULTIES)) {
+            if (id === "giant") continue;
             if (preset.world === state.world && preset.ballCount === state.ballCount && preset.goal === state.goal) {
                 return id;
             }
@@ -703,11 +713,15 @@
     }
 
     function updateDiffRules() {
-        const preset = DIFFICULTIES[state.difficulty] || {
+        const preset = isTunableGame() ? {
             world: state.world,
             ballCount: state.ballCount,
             goal: state.goal,
-        };
+        } : (DIFFICULTIES[state.difficulty] || {
+            world: state.world,
+            ballCount: state.ballCount,
+            goal: state.goal,
+        });
         if (homeDiffBalls) homeDiffBalls.textContent = String(preset.ballCount);
         if (homeDiffGoal) homeDiffGoal.textContent = String(preset.goal);
         if (homeDiffWorld) homeDiffWorld.textContent = worldLabel(preset.world);
@@ -731,7 +745,33 @@
         };
     }
 
+    function giantDefaults() {
+        const preset = DIFFICULTIES.giant;
+        return {
+            world: preset.world,
+            ballCount: preset.ballCount,
+            goal: preset.goal,
+            spikeBalls: 0,
+            spikes: false,
+            meteorCount: 0,
+            meteorOn: false,
+            cometCount: 0,
+            cometPoints: COMET_POINTS_START,
+            neutronPairs: 0,
+            infiniteFuel: false,
+            zoom: 1,
+            ...speedsFrom({}),
+        };
+    }
+
     function resetCustomSettings() {
+        if (isGiantGame()) {
+            Object.assign(state, giantDefaults());
+            applyGiantHazards();
+            saveSettings();
+            updateHud();
+            return;
+        }
         Object.assign(state, customDefaults());
         state.difficulty = "custom";
         syncHazardFlags();
@@ -807,9 +847,11 @@
             } else if (DIFFICULTIES[data.difficulty]) {
                 const preset = DIFFICULTIES[data.difficulty];
                 state.difficulty = data.difficulty;
-                state.world = preset.world;
-                state.ballCount = preset.ballCount;
-                state.goal = preset.goal;
+                if (data.difficulty !== "giant") {
+                    state.world = preset.world;
+                    state.ballCount = preset.ballCount;
+                    state.goal = preset.goal;
+                }
             } else {
                 state.difficulty = matchingDifficulty();
             }
@@ -1087,9 +1129,10 @@
         for (const button of document.querySelectorAll(".meteor-btn")) {
             button.classList.toggle("is-on", (button.dataset.meteor === "on") === state.meteorOn);
         }
-        const custom = isCustomGame();
-        for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !custom);
-        for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", custom);
+        const tune = isTunableGame();
+        document.body.classList.toggle("giant-mode", isGiantGame());
+        for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !tune);
+        for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", tune);
         if (meteorSlider) meteorSlider.value = String(state.meteorCount);
         if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);
         if (spikesSlider) spikesSlider.value = String(state.spikeBalls);
@@ -1258,7 +1301,7 @@
     ballsSlider.addEventListener("change", () => {
         state.ballCount = Number(ballsSlider.value);
         state.goal = clampGoal(state.goal);
-        state.difficulty = "custom";
+        markTuned();
         saveSettings();
         updateHud();
     });
@@ -1267,7 +1310,7 @@
     });
     goalSlider.addEventListener("change", () => {
         state.goal = clampGoal(Number(goalSlider.value));
-        state.difficulty = "custom";
+        markTuned();
         saveSettings();
         updateHud();
     });
@@ -1298,7 +1341,7 @@
             const next = Number(button.dataset.world);
             if (!WORLD_SIZES.includes(next) || next === state.world) return;
             state.world = next;
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             updateHud();
         });
@@ -1370,7 +1413,7 @@
         });
         meteorSlider.addEventListener("change", () => {
             state.meteorCount = clampMeteorCount(meteorSlider.value);
-            state.difficulty = "custom";
+            markTuned();
             syncHazardFlags();
             saveSettings();
             updateHud();
@@ -1382,7 +1425,7 @@
         });
         spikesSlider.addEventListener("change", () => {
             state.spikeBalls = clampSpikeBalls(spikesSlider.value);
-            state.difficulty = "custom";
+            markTuned();
             syncHazardFlags();
             saveSettings();
             updateHud();
@@ -1394,7 +1437,7 @@
         });
         cometSlider.addEventListener("change", () => {
             state.cometCount = clampCometCount(cometSlider.value);
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             updateHud();
         });
@@ -1405,7 +1448,7 @@
         });
         cometPointsSlider.addEventListener("change", () => {
             state.cometPoints = clampCometPoints(cometPointsSlider.value);
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             updateHud();
         });
@@ -1416,7 +1459,7 @@
         });
         neutronSlider.addEventListener("change", () => {
             state.neutronPairs = clampNeutronPairs(neutronSlider.value);
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             updateHud();
         });
@@ -1431,7 +1474,7 @@
         });
         slider.addEventListener("change", () => {
             state[key] = clampSpeedMul(slider.value);
-            state.difficulty = "custom";
+            markTuned();
             saveSettings();
             updateHud();
         });

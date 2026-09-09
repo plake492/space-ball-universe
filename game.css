@@ -327,6 +327,10 @@ body.board-open {
     display: none;
 }
 
+body.giant-mode .giant-hide {
+    display: none;
+}
+
 .settings-fold {
     margin-bottom: 12px;
     border: 1px solid rgba(220, 235, 255, 0.22);

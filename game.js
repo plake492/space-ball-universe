@@ -18,6 +18,8 @@
     };
     const DIFF_ORDER = ["easy", "medium", "hard", "extra", "extreme"];
     const SCORE_MAX = Number.MAX_VALUE;
+    const GIANT_BODY = "#ffffff";
+    const GIANT_MARK = "#7ec8ff";
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
@@ -1689,7 +1691,7 @@
             ...planetLook(),
             pulseMs: rand(1000, 5000),
             pulseOffset: rand(0, Math.PI * 2),
-            hasRings: !spiked && Math.random() < 0.28,
+            hasRings: !spiked && !isGiantGame() && Math.random() < 0.28,
             ringTilt: rand(-0.75, 0.75),
             hasSpikes: spiked,
             spikeCount: 10 + Math.floor(Math.random() * 5),
@@ -2390,7 +2392,7 @@
                 x: ball.x,
                 y: ball.y,
                 r: ball.r,
-                color: ball.color,
+                color: isGiantGame() ? GIANT_MARK : ball.color,
                 life: 1,
             });
         }
@@ -3458,16 +3460,43 @@
         ctx.restore();
     }
 
+    function drawGiantPlanet(ball, x, y, pulse) {
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.translate(x, y);
+        ctx.shadowColor = GIANT_MARK;
+        ctx.shadowBlur = 8 + 6 * pulse;
+        ctx.fillStyle = GIANT_BODY;
+        ctx.beginPath();
+        ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = GIANT_MARK;
+        ctx.font = `700 ${Math.max(14, Math.round(ball.r * 0.78))}px "Supreme Spike", sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("2x", 0, ball.r * 0.04);
+        ctx.restore();
+    }
+
     function drawBall(ball, cam, now) {
-        if (ball.hasRings == null) {
+        const giant = isGiantGame();
+        if (!giant && ball.hasRings == null) {
             ball.hasRings = !ball.hasSpikes && Math.random() < 0.28;
             ball.ringTilt = rand(-0.75, 0.75);
         }
 
         const x = ball.x - cam.x;
         const y = ball.y - cam.y;
-        const reach = ball.hasRings || ball.hasSpikes ? ball.r * 2.1 : ball.r + 20;
+        const reach = !giant && (ball.hasRings || ball.hasSpikes) ? ball.r * 2.1 : ball.r + 20;
         if (offView(x, y, reach, cam)) {
+            return;
+        }
+        if (giant) {
+            drawGiantPlanet(ball, x, y, ballPulse(ball, now));
             return;
         }
 
@@ -3801,19 +3830,39 @@
             ctx.save();
             ctx.globalAlpha = moon.scatter ? moon.life : 1;
             ctx.translate(cx + moon.x, cy + moon.y);
-            ctx.shadowColor = moon.color;
-            ctx.shadowBlur = 10;
-            if (!moon.fill || moon.fillR !== r) {
-                const fill = ctx.createRadialGradient(r * -0.28, r * -0.32, r * 0.1, 0, 0, r);
-                fill.addColorStop(0, paints[0] || moon.color);
-                fill.addColorStop(1, paints[paints.length - 1] || moon.color);
-                moon.fill = fill;
-                moon.fillR = r;
+            if (isGiantGame()) {
+                ctx.shadowColor = GIANT_MARK;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = GIANT_BODY;
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.fillStyle = GIANT_MARK;
+                ctx.font = `700 ${Math.max(8, Math.round(r * 1.15))}px "Supreme Spike", sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("2x", 0, r * 0.08);
+                ctx.restore();
+            } else {
+                ctx.shadowColor = moon.color;
+                ctx.shadowBlur = 10;
+                if (!moon.fill || moon.fillR !== r) {
+                    const fill = ctx.createRadialGradient(r * -0.28, r * -0.32, r * 0.1, 0, 0, r);
+                    fill.addColorStop(0, paints[0] || moon.color);
+                    fill.addColorStop(1, paints[paints.length - 1] || moon.color);
+                    moon.fill = fill;
+                    moon.fillR = r;
+                }
+                ctx.fillStyle = moon.fill;
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.fill();
             }
-            ctx.fillStyle = moon.fill;
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
             ctx.restore();
         }
     }
@@ -4540,7 +4589,7 @@
             const reach = ball.hasSpikes ? r * 1.9 : r;
             if (p.x < -reach || p.y < -reach || p.x > size + reach || p.y > size + reach) continue;
             miniCtx.globalAlpha = ball.hasSpikes ? 1 : ballPulse(ball, now);
-            miniCtx.fillStyle = ball.color;
+            miniCtx.fillStyle = isGiantGame() ? GIANT_BODY : ball.color;
             if (ball.hasSpikes) {
                 const spikes = 7;
                 const inner = r * 0.72;
@@ -4561,6 +4610,11 @@
                 miniCtx.beginPath();
                 miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 miniCtx.fill();
+                if (isGiantGame()) {
+                    miniCtx.strokeStyle = GIANT_MARK;
+                    miniCtx.lineWidth = Math.max(1, r * 0.28);
+                    miniCtx.stroke();
+                }
             }
             miniCtx.globalAlpha = 1;
         }

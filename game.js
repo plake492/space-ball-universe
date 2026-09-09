@@ -14,8 +14,10 @@
         hard: { world: 15000, ballCount: 90, goal: 75 },
         extra: { world: 20000, ballCount: 120, goal: 110 },
         extreme: { world: 20000, ballCount: 150, goal: 150 },
+        giant: { world: 20000, ballCount: 60, goal: 40 },
     };
     const DIFF_ORDER = ["easy", "medium", "hard", "extra", "extreme"];
+    const SCORE_MAX = Number.MAX_VALUE;
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
@@ -465,6 +467,46 @@
         return state.difficulty === "custom";
     }
 
+    function isGiantGame() {
+        return state.difficulty === "giant";
+    }
+
+    function planetScale() {
+        return isGiantGame() ? 2 : 1;
+    }
+
+    function formatScore(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n >= SCORE_MAX) return "MAX";
+        if (n >= 1e15) return n.toExponential(2).replace(/e\+/, "e");
+        return Math.round(n).toLocaleString();
+    }
+
+    function nextDoubleScore(current) {
+        if (!(current > 0)) return 2;
+        const next = current * 2;
+        if (!Number.isFinite(next) || next > SCORE_MAX) return SCORE_MAX;
+        return next;
+    }
+
+    function applyGiantHazards() {
+        if (!isGiantGame()) return;
+        state.spikes = false;
+        state.meteorOn = false;
+        state.meteorCount = 0;
+        state.spikeBalls = 0;
+        state.cometCount = 0;
+        state.neutronPairs = 0;
+    }
+
+    function clearGiantHazards() {
+        state.holes = [];
+        state.neutrons = [];
+        state.comets = [];
+        state.meteors = [];
+        state.drops = [];
+    }
+
     function syncHazardFlags() {
         if (!isCustomGame()) return;
         state.meteorOn = state.meteorCount > 0;
@@ -511,6 +553,7 @@
             const speeds = speedsFrom(data);
             if (difficulty && difficulty !== "custom") {
                 const preset = DIFFICULTIES[difficulty];
+                const giant = difficulty === "giant";
                 return {
                     world: preset.world,
                     ballCount: preset.ballCount,
@@ -530,13 +573,13 @@
                     trialMs,
                     audio,
                     volume,
-                    spikes,
-                    meteorOn,
-                    meteorCount,
-                    spikeBalls,
-                    cometCount,
+                    spikes: giant ? false : spikes,
+                    meteorOn: giant ? false : meteorOn,
+                    meteorCount: giant ? 0 : meteorCount,
+                    spikeBalls: giant ? 0 : spikeBalls,
+                    cometCount: giant ? 0 : cometCount,
                     cometPoints,
-                    neutronPairs,
+                    neutronPairs: giant ? 0 : neutronPairs,
                     infiniteFuel,
                     zoom,
                     ...speeds,
@@ -1147,6 +1190,7 @@
     }
 
     function holeCount() {
+        if (isGiantGame()) return 0;
         if (state.world >= 20000) return 6;
         if (state.world >= 15000) return 4;
         if (state.world >= 10000) return 3;
@@ -1195,6 +1239,7 @@
     }
 
     function neutronCount() {
+        if (isGiantGame()) return 0;
         if (isCustomGame()) return state.neutronPairs;
         return defaultNeutronPairs(state.world);
     }
@@ -1551,6 +1596,10 @@
 
     function updateComets(dt, now, paused) {
         if (paused) return;
+        if (isGiantGame()) {
+            state.comets = [];
+            return;
+        }
         if (isCustomGame()) {
             if (state.cometCount <= 0) {
                 state.comets = [];
@@ -1573,6 +1622,10 @@
 
     function updateMeteors(dt, now, paused) {
         if (paused) return;
+        if (isGiantGame()) {
+            state.meteors = [];
+            return;
+        }
         if (isCustomGame()) {
             if (state.meteorCount <= 0) {
                 state.meteors = [];
@@ -1600,16 +1653,18 @@
     }
 
     function placeBall(spiked) {
+        if (isGiantGame()) spiked = false;
         const type = spiked ? pick(SPIKE_TYPES) : pick(BALL_TYPES);
-        const size = type.size;
+        const size = type.size * planetScale();
         const r = size / 2;
+        const maxBall = MAX_BALL * planetScale();
         const minDist = SHIP_RADIUS + r + SPAWN_CLEARANCE;
         let x = 0;
         let y = 0;
         let attempts = 0;
         do {
-            x = rand(MAX_BALL, state.world - MAX_BALL);
-            y = rand(MAX_BALL, state.world - MAX_BALL);
+            x = rand(maxBall, state.world - maxBall);
+            y = rand(maxBall, state.world - maxBall);
             attempts += 1;
         } while (
             (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r) || tooCloseToNeutrons(x, y, r)) &&
@@ -1634,9 +1689,11 @@
 
     function spawnBalls(count) {
         for (let i = 0; i < count; i += 1) placeBall(false);
-        const spikes = isCustomGame()
-            ? state.spikeBalls
-            : (state.spikes ? Math.round(count * SPIKE_RATE) : 0);
+        const spikes = isGiantGame()
+            ? 0
+            : (isCustomGame()
+                ? state.spikeBalls
+                : (state.spikes ? Math.round(count * SPIKE_RATE) : 0));
         for (let i = 0; i < spikes; i += 1) placeBall(true);
         spawnDrops();
     }
@@ -1667,6 +1724,7 @@
 
     function spawnDrops() {
         state.drops = [];
+        if (isGiantGame()) return;
         const count = Math.max(1, Math.round(state.ballCount * DROP_RATE));
         for (let i = 0; i < count; i += 1) placeShieldDrop();
     }
@@ -1835,13 +1893,22 @@
         }
         const preset = DIFFICULTIES[id];
         if (!preset) return;
-        const restart = preset.world !== state.world || preset.ballCount !== state.ballCount;
+        const wasGiant = isGiantGame();
+        const restart = preset.world !== state.world || preset.ballCount !== state.ballCount || wasGiant !== (id === "giant");
         state.difficulty = id;
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
-        state.spikes = true;
-        state.meteorOn = true;
+        if (id === "giant") applyGiantHazards();
+        else {
+            state.spikes = true;
+            state.meteorOn = true;
+            if (wasGiant) {
+                state.meteorCount = 1;
+                state.spikeBalls = Math.round(preset.ballCount * SPIKE_RATE);
+                state.neutronPairs = defaultNeutronPairs(preset.world);
+            }
+        }
         saveSettings();
         if (restart) restartGame();
         else updateHud();
@@ -1873,11 +1940,11 @@
     // updateHud() below also sweeps the whole settings UI with a dozen
     // querySelectorAll calls, which is wasted work on a ball pickup.
     function updateScoreHud() {
-        if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
+        if (lifetimeEl) lifetimeEl.textContent = formatScore(state.lifetime);
         const storePoints = document.getElementById("store-points");
-        if (storePoints) storePoints.textContent = state.lifetime.toLocaleString();
+        if (storePoints) storePoints.textContent = formatScore(state.lifetime);
         foundEl.textContent = String(state.found);
-        if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
+        if (scoreEl) scoreEl.textContent = formatScore(state.score);
         goalEl.textContent = String(state.goal);
     }
 
@@ -2042,7 +2109,7 @@
     function showWinOverlay(kind, elapsed) {
         const title = document.getElementById("win-title");
         if (title) title.textContent = kind === "trial" ? "TIME'S UP" : "YOU WON";
-        if (winScoreEl) winScoreEl.textContent = state.score.toLocaleString();
+        if (winScoreEl) winScoreEl.textContent = formatScore(state.score);
         const time = elapsed != null ? elapsed : playTime(performance.now());
         winMessage.textContent = kind === "trial"
             ? `Time trial · ${trialLabel()}`
@@ -2260,9 +2327,23 @@
     function collectPlanet(ball, extras) {
         state.taken.push(planetSnapshot(ball));
         state.found += 1;
-        const points = ball.points || ballTypeFor(ball).points;
-        state.score += points;
-        if (!PLAYGROUND) state.lifetime += points;
+        let points;
+        if (isGiantGame()) {
+            const next = nextDoubleScore(state.score);
+            points = next;
+            const awarded = next > state.score ? next - state.score : 0;
+            state.score = next;
+            if (!PLAYGROUND) {
+                const nextLife = state.lifetime + awarded;
+                state.lifetime = Number.isFinite(nextLife)
+                    ? Math.min(Number.MAX_SAFE_INTEGER, nextLife)
+                    : Number.MAX_SAFE_INTEGER;
+            }
+        } else {
+            points = ball.points || ballTypeFor(ball).points;
+            state.score += points;
+            if (!PLAYGROUND) state.lifetime += points;
+        }
         if (!extras || extras.pop !== false) {
             state.pops.push({
                 x: ball.x,
@@ -3517,7 +3598,7 @@
             ctx.globalAlpha = 0.72 * fade;
             ctx.fillStyle = "#c5d4f5";
             ctx.fillText(
-                `+${floater.points}`,
+                `+${typeof floater.points === "number" ? formatScore(floater.points) : floater.points}`,
                 floater.x - cam.x,
                 floater.y - cam.y - 8 - t * 42
             );
@@ -4933,7 +5014,7 @@
             const cells = [
                 String(index + 1),
                 row.name,
-                row.score.toLocaleString(),
+                formatScore(row.score),
                 formatPlayTime(row.elapsed),
                 formatBoardDate(row.at),
             ];
@@ -5758,7 +5839,8 @@
         timer.runningSince = null;
         shownSecond = -1;
         spawnDecor();
-        if (play.hasNeutrons) state.neutrons = play.neutrons;
+        if (play.hasNeutrons && !isGiantGame()) state.neutrons = play.neutrons;
+        if (isGiantGame()) clearGiantHazards();
         if (play.won) {
             recordWinScore();
             if (state.trial) timerEl.textContent = formatPlayTime(0);

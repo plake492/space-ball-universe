@@ -29,7 +29,9 @@
         hard: { world: 15000, ballCount: 90, goal: 75 },
         extra: { world: 20000, ballCount: 120, goal: 110 },
         extreme: { world: 20000, ballCount: 150, goal: 150 },
+        giant: { world: 20000, ballCount: 60, goal: 40 },
     };
+    const SCORE_MAX = Number.MAX_VALUE;
     const SETTINGS_KEY = "harlie-space-settings";
     const PLAY_KEY = "harlie-space-play";
     const BOARD_KEY = "harlie-space-board";
@@ -615,6 +617,27 @@
         return state.difficulty === "custom";
     }
 
+    function isGiantGame() {
+        return state.difficulty === "giant";
+    }
+
+    function formatScore(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n >= SCORE_MAX) return "MAX";
+        if (n >= 1e15) return n.toExponential(2).replace(/e\+/, "e");
+        return Math.round(n).toLocaleString();
+    }
+
+    function applyGiantHazards() {
+        if (!isGiantGame()) return;
+        state.spikes = false;
+        state.meteorOn = false;
+        state.meteorCount = 0;
+        state.spikeBalls = 0;
+        state.cometCount = 0;
+        state.neutronPairs = 0;
+    }
+
     function syncHazardFlags() {
         if (!isCustomGame()) return;
         state.meteorOn = state.meteorCount > 0;
@@ -727,12 +750,21 @@
         }
         const preset = DIFFICULTIES[id];
         if (!preset) return;
+        const wasGiant = isGiantGame();
         state.difficulty = id;
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
-        state.spikes = true;
-        state.meteorOn = true;
+        if (id === "giant") applyGiantHazards();
+        else {
+            state.spikes = true;
+            state.meteorOn = true;
+            if (wasGiant) {
+                state.meteorCount = 1;
+                state.spikeBalls = Math.round(preset.ballCount * SPIKE_RATE);
+                state.neutronPairs = defaultNeutronPairs(preset.world);
+            }
+        }
         saveSettings();
         updateHud();
     }
@@ -803,6 +835,7 @@
                 state.meteorOn = state.meteorCount > 0;
                 state.spikes = state.spikeBalls > 0;
             }
+            applyGiantHazards();
             state.infiniteFuel = data.infiniteFuel === true;
             state.zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
         } catch {
@@ -958,19 +991,19 @@
             const clock = state.trial
                 ? formatPlayTime(Math.max(0, state.trialMs - play.elapsed))
                 : formatPlayTime(play.elapsed);
-            homeSub.textContent = `${play.found} / ${state.goal} · ${play.score.toLocaleString()} · ${clock}`;
+            homeSub.textContent = `${play.found} / ${state.goal} · ${formatScore(play.score)} · ${clock}`;
         } else {
             homeSub.textContent = "Ready to fly.";
         }
     }
 
     function updateHud() {
-        if (lifetimeEl) lifetimeEl.textContent = state.lifetime.toLocaleString();
+        if (lifetimeEl) lifetimeEl.textContent = formatScore(state.lifetime);
         const storePoints = document.getElementById("store-points");
-        if (storePoints) storePoints.textContent = state.lifetime.toLocaleString();
+        if (storePoints) storePoints.textContent = formatScore(state.lifetime);
         if (nameInput && document.activeElement !== nameInput) nameInput.value = state.name;
         if (homeUser) homeUser.textContent = state.name || "Pilot";
-        if (homeLifetime) homeLifetime.textContent = state.lifetime.toLocaleString();
+        if (homeLifetime) homeLifetime.textContent = formatScore(state.lifetime);
         if (homeShipsIcon) {
             const src = SHIP_SRC[state.ship];
             if (src) {
@@ -1093,7 +1126,7 @@
         for (const [index, row] of rows.entries()) {
             const el = document.createElement("div");
             el.className = "board-row";
-            const cells = [String(index + 1), row.name, row.score.toLocaleString(), formatPlayTime(row.elapsed), formatBoardDate(row.at)];
+            const cells = [String(index + 1), row.name, formatScore(row.score), formatPlayTime(row.elapsed), formatBoardDate(row.at)];
             for (const [i, text] of cells.entries()) {
                 const span = document.createElement("span");
                 span.className = `board-${kinds[i]}`;

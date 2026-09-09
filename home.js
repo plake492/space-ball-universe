@@ -29,7 +29,7 @@
         hard: { world: 15000, ballCount: 90, goal: 75 },
         extra: { world: 20000, ballCount: 120, goal: 110 },
         extreme: { world: 20000, ballCount: 150, goal: 150 },
-        giant: { world: 20000, ballCount: 60, goal: 40 },
+        bonus: { world: 20000, ballCount: 60, goal: 40 },
     };
     const SCORE_MAX = Number.MAX_VALUE;
     const SETTINGS_KEY = "harlie-space-settings";
@@ -618,7 +618,7 @@
     }
 
     function isGiantGame() {
-        return state.difficulty === "giant";
+        return state.difficulty === "bonus";
     }
 
     function isTunableGame() {
@@ -697,7 +697,7 @@
 
     function matchingDifficulty() {
         for (const [id, preset] of Object.entries(DIFFICULTIES)) {
-            if (id === "giant") continue;
+            if (id === "bonus") continue;
             if (preset.world === state.world && preset.ballCount === state.ballCount && preset.goal === state.goal) {
                 return id;
             }
@@ -746,7 +746,7 @@
     }
 
     function giantDefaults() {
-        const preset = DIFFICULTIES.giant;
+        const preset = DIFFICULTIES.bonus;
         return {
             world: preset.world,
             ballCount: preset.ballCount,
@@ -795,7 +795,7 @@
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
-        if (id === "giant") applyGiantHazards();
+        if (id === "bonus") applyGiantHazards();
         else {
             state.spikes = true;
             state.meteorOn = true;
@@ -842,12 +842,13 @@
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
             state.ship = shipUnlocked(wanted) ? wanted : "classic";
             state.name = normalizeName(data.name);
-            if (data.difficulty === "custom") {
+            const savedDiff = data.difficulty === "giant" ? "bonus" : data.difficulty;
+            if (savedDiff === "custom") {
                 state.difficulty = "custom";
-            } else if (DIFFICULTIES[data.difficulty]) {
-                const preset = DIFFICULTIES[data.difficulty];
-                state.difficulty = data.difficulty;
-                if (data.difficulty !== "giant") {
+            } else if (DIFFICULTIES[savedDiff]) {
+                const preset = DIFFICULTIES[savedDiff];
+                state.difficulty = savedDiff;
+                if (savedDiff !== "bonus") {
                     state.world = preset.world;
                     state.ballCount = preset.ballCount;
                     state.goal = preset.goal;

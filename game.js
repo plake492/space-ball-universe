@@ -14,7 +14,7 @@
         hard: { world: 15000, ballCount: 90, goal: 75 },
         extra: { world: 20000, ballCount: 120, goal: 110 },
         extreme: { world: 20000, ballCount: 150, goal: 150 },
-        giant: { world: 20000, ballCount: 60, goal: 40 },
+        bonus: { world: 20000, ballCount: 60, goal: 40 },
     };
     const DIFF_ORDER = ["easy", "medium", "hard", "extra", "extreme"];
     const SCORE_MAX = Number.MAX_VALUE;
@@ -470,7 +470,7 @@
     }
 
     function isGiantGame() {
-        return state.difficulty === "giant";
+        return state.difficulty === "bonus";
     }
 
     function isTunableGame() {
@@ -541,7 +541,8 @@
             const wanted = SHIP_IDS.includes(data.ship) ? data.ship : "classic";
             const ship = shipUnlocked(wanted, ownedShips, reqShips) ? wanted : "classic";
             const name = normalizeName(data.name);
-            const difficulty = data.difficulty === "custom" || DIFFICULTIES[data.difficulty] ? data.difficulty : "";
+            const rawDiff = data.difficulty === "giant" ? "bonus" : data.difficulty;
+            const difficulty = rawDiff === "custom" || DIFFICULTIES[rawDiff] ? rawDiff : "";
             const trial = data.trial === true;
             const trialMs = TRIAL_MS.includes(Number(data.trialMs)) ? Number(data.trialMs) : 300000;
             const audio = data.audio !== false;
@@ -562,7 +563,7 @@
             const infiniteFuel = data.infiniteFuel === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             const speeds = speedsFrom(data);
-            if (difficulty && difficulty !== "custom" && difficulty !== "giant") {
+            if (difficulty && difficulty !== "custom" && difficulty !== "bonus") {
                 const preset = DIFFICULTIES[difficulty];
                 return {
                     world: preset.world,
@@ -595,7 +596,7 @@
                     ...speeds,
                 };
             }
-            const giant = difficulty === "giant";
+            const giant = difficulty === "bonus";
             return {
                 world,
                 ballCount,
@@ -1848,7 +1849,7 @@
 
     function matchingDifficulty() {
         for (const [id, preset] of Object.entries(DIFFICULTIES)) {
-            if (id === "giant") continue;
+            if (id === "bonus") continue;
             if (preset.world === state.world && preset.ballCount === state.ballCount && preset.goal === state.goal) {
                 return id;
             }
@@ -1875,7 +1876,7 @@
     }
 
     function giantDefaults() {
-        const preset = DIFFICULTIES.giant;
+        const preset = DIFFICULTIES.bonus;
         return {
             world: preset.world,
             ballCount: preset.ballCount,
@@ -1936,12 +1937,12 @@
         const preset = DIFFICULTIES[id];
         if (!preset) return;
         const wasGiant = isGiantGame();
-        const restart = preset.world !== state.world || preset.ballCount !== state.ballCount || wasGiant !== (id === "giant");
+        const restart = preset.world !== state.world || preset.ballCount !== state.ballCount || wasGiant !== (id === "bonus");
         state.difficulty = id;
         state.world = preset.world;
         state.ballCount = preset.ballCount;
         state.goal = preset.goal;
-        if (id === "giant") applyGiantHazards();
+        if (id === "bonus") applyGiantHazards();
         else {
             state.spikes = true;
             state.meteorOn = true;

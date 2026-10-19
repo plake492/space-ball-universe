@@ -93,6 +93,8 @@
     const HOLE_PULL_CORE = 0.13965;
     const HOLE_SWALLOW_R = 10;
     const HOLE_STRETCH_MAX = 2.6;
+    const HOLE_SIZES = [160, 220, 300, 380];
+    const HOLE_GROW_LIFE = 2;
     const SPAWN_CLEARANCE = 15;
     const BALL_GAP = 12;
     const NEUTRON_R = 11;
@@ -873,6 +875,15 @@
                     r: nova.r,
                     seed: nova.seed,
                 })),
+                novaHoles: state.holes.filter((hole) => hole.fromNova).map((hole) => ({
+                    x: hole.x,
+                    y: hole.y,
+                    r: hole.r,
+                    angle: hole.angle,
+                    spin: hole.spin,
+                    near: hole.near,
+                    grow: hole.grow == null ? 1 : hole.grow,
+                })),
             }));
         } catch {
             // Ignore quota or private-mode failures.
@@ -934,6 +945,13 @@
                     if (next) novas.push(next);
                 }
             }
+            const novaHoles = [];
+            if (Array.isArray(data.novaHoles)) {
+                for (const hole of data.novaHoles) {
+                    const next = normalizeNovaHole(hole);
+                    if (next) novaHoles.push(next);
+                }
+            }
             const found = Math.max(0, Math.round(Number(data.found) || 0));
             const score = Math.max(0, Math.round(Number(data.score) || 0));
             const shipX = Number(data.shipX);
@@ -959,6 +977,8 @@
                 hasNeutrons: Array.isArray(data.neutrons),
                 novas,
                 hasNovas: Array.isArray(data.novas),
+                novaHoles,
+                hasNovaHoles: Array.isArray(data.novaHoles),
             };
         } catch {
             return null;
@@ -1242,16 +1262,29 @@
         return false;
     }
 
-    function holeShadowR(hole) {
-        return hole.r * (0.32 + 0.68 * holeNear(hole));
+    function holeGrow(hole) {
+        const t = Number(hole && hole.grow);
+        if (!Number.isFinite(t)) return 1;
+        return Math.min(1, Math.max(0, t));
     }
 
-    function holeSwallowR() {
-        return HOLE_SWALLOW_R;
+    function holeGrowEase(hole) {
+        const t = holeGrow(hole);
+        return t * t * (3 - 2 * t);
+    }
+
+    function holeShadowR(hole) {
+        return hole.r * (0.32 + 0.68 * holeNear(hole)) * holeGrowEase(hole);
+    }
+
+    function holeSwallowR(hole) {
+        return HOLE_SWALLOW_R * holeGrowEase(hole);
     }
 
     function holePullR(hole) {
-        return holeShadowR(hole) + SHIP_RADIUS + HOLE_PULL_REACH;
+        const t = holeGrowEase(hole);
+        if (t <= 0) return 0;
+        return holeShadowR(hole) + (SHIP_RADIUS + HOLE_PULL_REACH) * t;
     }
 
     function neutronReach(pair) {
@@ -1295,11 +1328,10 @@
     function spawnHoles() {
         state.holes = [];
         const count = holeCount();
-        const sizes = [160, 220, 300, 380];
         const pad = 520;
         for (let i = 0; i < count; i += 1) {
             const nearby = i === 0;
-            const r = nearby ? 220 : pick(sizes);
+            const r = nearby ? 220 : pick(HOLE_SIZES);
             const minShip = nearby ? 0 : r + 720;
             let x = 0;
             let y = 0;
@@ -1924,6 +1956,25 @@
             seed: Number.isFinite(Number(nova.seed)) ? Number(nova.seed) : Math.random(),
             boom: 0,
         };
+    }
+
+    function normalizeNovaHole(hole) {
+        const x = Number(hole && hole.x);
+        const y = Number(hole && hole.y);
+        const r = Number(hole && hole.r);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(r) || r <= 0) return null;
+        const grow = Number(hole.grow);
+        const next = {
+            x,
+            y,
+            r: Math.min(HOLE_SIZES[HOLE_SIZES.length - 1], Math.max(HOLE_SIZES[0], r)),
+            angle: Number.isFinite(Number(hole.angle)) ? Number(hole.angle) : 0,
+            spin: Number.isFinite(Number(hole.spin)) ? Number(hole.spin) : 0,
+            near: holeNear(hole),
+            fromNova: true,
+        };
+        if (Number.isFinite(grow) && grow < 1) next.grow = Math.max(0, grow);
+        return next;
     }
 
     function formatBoardDate(at) {
@@ -2784,6 +2835,7 @@
             b: rgb.b,
             remnant: buildNovaRemnant(nova.seed),
         });
+        if (!isGiantGame() && Math.random() < 0.5) spawnNovaHole(nova);
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
             const dx = ball.x - nova.x;
@@ -2817,6 +2869,35 @@
         maybeWin();
     }
 
+    function spawnNovaHole(nova) {
+        const hole = {
+            x: nova.x,
+            y: nova.y,
+            r: pick(HOLE_SIZES),
+            angle: rand(-0.4, 0.4),
+            spin: rand(0, Math.PI * 2),
+            near: 0.22 + 0.78 * (Math.random() ** 0.85),
+            fromNova: true,
+            grow: 0,
+        };
+        state.holes.push(hole);
+        state.holes.sort((a, b) => holeNear(a) - holeNear(b));
+    }
+
+    function updateNovaHoles(dt, paused) {
+        if (paused) return;
+        let grown = false;
+        for (const hole of state.holes) {
+            if (hole.grow == null) continue;
+            hole.grow = Math.min(1, hole.grow + dt / HOLE_GROW_LIFE);
+            if (hole.grow >= 1) {
+                delete hole.grow;
+                grown = true;
+            }
+        }
+        if (grown) savePlay();
+    }
+
     function updateNovas(dt, paused) {
         if (paused) return;
         for (let i = state.novas.length - 1; i >= 0; i -= 1) {
@@ -2825,6 +2906,7 @@
             nova.boom -= dt;
             if (nova.boom <= 0) detonateNova(nova);
         }
+        updateNovaHoles(dt, paused);
     }
 
     function collectNovas() {
@@ -2982,7 +3064,7 @@
     function holeStretch() {
         const well = nearestHoleWell();
         if (!well) return null;
-        const swallow = holeSwallowR();
+        const swallow = holeSwallowR(well.hole);
         const span = Math.max(1, holePullR(well.hole) - swallow);
         const t = Math.min(1, Math.max(0, 1 - (well.dist - swallow) / span));
         const fall = t * t;
@@ -3018,7 +3100,7 @@
     function applyHoleGravity(dt, held) {
         const well = nearestHoleWell();
         if (!well) return false;
-        const swallow = holeSwallowR();
+        const swallow = holeSwallowR(well.hole);
         if (well.dist <= swallow) {
             swallowShip();
             return false;
@@ -3561,10 +3643,12 @@
 
     function drawGargantua(hole, cam, now) {
         const near = holeNear(hole);
+        const grow = holeGrowEase(hole);
+        if (grow <= 0.01) return;
         const x = hole.x - cam.x;
         const y = hole.y - cam.y;
         const r = hole.r * (0.32 + 0.68 * near);
-        if (offView(x, y, r * 6.2, cam)) return;
+        if (offView(x, y, r * grow * 6.2, cam)) return;
 
         const g = ensureGarg(hole, r);
         const t = now / 1000;
@@ -3572,6 +3656,7 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(hole.angle);
+        if (grow < 1) ctx.scale(grow, grow);
         ctx.globalAlpha = 0.16 + 0.84 * near;
 
         ctx.fillStyle = g.warp;
@@ -4668,7 +4753,17 @@
     }
 
     function drawHoles(cam, now) {
-        for (const hole of state.holes) drawHole(hole, cam, now);
+        for (const hole of state.holes) {
+            if (hole.grow != null && hole.grow < 1) continue;
+            drawHole(hole, cam, now);
+        }
+    }
+
+    function drawGrowingHoles(cam, now) {
+        for (const hole of state.holes) {
+            if (hole.grow == null || hole.grow >= 1) continue;
+            drawHole(hole, cam, now);
+        }
     }
 
     function neutronStarAt(pair, now, index) {
@@ -5152,7 +5247,7 @@
 
         for (const hole of state.holes) {
             const p = toMinimap(hole.x, hole.y, size, scale);
-            const r = Math.max(5 * mark, hole.r * scale * 0.22);
+            const r = Math.max(5 * mark, hole.r * holeGrowEase(hole) * scale * 0.22);
             if (p.x < -r * 2 || p.y < -r * 2 || p.x > size + r * 2 || p.y > size + r * 2) continue;
             miniCtx.fillStyle = "rgba(255, 140, 48, 0.28)";
             miniCtx.beginPath();
@@ -5328,6 +5423,7 @@
         drawMeteors(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
         drawNovaRings(cam, paused ? 0 : dt);
+        drawGrowingHoles(cam, now);
         drawDrops(cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
@@ -6521,6 +6617,10 @@
         spawnDecor();
         if (play.hasNeutrons && !isGiantGame()) state.neutrons = play.neutrons;
         if (play.hasNovas && !isGiantGame()) state.novas = play.novas;
+        if (play.hasNovaHoles && !isGiantGame()) {
+            for (const hole of play.novaHoles) state.holes.push(hole);
+            state.holes.sort((a, b) => holeNear(a) - holeNear(b));
+        }
         if (isGiantGame()) clearGiantHazards();
         if (play.won) {
             recordWinScore();

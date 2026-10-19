@@ -2589,7 +2589,7 @@
 
     function novaBlastR() {
         const n = Math.max(1, state.ballCount);
-        return Math.round(state.world * Math.sqrt(20 / (Math.PI * n)));
+        return Math.round(state.world * Math.sqrt(20 / (Math.PI * n)) * 0.5);
     }
 
     function novaScale(nova) {

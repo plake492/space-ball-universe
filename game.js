@@ -56,8 +56,8 @@
     const SUPERNOVA_R_MAX = SUPERNOVA_R * 3;
     const SUPERNOVA_EXPAND = 3.1;
     const SUPERNOVA_WINDUP = 0.18;
-    const SUPERNOVA_RING_LIFE = 3;
-    const SUPERNOVA_RING_EXPAND = 4;
+    const SUPERNOVA_RING_LIFE = 3.2;
+    const SUPERNOVA_RING_EXPAND = 3.6;
     const SUPERNOVA_IDLE = [255, 214, 32];
     const SUPERNOVA_PALETTE = [
         [210, 40, 255],
@@ -2681,6 +2681,91 @@
         nova.boom = SUPERNOVA_WINDUP;
     }
 
+    function novaNoise(seed) {
+        let s = ((Number(seed) * 4294967291) >>> 0) || 1;
+        return () => {
+            s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+            return s / 4294967296;
+        };
+    }
+
+    function buildNovaRemnant(seed) {
+        const rnd = novaNoise(seed + 0.37);
+        const outline = [];
+        const outlineN = 18;
+        for (let i = 0; i < outlineN; i += 1) {
+            outline.push({
+                a: (i / outlineN) * Math.PI * 2,
+                u: 0.66 + rnd() * 0.34,
+            });
+        }
+        const filaments = [];
+        const arms = 11 + Math.floor(rnd() * 4);
+        for (let i = 0; i < arms; i += 1) {
+            const pts = [];
+            let a = (i / arms) * Math.PI * 2 + (rnd() - 0.5) * 0.48;
+            const steps = 6;
+            for (let k = 0; k < steps; k += 1) {
+                const t = k / (steps - 1);
+                a += (rnd() - 0.5) * 0.58;
+                pts.push({ a, u: 0.05 + t * t * (0.58 + rnd() * 0.36) });
+            }
+            filaments.push({ pts, w: 1.1 + rnd() * 2.2, kind: rnd() < 0.44 ? "hot" : "cool" });
+            if (rnd() < 0.72) {
+                const fork = 2 + Math.floor(rnd() * 2);
+                const bpts = [pts[fork]];
+                let ba = pts[fork].a + (rnd() < 0.5 ? 0.52 : -0.52);
+                for (let k = fork + 1; k < steps; k += 1) {
+                    ba += (rnd() - 0.5) * 0.75;
+                    bpts.push({
+                        a: ba,
+                        u: pts[fork].u + ((k - fork) / (steps - fork)) * (0.26 + rnd() * 0.3),
+                    });
+                }
+                filaments.push({ pts: bpts, w: 0.8 + rnd() * 1.5, kind: rnd() < 0.5 ? "hot" : "cool" });
+            }
+        }
+        for (let w = 0; w < 9; w += 1) {
+            const pts = [];
+            const u0 = 0.2 + rnd() * 0.62;
+            const a0 = rnd() * Math.PI * 2;
+            const span = 0.65 + rnd() * 1.55;
+            for (let k = 0; k < 5; k += 1) {
+                pts.push({
+                    a: a0 + span * (k / 4),
+                    u: u0 + (rnd() - 0.5) * 0.16,
+                });
+            }
+            filaments.push({ pts, w: 0.7 + rnd() * 1.6, kind: u0 < 0.42 ? "hot" : "cool" });
+        }
+        const knots = [];
+        for (let i = 0; i < 8; i += 1) {
+            knots.push({
+                a: rnd() * Math.PI * 2,
+                u: 0.12 + rnd() * 0.7,
+                s: 0.016 + rnd() * 0.036,
+                kind: rnd() < 0.5 ? "hot" : "cool",
+            });
+        }
+        const clumps = [];
+        for (let i = 0; i < 4; i += 1) {
+            clumps.push({
+                a: rnd() * Math.PI * 2,
+                u: 0.16 + rnd() * 0.46,
+                s: 0.2 + rnd() * 0.26,
+            });
+        }
+        return {
+            outline,
+            filaments,
+            knots,
+            clumps,
+            tilt: (rnd() - 0.5) * 0.72,
+            squash: 0.66 + rnd() * 0.2,
+            stretch: 1.08 + rnd() * 0.22,
+        };
+    }
+
     function detonateNova(nova) {
         const at = state.novas.indexOf(nova);
         if (at < 0) return;
@@ -2697,6 +2782,7 @@
             r: rgb.r,
             g: rgb.g,
             b: rgb.b,
+            remnant: buildNovaRemnant(nova.seed),
         });
         for (let i = state.balls.length - 1; i >= 0; i -= 1) {
             const ball = state.balls[i];
@@ -4718,6 +4804,8 @@
         if (!state.novaRings.length) return;
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         for (let i = state.novaRings.length - 1; i >= 0; i -= 1) {
             const ring = state.novaRings[i];
             ring.life -= dt / SUPERNOVA_RING_LIFE;
@@ -4728,24 +4816,80 @@
             const age = (1 - ring.life) * SUPERNOVA_RING_LIFE;
             const travel = Math.min(1, age / SUPERNOVA_RING_EXPAND);
             const ease = 1 - (1 - travel) * (1 - travel);
-            const rad = ring.blast * (0.06 + 0.94 * ease);
+            const rad = ring.blast * (0.08 + 0.92 * ease);
             const x = ring.x - cam.x;
             const y = ring.y - cam.y;
             if (offView(x, y, rad + 90, cam)) continue;
-            const fade = ring.life > 0.34 ? 1 : ring.life / 0.34;
-            const rgb = mixNovaRgb(performance.now(), ring.seed || 0);
-            ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.9 * fade})`;
-            ctx.shadowBlur = 22 + 48 * travel;
-            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.62 * fade})`;
-            ctx.lineWidth = Math.max(12, 46 * fade);
+            const fade = ring.life > 0.3 ? 1 : ring.life / 0.3;
+            const shape = ring.remnant || (ring.remnant = buildNovaRemnant(ring.seed || 0));
+            const hot = [255, 72, 186];
+            const cool = [92, 86, 255];
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(shape.tilt);
+            ctx.scale(shape.stretch, shape.squash);
+
+            const haze = ctx.createRadialGradient(0, 0, rad * 0.04, 0, 0, rad);
+            haze.addColorStop(0, `rgba(255, 188, 230, ${0.42 * fade})`);
+            haze.addColorStop(0.18, `rgba(${hot[0]}, ${hot[1]}, ${hot[2]}, ${0.34 * fade})`);
+            haze.addColorStop(0.52, `rgba(${cool[0]}, ${cool[1]}, ${cool[2]}, ${0.26 * fade})`);
+            haze.addColorStop(1, `rgba(36, 48, 170, 0)`);
+            ctx.fillStyle = haze;
             ctx.beginPath();
-            ctx.arc(x, y, rad, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = `rgba(255, 220, 255, ${0.4 * fade})`;
-            ctx.lineWidth = Math.max(5, 16 * fade);
-            ctx.beginPath();
-            ctx.arc(x, y, rad * 0.9, 0, Math.PI * 2);
-            ctx.stroke();
+            const outline = shape.outline;
+            const first = outline[0];
+            ctx.moveTo(Math.cos(first.a) * first.u * rad, Math.sin(first.a) * first.u * rad);
+            for (let p = 1; p < outline.length; p += 1) {
+                const pt = outline[p];
+                ctx.lineTo(Math.cos(pt.a) * pt.u * rad, Math.sin(pt.a) * pt.u * rad);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            for (const clump of shape.clumps) {
+                const cx = Math.cos(clump.a) * clump.u * rad;
+                const cy = Math.sin(clump.a) * clump.u * rad;
+                const cr = clump.s * rad;
+                const blob = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
+                blob.addColorStop(0, `rgba(255, 110, 200, ${0.28 * fade})`);
+                blob.addColorStop(0.45, `rgba(${cool[0]}, ${cool[1]}, ${cool[2]}, ${0.16 * fade})`);
+                blob.addColorStop(1, "rgba(40, 40, 140, 0)");
+                ctx.fillStyle = blob;
+                ctx.beginPath();
+                ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            for (const fil of shape.filaments) {
+                const rgb = fil.kind === "hot" ? hot : cool;
+                ctx.strokeStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${(fil.kind === "hot" ? 0.72 : 0.5) * fade})`;
+                ctx.lineWidth = Math.max(2, fil.w * (3.2 + rad * 0.0045));
+                ctx.beginPath();
+                for (let p = 0; p < fil.pts.length; p += 1) {
+                    const pt = fil.pts[p];
+                    const px = Math.cos(pt.a) * pt.u * rad;
+                    const py = Math.sin(pt.a) * pt.u * rad;
+                    if (p === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+            }
+
+            for (const knot of shape.knots) {
+                const rgb = knot.kind === "hot" ? hot : cool;
+                const kx = Math.cos(knot.a) * knot.u * rad;
+                const ky = Math.sin(knot.a) * knot.u * rad;
+                const kr = Math.max(3, knot.s * rad);
+                const spark = ctx.createRadialGradient(kx, ky, 0, kx, ky, kr);
+                spark.addColorStop(0, `rgba(255, 236, 255, ${0.85 * fade})`);
+                spark.addColorStop(0.35, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${0.55 * fade})`);
+                spark.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
+                ctx.fillStyle = spark;
+                ctx.beginPath();
+                ctx.arc(kx, ky, kr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
         ctx.restore();
     }

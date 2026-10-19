@@ -52,9 +52,13 @@
     const NEUTRON_PAIR_MAX = 20;
     const SUPERNOVA_MAX = 20;
     const SUPERNOVA_R = 38;
+    const SUPERNOVA_R_MIN = SUPERNOVA_R * 1.5;
+    const SUPERNOVA_R_MAX = SUPERNOVA_R * 3;
     const SUPERNOVA_EXPAND = 3.1;
     const SUPERNOVA_WINDUP = 0.18;
-    const SUPERNOVA_RING_LIFE = 1;
+    const SUPERNOVA_RING_LIFE = 3;
+    const SUPERNOVA_RING_EXPAND = 4;
+    const SUPERNOVA_IDLE = [255, 214, 32];
     const SUPERNOVA_PALETTE = [
         [210, 40, 255],
         [255, 45, 200],
@@ -1373,7 +1377,7 @@
         const pad = 520;
         const count = novaCount();
         for (let i = 0; i < count; i += 1) {
-            const r = SUPERNOVA_R;
+            const r = rand(SUPERNOVA_R_MIN, SUPERNOVA_R_MAX);
             const minShip = r + 720;
             let x = 0;
             let y = 0;
@@ -1893,7 +1897,9 @@
         return {
             x,
             y,
-            r: Number.isFinite(r) && r > 0 ? r : SUPERNOVA_R,
+            r: Number.isFinite(r) && r > 0
+                ? Math.min(SUPERNOVA_R_MAX, Math.max(SUPERNOVA_R_MIN, r))
+                : rand(SUPERNOVA_R_MIN, SUPERNOVA_R_MAX),
             seed: Number.isFinite(Number(nova.seed)) ? Number(nova.seed) : Math.random(),
             boom: 0,
         };
@@ -2615,6 +2621,19 @@
         };
     }
 
+    function novaRgb(nova, now) {
+        const idle = SUPERNOVA_IDLE;
+        if (!(nova.boom > 0)) return { r: idle[0], g: idle[1], b: idle[2] };
+        const neon = mixNovaRgb(now, nova.seed);
+        const t = 1 - nova.boom / SUPERNOVA_WINDUP;
+        const s = t * t;
+        return {
+            r: Math.round(idle[0] + (neon.r - idle[0]) * s),
+            g: Math.round(idle[1] + (neon.g - idle[1]) * s),
+            b: Math.round(idle[2] + (neon.b - idle[2]) * s),
+        };
+    }
+
     function igniteNova(nova) {
         if (!nova || nova.boom > 0) return;
         nova.boom = SUPERNOVA_WINDUP;
@@ -2632,6 +2651,7 @@
             y: nova.y,
             life: 1,
             blast,
+            seed: nova.seed,
             r: rgb.r,
             g: rgb.g,
             b: rgb.b,
@@ -4602,7 +4622,7 @@
     }
 
     function drawNova(nova, cam, now) {
-        const rgb = mixNovaRgb(now, nova.seed);
+        const rgb = novaRgb(nova, now);
         const scale = novaScale(nova);
         const r = nova.r * scale;
         const x = nova.x - cam.x;
@@ -4640,7 +4660,7 @@
         ctx.clip();
         const limb = ctx.createRadialGradient(0, 0, r * 0.55, 0, 0, r);
         limb.addColorStop(0, "rgba(0, 0, 0, 0)");
-        limb.addColorStop(1, "rgba(20, 0, 40, 0.28)");
+        limb.addColorStop(1, nova.boom > 0 ? "rgba(20, 0, 40, 0.28)" : "rgba(90, 45, 0, 0.22)");
         ctx.fillStyle = limb;
         ctx.fillRect(-r, -r, r * 2, r * 2);
         ctx.restore();
@@ -4661,22 +4681,24 @@
                 state.novaRings.splice(i, 1);
                 continue;
             }
-            const t = 1 - ring.life;
-            const ease = 1 - (1 - t) * (1 - t);
+            const age = (1 - ring.life) * SUPERNOVA_RING_LIFE;
+            const travel = Math.min(1, age / SUPERNOVA_RING_EXPAND);
+            const ease = 1 - (1 - travel) * (1 - travel);
             const rad = ring.blast * (0.06 + 0.94 * ease);
             const x = ring.x - cam.x;
             const y = ring.y - cam.y;
             if (offView(x, y, rad + 90, cam)) continue;
-            const fade = ring.life * ring.life;
-            ctx.shadowColor = `rgba(${ring.r}, ${ring.g}, ${ring.b}, ${0.9 * fade})`;
-            ctx.shadowBlur = 22 + 48 * t;
-            ctx.strokeStyle = `rgba(${ring.r}, ${ring.g}, ${ring.b}, ${0.62 * fade})`;
-            ctx.lineWidth = Math.max(12, 46 * ring.life);
+            const fade = ring.life > 0.34 ? 1 : ring.life / 0.34;
+            const rgb = mixNovaRgb(performance.now(), ring.seed || 0);
+            ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.9 * fade})`;
+            ctx.shadowBlur = 22 + 48 * travel;
+            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.62 * fade})`;
+            ctx.lineWidth = Math.max(12, 46 * fade);
             ctx.beginPath();
             ctx.arc(x, y, rad, 0, Math.PI * 2);
             ctx.stroke();
             ctx.strokeStyle = `rgba(255, 220, 255, ${0.4 * fade})`;
-            ctx.lineWidth = Math.max(5, 16 * ring.life);
+            ctx.lineWidth = Math.max(5, 16 * fade);
             ctx.beginPath();
             ctx.arc(x, y, rad * 0.9, 0, Math.PI * 2);
             ctx.stroke();
@@ -4979,7 +5001,7 @@
 
         for (const nova of state.novas) {
             const p = toMinimap(nova.x, nova.y, size, scale);
-            const rgb = mixNovaRgb(now, nova.seed);
+            const rgb = novaRgb(nova, now);
             const r = Math.max(4.2 * mark, nova.r * scale * 0.55 * novaScale(nova));
             if (p.x < -r * 3 || p.y < -r * 3 || p.x > size + r * 3 || p.y > size + r * 3) continue;
             miniCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.32)`;

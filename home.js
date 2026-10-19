@@ -13,6 +13,7 @@
     const COMET_POINTS_STEP = 10000;
     const COMET_POINTS_START = 60000;
     const NEUTRON_PAIR_MAX = 20;
+    const SUPERNOVA_MAX = 20;
     const SPEED_KEYS = ["shipSpeed", "cometSpeed", "meteorSpeed", "neutronSpeed", "cargoSpeed"];
     const SPEED_MUL_MIN = 0;
     const SPEED_MUL_MAX = 10;
@@ -89,6 +90,8 @@
     const cometPointsSliderValue = document.getElementById("comet-points-slider-value");
     const neutronSlider = document.getElementById("neutron-slider");
     const neutronSliderValue = document.getElementById("neutron-slider-value");
+    const novaSlider = document.getElementById("nova-slider");
+    const novaSliderValue = document.getElementById("nova-slider-value");
     const boardOverlay = document.getElementById("board-overlay");
     const boardTable = document.getElementById("board-table");
     const boardList = document.getElementById("board-list");
@@ -134,6 +137,7 @@
         cometCount: 0,
         cometPoints: COMET_POINTS_START,
         neutronPairs: 5,
+        novaCount: 3,
         shipSpeed: SPEED_MUL_START,
         cometSpeed: SPEED_MUL_START,
         meteorSpeed: SPEED_MUL_START,
@@ -507,6 +511,13 @@
         return 2;
     }
 
+    function defaultNovaCount(world) {
+        if (world >= 20000) return 3;
+        if (world >= 15000) return 2;
+        if (world >= 10000) return 2;
+        return 1;
+    }
+
     function clampCometCount(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(COMET_COUNT_MAX, Math.max(0, n)) : 0;
@@ -542,6 +553,11 @@
     function clampNeutronPairs(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(NEUTRON_PAIR_MAX, Math.max(0, n)) : defaultNeutronPairs(START_WORLD);
+    }
+
+    function clampNovaCount(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(SUPERNOVA_MAX, Math.max(0, n)) : defaultNovaCount(START_WORLD);
     }
 
     function rangeValueFromClientX(el, clientX) {
@@ -645,6 +661,7 @@
         state.spikeBalls = 0;
         state.cometCount = 0;
         state.neutronPairs = 0;
+        state.novaCount = 0;
     }
 
     function syncHazardFlags() {
@@ -739,6 +756,7 @@
             cometCount: 0,
             cometPoints: COMET_POINTS_START,
             neutronPairs: defaultNeutronPairs(START_WORLD),
+            novaCount: defaultNovaCount(START_WORLD),
             infiniteFuel: false,
             zoom: 1,
             ...speedsFrom({}),
@@ -758,6 +776,7 @@
             cometCount: 0,
             cometPoints: COMET_POINTS_START,
             neutronPairs: 0,
+            novaCount: 0,
             infiniteFuel: false,
             zoom: 1,
             ...speedsFrom({}),
@@ -803,6 +822,7 @@
                 state.meteorCount = 1;
                 state.spikeBalls = Math.round(preset.ballCount * SPIKE_RATE);
                 state.neutronPairs = defaultNeutronPairs(preset.world);
+                state.novaCount = defaultNovaCount(preset.world);
             }
         }
         saveSettings();
@@ -873,6 +893,9 @@
             state.neutronPairs = data.neutronPairs == null
                 ? defaultNeutronPairs(state.world)
                 : clampNeutronPairs(data.neutronPairs);
+            state.novaCount = data.novaCount == null
+                ? defaultNovaCount(state.world)
+                : clampNovaCount(data.novaCount);
             Object.assign(state, speedsFrom(data));
             if (state.difficulty === "custom") {
                 state.meteorOn = state.meteorCount > 0;
@@ -914,6 +937,7 @@
                 cometCount: state.cometCount,
                 cometPoints: state.cometPoints,
                 neutronPairs: state.neutronPairs,
+                novaCount: state.novaCount,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
                 ...speedsFrom(state),
@@ -943,6 +967,7 @@
                 cometCount: data.cometCount == null ? null : Number(data.cometCount),
                 cometPoints: data.cometPoints == null ? null : Number(data.cometPoints),
                 neutronPairs: data.neutronPairs == null ? null : Number(data.neutronPairs),
+                novaCount: data.novaCount == null ? null : Number(data.novaCount),
                 shipSpeed: data.shipSpeed == null ? null : Number(data.shipSpeed),
                 cometSpeed: data.cometSpeed == null ? null : Number(data.cometSpeed),
                 meteorSpeed: data.meteorSpeed == null ? null : Number(data.meteorSpeed),
@@ -974,6 +999,7 @@
             && (play.cometCount == null || play.cometCount === state.cometCount)
             && (play.cometPoints == null || play.cometPoints === state.cometPoints)
             && (play.neutronPairs == null || play.neutronPairs === state.neutronPairs)
+            && (play.novaCount == null || play.novaCount === state.novaCount)
             && SPEED_KEYS.every((key) => play[key] == null || play[key] === state[key])
             && play.infiniteFuel === state.infiniteFuel
             && playIsActive(play)
@@ -1144,6 +1170,8 @@
         if (cometPointsSliderValue) cometPointsSliderValue.textContent = formatCometPoints(state.cometPoints);
         if (neutronSlider) neutronSlider.value = String(state.neutronPairs);
         if (neutronSliderValue) neutronSliderValue.textContent = String(state.neutronPairs);
+        if (novaSlider) novaSlider.value = String(state.novaCount);
+        if (novaSliderValue) novaSliderValue.textContent = String(state.novaCount);
         for (const key of SPEED_KEYS) {
             const id = `${key.replace(/Speed$/, "-speed")}-slider`;
             const slider = document.getElementById(id);
@@ -1460,6 +1488,17 @@
         });
         neutronSlider.addEventListener("change", () => {
             state.neutronPairs = clampNeutronPairs(neutronSlider.value);
+            markTuned();
+            saveSettings();
+            updateHud();
+        });
+    }
+    if (novaSlider) {
+        novaSlider.addEventListener("input", () => {
+            if (novaSliderValue) novaSliderValue.textContent = novaSlider.value;
+        });
+        novaSlider.addEventListener("change", () => {
+            state.novaCount = clampNovaCount(novaSlider.value);
             markTuned();
             saveSettings();
             updateHud();

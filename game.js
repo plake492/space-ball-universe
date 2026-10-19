@@ -50,6 +50,19 @@
     const COMET_POINTS_STEP = 10000;
     const COMET_POINTS_START = 60000;
     const NEUTRON_PAIR_MAX = 20;
+    const SUPERNOVA_MAX = 20;
+    const SUPERNOVA_R = 38;
+    const SUPERNOVA_EXPAND = 3.1;
+    const SUPERNOVA_WINDUP = 0.18;
+    const SUPERNOVA_RING_LIFE = 1;
+    const SUPERNOVA_PALETTE = [
+        [210, 40, 255],
+        [255, 45, 200],
+        [55, 150, 255],
+        [175, 70, 255],
+        [255, 90, 165],
+        [80, 210, 255],
+    ];
     const SPEED_KEYS = ["shipSpeed", "cometSpeed", "meteorSpeed", "neutronSpeed", "cargoSpeed"];
     const SPEED_MUL_MIN = 0;
     const SPEED_MUL_MAX = 10;
@@ -186,6 +199,8 @@
     const cometPointsSliderValue = document.getElementById("comet-points-slider-value");
     const neutronSlider = document.getElementById("neutron-slider");
     const neutronSliderValue = document.getElementById("neutron-slider-value");
+    const novaSlider = document.getElementById("nova-slider");
+    const novaSliderValue = document.getElementById("nova-slider-value");
     const settingsMenu = document.getElementById("settings-menu");
     const winOverlay = document.getElementById("win-overlay");
     const winMessage = document.getElementById("win-message");
@@ -351,6 +366,13 @@
         return 2;
     }
 
+    function defaultNovaCount(world) {
+        if (world >= 20000) return 3;
+        if (world >= 15000) return 2;
+        if (world >= 10000) return 2;
+        return 1;
+    }
+
     function clampCometCount(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(COMET_COUNT_MAX, Math.max(0, n)) : 0;
@@ -394,6 +416,11 @@
     function clampNeutronPairs(value) {
         const n = Math.round(Number(value));
         return Number.isFinite(n) ? Math.min(NEUTRON_PAIR_MAX, Math.max(0, n)) : defaultNeutronPairs(START_WORLD);
+    }
+
+    function clampNovaCount(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(SUPERNOVA_MAX, Math.max(0, n)) : defaultNovaCount(START_WORLD);
     }
 
     function rangeValueFromClientX(el, clientX) {
@@ -508,11 +535,14 @@
         state.spikeBalls = 0;
         state.cometCount = 0;
         state.neutronPairs = 0;
+        state.novaCount = 0;
     }
 
     function clearGiantHazards() {
         state.holes = [];
         state.neutrons = [];
+        state.novas = [];
+        state.novaRings = [];
         state.comets = [];
         state.meteors = [];
         state.drops = [];
@@ -560,6 +590,9 @@
             const neutronPairs = data.neutronPairs == null
                 ? defaultNeutronPairs(world)
                 : clampNeutronPairs(data.neutronPairs);
+            const novaCount = data.novaCount == null
+                ? defaultNovaCount(world)
+                : clampNovaCount(data.novaCount);
             const infiniteFuel = data.infiniteFuel === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             const speeds = speedsFrom(data);
@@ -591,6 +624,7 @@
                     cometCount,
                     cometPoints,
                     neutronPairs,
+                    novaCount,
                     infiniteFuel,
                     zoom,
                     ...speeds,
@@ -623,12 +657,13 @@
                 cometCount: giant ? 0 : cometCount,
                 cometPoints,
                 neutronPairs: giant ? 0 : neutronPairs,
+                novaCount: giant ? 0 : novaCount,
                 infiniteFuel,
                 zoom,
                 ...speeds,
             };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), infiniteFuel: false, zoom: 1, ...speedsFrom({}) };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, zoom: 1, ...speedsFrom({}) };
         }
     }
 
@@ -660,6 +695,7 @@
                 cometCount: state.cometCount,
                 cometPoints: state.cometPoints,
                 neutronPairs: state.neutronPairs,
+                novaCount: state.novaCount,
                 infiniteFuel: state.infiniteFuel,
                 zoom: state.zoom,
                 ...speedsFrom(state),
@@ -808,6 +844,7 @@
                 cometCount: state.cometCount,
                 cometPoints: state.cometPoints,
                 neutronPairs: state.neutronPairs,
+                novaCount: state.novaCount,
                 infiniteFuel: state.infiniteFuel,
                 ...speedsFrom(state),
                 neutrons: state.neutrons.map((pair) => ({
@@ -817,6 +854,12 @@
                     spin: pair.spin,
                     tilt: pair.tilt,
                     alive: pair.alive ? [pair.alive[0] !== false, pair.alive[1] !== false] : [true, true],
+                })),
+                novas: state.novas.map((nova) => ({
+                    x: nova.x,
+                    y: nova.y,
+                    r: nova.r,
+                    seed: nova.seed,
                 })),
             }));
         } catch {
@@ -839,6 +882,7 @@
             if (data.cometCount != null && Number(data.cometCount) !== state.cometCount) return null;
             if (data.cometPoints != null && Number(data.cometPoints) !== state.cometPoints) return null;
             if (data.neutronPairs != null && Number(data.neutronPairs) !== state.neutronPairs) return null;
+            if (data.novaCount != null && Number(data.novaCount) !== state.novaCount) return null;
             for (const key of SPEED_KEYS) {
                 if (data[key] != null && Number(data[key]) !== state[key]) return null;
             }
@@ -871,6 +915,13 @@
                     if (next) neutrons.push(next);
                 }
             }
+            const novas = [];
+            if (Array.isArray(data.novas)) {
+                for (const nova of data.novas) {
+                    const next = normalizeNova(nova);
+                    if (next) novas.push(next);
+                }
+            }
             const found = Math.max(0, Math.round(Number(data.found) || 0));
             const score = Math.max(0, Math.round(Number(data.score) || 0));
             const shipX = Number(data.shipX);
@@ -894,6 +945,8 @@
                 taken,
                 neutrons,
                 hasNeutrons: Array.isArray(data.neutrons),
+                novas,
+                hasNovas: Array.isArray(data.novas),
             };
         } catch {
             return null;
@@ -955,6 +1008,8 @@
         balls: [],
         holes: [],
         neutrons: [],
+        novas: [],
+        novaRings: [],
         nebulae: [],
         galaxies: [],
         comets: [],
@@ -997,6 +1052,9 @@
         neutronPairs: saved.neutronPairs == null
             ? defaultNeutronPairs(saved.world)
             : clampNeutronPairs(saved.neutronPairs),
+        novaCount: saved.novaCount == null
+            ? defaultNovaCount(saved.world)
+            : clampNovaCount(saved.novaCount),
         infiniteFuel: saved.infiniteFuel === true,
         zoom: clampZoom(saved.zoom == null ? 1 : saved.zoom),
         speed: 0,
@@ -1194,6 +1252,17 @@
         return false;
     }
 
+    function novaReach(nova) {
+        return (nova.r || SUPERNOVA_R) * 3.2 + 80;
+    }
+
+    function tooCloseToNovas(x, y, r) {
+        for (const nova of state.novas) {
+            if (Math.hypot(x - nova.x, y - nova.y) < r + novaReach(nova)) return true;
+        }
+        return false;
+    }
+
     function tooCloseToDrops(x, y, r, gap) {
         const pad = gap == null ? state.world * 0.22 : gap;
         for (const drop of state.drops) {
@@ -1288,6 +1357,45 @@
                 spin: rand(0, Math.PI * 2),
                 tilt: rand(0.32, 0.48),
                 alive: [true, true],
+            });
+        }
+    }
+
+    function novaCount() {
+        if (isGiantGame()) return 0;
+        if (isCustomGame()) return state.novaCount;
+        return defaultNovaCount(state.world);
+    }
+
+    function spawnNovas() {
+        state.novas = [];
+        state.novaRings = [];
+        const pad = 520;
+        const count = novaCount();
+        for (let i = 0; i < count; i += 1) {
+            const r = SUPERNOVA_R;
+            const minShip = r + 720;
+            let x = 0;
+            let y = 0;
+            let attempts = 0;
+            do {
+                x = rand(pad, state.world - pad);
+                y = rand(pad, state.world - pad);
+                attempts += 1;
+            } while (
+                (
+                    Math.hypot(x - state.shipX, y - state.shipY) < minShip
+                    || tooCloseToHoles(x, y, r * 2.2)
+                    || tooCloseToNeutrons(x, y, r * 2)
+                    || tooCloseToNovas(x, y, r * 2.4)
+                ) && attempts < 240
+            );
+            state.novas.push({
+                x,
+                y,
+                r,
+                seed: Math.random(),
+                boom: 0,
             });
         }
     }
@@ -1659,6 +1767,7 @@
     function spawnDecor() {
         spawnHoles();
         spawnNeutrons();
+        spawnNovas();
         spawnNebulae();
         spawnGalaxies();
         spawnComets();
@@ -1680,7 +1789,7 @@
             y = rand(maxBall, state.world - maxBall);
             attempts += 1;
         } while (
-            (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r) || tooCloseToNeutrons(x, y, r)) &&
+            (Math.hypot(x - state.shipX, y - state.shipY) < minDist || tooCloseToBalls(x, y, r) || tooCloseToHoles(x, y, r) || tooCloseToNeutrons(x, y, r) || tooCloseToNovas(x, y, r)) &&
             attempts < 200
         );
 
@@ -1729,6 +1838,7 @@
                 || tooCloseToBalls(x, y, r)
                 || tooCloseToHoles(x, y, r)
                 || tooCloseToNeutrons(x, y, r)
+                || tooCloseToNovas(x, y, r)
                 || tooCloseToDrops(x, y, r, attempts < 160 ? far : near)
             ) && attempts < 280
         );
@@ -1772,6 +1882,20 @@
             spin: Number.isFinite(Number(pair.spin)) ? Number(pair.spin) : 0,
             tilt: Number.isFinite(tilt) ? Math.max(0.2, Math.min(0.7, tilt)) : 0.4,
             alive,
+        };
+    }
+
+    function normalizeNova(nova) {
+        const x = Number(nova && nova.x);
+        const y = Number(nova && nova.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const r = Number(nova.r);
+        return {
+            x,
+            y,
+            r: Number.isFinite(r) && r > 0 ? r : SUPERNOVA_R,
+            seed: Number.isFinite(Number(nova.seed)) ? Number(nova.seed) : Math.random(),
+            boom: 0,
         };
     }
 
@@ -1869,6 +1993,7 @@
             cometCount: 0,
             cometPoints: COMET_POINTS_START,
             neutronPairs: defaultNeutronPairs(START_WORLD),
+            novaCount: defaultNovaCount(START_WORLD),
             infiniteFuel: false,
             zoom: 1,
             ...speedsFrom({}),
@@ -1888,6 +2013,7 @@
             cometCount: 0,
             cometPoints: COMET_POINTS_START,
             neutronPairs: 0,
+            novaCount: 0,
             infiniteFuel: false,
             zoom: 1,
             ...speedsFrom({}),
@@ -1909,7 +2035,8 @@
         const restart = next.world !== state.world
             || next.ballCount !== state.ballCount
             || next.spikeBalls !== state.spikeBalls
-            || next.neutronPairs !== state.neutronPairs;
+            || next.neutronPairs !== state.neutronPairs
+            || next.novaCount !== state.novaCount;
         Object.assign(state, next);
         state.difficulty = "custom";
         syncHazardFlags();
@@ -1950,6 +2077,7 @@
                 state.meteorCount = 1;
                 state.spikeBalls = Math.round(preset.ballCount * SPIKE_RATE);
                 state.neutronPairs = defaultNeutronPairs(preset.world);
+                state.novaCount = defaultNovaCount(preset.world);
             }
         }
         saveSettings();
@@ -2083,6 +2211,8 @@
         if (cometPointsSliderValue) cometPointsSliderValue.textContent = formatCometPoints(state.cometPoints);
         if (neutronSlider) neutronSlider.value = String(state.neutronPairs);
         if (neutronSliderValue) neutronSliderValue.textContent = String(state.neutronPairs);
+        if (novaSlider) novaSlider.value = String(state.novaCount);
+        if (novaSliderValue) novaSliderValue.textContent = String(state.novaCount);
         for (const key of SPEED_KEYS) {
             const slider = document.getElementById(`${key.replace("Speed", "-speed")}-slider`);
             const label = document.getElementById(`${key.replace("Speed", "-speed")}-slider-value`);
@@ -2105,6 +2235,7 @@
             else if (key === "comets") el.value = String(state.cometCount);
             else if (key === "cometPoints") el.value = String(state.cometPoints);
             else if (key === "neutrons") el.value = String(state.neutronPairs);
+            else if (key === "novas") el.value = String(state.novaCount);
             else if (SPEED_KEYS.includes(key)) el.value = String(state[key]);
             const label = document.querySelector(`[data-pg-value="${key}"]`);
             if (!label) continue;
@@ -2116,6 +2247,7 @@
             else if (key === "comets") label.textContent = String(state.cometCount);
             else if (key === "cometPoints") label.textContent = formatCometPoints(state.cometPoints);
             else if (key === "neutrons") label.textContent = String(state.neutronPairs);
+            else if (key === "novas") label.textContent = String(state.novaCount);
             else if (SPEED_KEYS.includes(key)) label.textContent = formatSpeedMul(state[key]);
         }
     }
@@ -2455,6 +2587,110 @@
         maybeWin();
     }
 
+    function novaBlastR() {
+        const n = Math.max(1, state.ballCount);
+        return Math.round(state.world * Math.sqrt(20 / (Math.PI * n)));
+    }
+
+    function novaScale(nova) {
+        if (!(nova.boom > 0)) return 1;
+        const t = 1 - nova.boom / SUPERNOVA_WINDUP;
+        return 1 + t * t * (SUPERNOVA_EXPAND - 1);
+    }
+
+    function mixNovaRgb(now, seed) {
+        const colors = SUPERNOVA_PALETTE;
+        const t = now / 880 + seed * 7.3;
+        const n = colors.length;
+        const x = ((t % n) + n) % n;
+        const i = Math.floor(x);
+        const f = x - i;
+        const s = f * f * (3 - 2 * f);
+        const a = colors[i];
+        const b = colors[(i + 1) % n];
+        return {
+            r: Math.round(a[0] + (b[0] - a[0]) * s),
+            g: Math.round(a[1] + (b[1] - a[1]) * s),
+            b: Math.round(a[2] + (b[2] - a[2]) * s),
+        };
+    }
+
+    function igniteNova(nova) {
+        if (!nova || nova.boom > 0) return;
+        nova.boom = SUPERNOVA_WINDUP;
+    }
+
+    function detonateNova(nova) {
+        const at = state.novas.indexOf(nova);
+        if (at < 0) return;
+        state.novas.splice(at, 1);
+        const rgb = mixNovaRgb(performance.now(), nova.seed);
+        const blast = novaBlastR();
+        const blast2 = blast * blast;
+        state.novaRings.push({
+            x: nova.x,
+            y: nova.y,
+            life: 1,
+            blast,
+            r: rgb.r,
+            g: rgb.g,
+            b: rgb.b,
+        });
+        for (let i = state.balls.length - 1; i >= 0; i -= 1) {
+            const ball = state.balls[i];
+            const dx = ball.x - nova.x;
+            const dy = ball.y - nova.y;
+            if (dx * dx + dy * dy > blast2) continue;
+            if (ball.hasSpikes) {
+                state.pops.push({
+                    x: ball.x,
+                    y: ball.y,
+                    r: ball.r,
+                    color: ball.color,
+                    life: 1,
+                });
+                state.balls.splice(i, 1);
+                continue;
+            }
+            collectPlanet(ball);
+            state.balls.splice(i, 1);
+        }
+        for (const other of state.novas) {
+            const dx = other.x - nova.x;
+            const dy = other.y - nova.y;
+            if (dx * dx + dy * dy <= blast2) igniteNova(other);
+        }
+        playHit();
+        playCollide();
+        saveSettings();
+        updateScoreHud();
+        savePlay();
+        maybeWin();
+    }
+
+    function updateNovas(dt, paused) {
+        if (paused) return;
+        for (let i = state.novas.length - 1; i >= 0; i -= 1) {
+            const nova = state.novas[i];
+            if (!(nova.boom > 0)) continue;
+            nova.boom -= dt;
+            if (nova.boom <= 0) detonateNova(nova);
+        }
+    }
+
+    function collectNovas() {
+        for (const nova of state.novas) {
+            if (nova.boom > 0) continue;
+            const reach = SHIP_RADIUS + nova.r * novaScale(nova) * 1.12;
+            const dx = nova.x - state.shipX;
+            const dy = nova.y - state.shipY;
+            if (dx * dx + dy * dy <= reach * reach) {
+                igniteNova(nova);
+                return;
+            }
+        }
+    }
+
     function collectNeutrons(now) {
         const hitR = SHIP_RADIUS + NEUTRON_R * 1.7;
         const hitR2 = hitR * hitR;
@@ -2474,6 +2710,7 @@
 
     function collectIfHit(now) {
         collectDrops();
+        collectNovas();
         collectNeutrons(now);
         // Runs against every ball in the world each frame, so compare squared
         // distances and hoist the ship radius out of the loop.
@@ -4364,6 +4601,89 @@
         }
     }
 
+    function drawNova(nova, cam, now) {
+        const rgb = mixNovaRgb(now, nova.seed);
+        const scale = novaScale(nova);
+        const r = nova.r * scale;
+        const x = nova.x - cam.x;
+        const y = nova.y - cam.y;
+        if (offView(x, y, r * 6.5, cam)) return;
+        const { r: cr, g, b } = rgb;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.globalCompositeOperation = "lighter";
+        const glow = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r * 5.4);
+        glow.addColorStop(0, `rgba(255, 236, 255, ${0.95})`);
+        glow.addColorStop(0.18, `rgba(${cr}, ${g}, ${b}, 0.78)`);
+        glow.addColorStop(0.48, `rgba(${cr}, ${g}, ${b}, 0.28)`);
+        glow.addColorStop(1, `rgba(${cr}, ${g}, ${b}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 5.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.translate(x, y);
+        const fill = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.08, 0, 0, r);
+        fill.addColorStop(0, `rgb(${Math.min(255, cr + 70)}, ${Math.min(255, g + 50)}, ${Math.min(255, b + 70)})`);
+        fill.addColorStop(0.42, `rgb(${cr}, ${g}, ${b})`);
+        fill.addColorStop(1, `rgb(${Math.max(0, cr - 70)}, ${Math.max(0, g - 80)}, ${Math.max(0, b - 40)})`);
+        ctx.shadowColor = `rgb(${cr}, ${g}, ${b})`;
+        ctx.shadowBlur = 14 + 18 * scale;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.clip();
+        const limb = ctx.createRadialGradient(0, 0, r * 0.55, 0, 0, r);
+        limb.addColorStop(0, "rgba(0, 0, 0, 0)");
+        limb.addColorStop(1, "rgba(20, 0, 40, 0.28)");
+        ctx.fillStyle = limb;
+        ctx.fillRect(-r, -r, r * 2, r * 2);
+        ctx.restore();
+    }
+
+    function drawNovas(cam, now) {
+        for (const nova of state.novas) drawNova(nova, cam, now);
+    }
+
+    function drawNovaRings(cam, dt) {
+        if (!state.novaRings.length) return;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = state.novaRings.length - 1; i >= 0; i -= 1) {
+            const ring = state.novaRings[i];
+            ring.life -= dt / SUPERNOVA_RING_LIFE;
+            if (ring.life <= 0) {
+                state.novaRings.splice(i, 1);
+                continue;
+            }
+            const t = 1 - ring.life;
+            const ease = 1 - (1 - t) * (1 - t);
+            const rad = ring.blast * (0.06 + 0.94 * ease);
+            const x = ring.x - cam.x;
+            const y = ring.y - cam.y;
+            if (offView(x, y, rad + 90, cam)) continue;
+            const fade = ring.life * ring.life;
+            ctx.shadowColor = `rgba(${ring.r}, ${ring.g}, ${ring.b}, ${0.9 * fade})`;
+            ctx.shadowBlur = 22 + 48 * t;
+            ctx.strokeStyle = `rgba(${ring.r}, ${ring.g}, ${ring.b}, ${0.62 * fade})`;
+            ctx.lineWidth = Math.max(12, 46 * ring.life);
+            ctx.beginPath();
+            ctx.arc(x, y, rad, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = `rgba(255, 220, 255, ${0.4 * fade})`;
+            ctx.lineWidth = Math.max(5, 16 * ring.life);
+            ctx.beginPath();
+            ctx.arc(x, y, rad * 0.9, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
     function drawComets(cam) {
         ctx.save();
         ctx.beginPath();
@@ -4657,6 +4977,21 @@
             }
         }
 
+        for (const nova of state.novas) {
+            const p = toMinimap(nova.x, nova.y, size, scale);
+            const rgb = mixNovaRgb(now, nova.seed);
+            const r = Math.max(4.2 * mark, nova.r * scale * 0.55 * novaScale(nova));
+            if (p.x < -r * 3 || p.y < -r * 3 || p.x > size + r * 3 || p.y > size + r * 3) continue;
+            miniCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.32)`;
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r * 2.3, 0, Math.PI * 2);
+            miniCtx.fill();
+            miniCtx.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            miniCtx.beginPath();
+            miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            miniCtx.fill();
+        }
+
         miniCtx.save();
         miniCtx.beginPath();
         miniCtx.rect(originX, originY, worldPx, worldPx);
@@ -4766,6 +5101,7 @@
             moving = moveShip(dt);
             moving = applyHoleGravity(dt, holeHold) || moving;
             collectIfHit(now);
+            updateNovas(dt, paused);
         }
         updateEngine(moving);
         const cam = camera();
@@ -4777,9 +5113,11 @@
         drawSpace(cam, now);
         drawHoles(cam, now);
         drawNeutrons(cam, now);
+        drawNovas(cam, now);
         drawComets(cam);
         drawMeteors(cam);
         for (const ball of state.balls) drawBall(ball, cam, now);
+        drawNovaRings(cam, paused ? 0 : dt);
         drawDrops(cam, now);
         drawPops(cam, dt);
         drawFloaters(cam, dt);
@@ -5014,6 +5352,8 @@
         state.balls = [];
         state.holes = [];
         state.neutrons = [];
+        state.novas = [];
+        state.novaRings = [];
         state.nebulae = [];
         state.galaxies = [];
         state.comets = [];
@@ -5204,6 +5544,7 @@
                 if (key === "comets" && label) label.textContent = el.value;
                 if (key === "cometPoints" && label) label.textContent = formatCometPoints(el.value);
                 if (key === "neutrons" && label) label.textContent = el.value;
+                if (key === "novas" && label) label.textContent = el.value;
                 if (SPEED_KEYS.includes(key) && label) label.textContent = formatSpeedMul(el.value);
                 if (key === "zoom") setZoomFromSlider(el.value);
                 if (key === "volume") {
@@ -5309,6 +5650,18 @@
                         return;
                     }
                     state.neutronPairs = next;
+                    markTuned();
+                    saveSettings();
+                    restartGame();
+                    return;
+                }
+                if (key === "novas") {
+                    const next = clampNovaCount(el.value);
+                    if (next === state.novaCount && isCustomGame()) {
+                        syncPlaygroundRanges();
+                        return;
+                    }
+                    state.novaCount = next;
                     markTuned();
                     saveSettings();
                     restartGame();
@@ -5650,6 +6003,20 @@
             });
         }
 
+        if (novaSlider) {
+            novaSlider.addEventListener("input", () => {
+                if (novaSliderValue) novaSliderValue.textContent = novaSlider.value;
+            });
+            novaSlider.addEventListener("change", () => {
+                const next = clampNovaCount(novaSlider.value);
+                if (next === state.novaCount && isCustomGame()) return;
+                state.novaCount = next;
+                markTuned();
+                saveSettings();
+                restartGame();
+            });
+        }
+
         for (const key of SPEED_KEYS) {
             const id = `${key.replace(/Speed$/, "-speed")}-slider`;
             const slider = document.getElementById(id);
@@ -5936,6 +6303,7 @@
         shownSecond = -1;
         spawnDecor();
         if (play.hasNeutrons && !isGiantGame()) state.neutrons = play.neutrons;
+        if (play.hasNovas && !isGiantGame()) state.novas = play.novas;
         if (isGiantGame()) clearGiantHazards();
         if (play.won) {
             recordWinScore();

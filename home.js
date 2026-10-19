@@ -144,6 +144,7 @@
         neutronSpeed: SPEED_MUL_START,
         cargoSpeed: SPEED_MUL_START,
         infiniteFuel: false,
+        infiniteHunt: false,
         zoom: 1,
     };
 
@@ -903,6 +904,7 @@
             }
             applyGiantHazards();
             state.infiniteFuel = data.infiniteFuel === true;
+            state.infiniteHunt = data.infiniteHunt === true;
             state.zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
         } catch {
             // Keep defaults.
@@ -939,6 +941,7 @@
                 neutronPairs: state.neutronPairs,
                 novaCount: state.novaCount,
                 infiniteFuel: state.infiniteFuel,
+                infiniteHunt: state.infiniteHunt === true,
                 zoom: state.zoom,
                 ...speedsFrom(state),
             }));

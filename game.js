@@ -508,6 +508,10 @@
         return isCustomGame() || isGiantGame();
     }
 
+    function isInfiniteHunt() {
+        return PLAYGROUND && state.infiniteHunt;
+    }
+
     function markTuned() {
         if (isGiantGame()) return;
         state.difficulty = "custom";
@@ -598,6 +602,7 @@
                 ? defaultNovaCount(world)
                 : clampNovaCount(data.novaCount);
             const infiniteFuel = data.infiniteFuel === true;
+            const infiniteHunt = data.infiniteHunt === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             const speeds = speedsFrom(data);
             if (difficulty && difficulty !== "custom" && difficulty !== "bonus") {
@@ -630,6 +635,7 @@
                     neutronPairs,
                     novaCount,
                     infiniteFuel,
+                    infiniteHunt,
                     zoom,
                     ...speeds,
                 };
@@ -663,11 +669,12 @@
                 neutronPairs: giant ? 0 : neutronPairs,
                 novaCount: giant ? 0 : novaCount,
                 infiniteFuel,
+                infiniteHunt,
                 zoom,
                 ...speeds,
             };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, zoom: 1, ...speedsFrom({}) };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, infiniteHunt: false, zoom: 1, ...speedsFrom({}) };
         }
     }
 
@@ -701,6 +708,7 @@
                 neutronPairs: state.neutronPairs,
                 novaCount: state.novaCount,
                 infiniteFuel: state.infiniteFuel,
+                infiniteHunt: state.infiniteHunt === true,
                 zoom: state.zoom,
                 ...speedsFrom(state),
             }));
@@ -1060,6 +1068,7 @@
             ? defaultNovaCount(saved.world)
             : clampNovaCount(saved.novaCount),
         infiniteFuel: saved.infiniteFuel === true,
+        infiniteHunt: saved.infiniteHunt === true,
         zoom: clampZoom(saved.zoom == null ? 1 : saved.zoom),
         speed: 0,
         boost: false,
@@ -1824,6 +1833,18 @@
         spawnDrops();
     }
 
+    function refillInfiniteBalls() {
+        if (!isInfiniteHunt()) return;
+        let live = 0;
+        for (const ball of state.balls) {
+            if (!ball.hasSpikes) live += 1;
+        }
+        while (live < state.ballCount) {
+            placeBall(false);
+            live += 1;
+        }
+    }
+
     function placeShieldDrop() {
         const r = SHIELD_DROP_R;
         const minShip = SHIP_RADIUS + r + SPAWN_CLEARANCE + 80;
@@ -2122,7 +2143,7 @@
         if (storePoints) storePoints.textContent = formatScore(state.lifetime);
         foundEl.textContent = String(state.found);
         if (scoreEl) scoreEl.textContent = formatScore(state.score);
-        goalEl.textContent = String(state.goal);
+        goalEl.textContent = isInfiniteHunt() ? "∞" : String(state.goal);
     }
 
     function updateHud() {
@@ -2186,6 +2207,9 @@
         for (const button of document.querySelectorAll(".fuel-btn")) {
             button.classList.toggle("is-on", (button.dataset.fuel === "on") === state.infiniteFuel);
         }
+        for (const button of document.querySelectorAll(".infinite-btn")) {
+            button.classList.toggle("is-on", (button.dataset.infinite === "on") === isInfiniteHunt());
+        }
         if (volumeSlider) volumeSlider.value = String(state.volume);
         if (volumeSliderValue) volumeSliderValue.textContent = String(state.volume);
         syncZoomControls();
@@ -2203,8 +2227,8 @@
     }
 
     function syncCustomHazards() {
-        const tune = isTunableGame();
-        document.body.classList.toggle("giant-mode", isGiantGame());
+        const tune = isTunableGame() || PLAYGROUND;
+        document.body.classList.toggle("giant-mode", isGiantGame() && !PLAYGROUND);
         for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !tune);
         for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", tune);
         if (meteorSlider) meteorSlider.value = String(state.meteorCount);
@@ -2300,7 +2324,7 @@
     }
 
     function finishTrial() {
-        if (state.won || !state.trial) return;
+        if (isInfiniteHunt() || state.won || !state.trial) return;
         state.won = true;
         pauseTimer(performance.now());
         keys.clear();
@@ -2314,8 +2338,25 @@
         savePlay();
     }
 
+    function setInfiniteHunt(on) {
+        const next = Boolean(on);
+        if (next === state.infiniteHunt) return;
+        state.infiniteHunt = next;
+        if (next) {
+            state.trial = false;
+            if (state.won) {
+                state.won = false;
+                if (winOverlay) winOverlay.classList.add("hidden");
+                resumeTimer(performance.now());
+            }
+            refillInfiniteBalls();
+        }
+        saveSettings();
+        updateHud();
+    }
+
     function maybeWin() {
-        if (state.trial || state.won || state.found < state.goal) return;
+        if (isInfiniteHunt() || state.trial || state.won || state.found < state.goal) return;
         state.won = true;
         pauseTimer(performance.now());
         keys.clear();
@@ -2590,6 +2631,7 @@
         saveSettings();
         updateScoreHud();
         savePlay();
+        refillInfiniteBalls();
         maybeWin();
     }
 
@@ -2685,6 +2727,7 @@
         saveSettings();
         updateScoreHud();
         savePlay();
+        refillInfiniteBalls();
         maybeWin();
     }
 
@@ -2753,6 +2796,7 @@
                 playHit();
                 updateScoreHud();
                 savePlay();
+                refillInfiniteBalls();
                 maybeWin();
             }
         }
@@ -5539,6 +5583,7 @@
         if (trialToggle) {
             trialToggle.addEventListener("click", () => {
                 state.trial = !state.trial;
+                if (state.trial) state.infiniteHunt = false;
                 saveSettings();
                 resetTimer(performance.now(), !state.menuOpen && !state.won);
                 updateHud();
@@ -5550,9 +5595,15 @@
                 if (!TRIAL_MS.includes(next)) return;
                 state.trial = true;
                 state.trialMs = next;
+                state.infiniteHunt = false;
                 saveSettings();
                 resetTimer(performance.now(), !state.menuOpen && !state.won);
                 updateHud();
+            });
+        }
+        for (const button of document.querySelectorAll(".infinite-btn")) {
+            button.addEventListener("click", () => {
+                setInfiniteHunt(button.dataset.infinite === "on");
             });
         }
         for (const el of document.querySelectorAll("[data-pg-range]")) {

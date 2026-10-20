@@ -149,7 +149,7 @@
     };
     const PALETTE_NAMES = Object.keys(PALETTES);
     const SKY_NAMES = ["stars", "galaxies"];
-    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1", "papa", "jj", "firefly", "firefly-2"];
+    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1", "papa", "jj", "firefly", "firefly-2", "solar-system"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.webp",
         cat: "public/images/ships/cat.webp",
@@ -166,6 +166,7 @@
         jj: "public/images/ships/jj.webp",
         firefly: "public/images/ships/firefly.webp",
         "firefly-2": "public/images/ships/firefly-2.webp",
+        "solar-system": "public/images/ships/solar-system-ship.png",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
     const SHIP_COST_START = 5000;
@@ -1037,6 +1038,7 @@
         shipX: saved.world / 2,
         shipY: saved.world / 2,
         heading: -Math.PI / 2,
+        face: 1,
         balls: [],
         holes: [],
         neutrons: [],
@@ -2988,6 +2990,7 @@
         const steering = vx !== 0 || vy !== 0;
         let target = 0;
         if (steering) {
+            if (vx !== 0) state.face = vx < 0 ? -1 : 1;
             const length = Math.hypot(vx, vy);
             vx /= length;
             vy /= length;
@@ -3048,6 +3051,8 @@
         state.shipY = Math.min(max, Math.max(min, y));
         state.speed = 0;
         state.heading = rand(0, Math.PI * 2);
+        const side = Math.cos(state.heading);
+        if (Math.abs(side) > 0.01) state.face = side < 0 ? -1 : 1;
     }
 
     function swallowShip() {
@@ -4159,8 +4164,13 @@
         return img;
     }
 
+    function shipFace() {
+        return state.face < 0 ? -1 : 1;
+    }
+
     function drawClassicShip(moving) {
-        ctx.rotate(state.heading + Math.PI / 2);
+        ctx.scale(shipFace(), 1);
+        ctx.rotate(Math.PI / 2);
         if (moving) {
             const flicker = 0.7 + Math.random() * 0.3;
             ctx.fillStyle = `rgba(120, 200, 255, ${flicker})`;
@@ -4187,7 +4197,7 @@
     }
 
     function drawImageShip(img, moving) {
-        ctx.rotate(state.heading);
+        ctx.scale(shipFace(), 1);
         const pixel = SHIP_PIXEL.has(state.ship);
         const width = pixel ? 64 : 88;
         const height = width * (img.naturalHeight / img.naturalWidth);
@@ -5359,7 +5369,8 @@
         const cy = size / 2;
         miniCtx.save();
         miniCtx.translate(cx, cy);
-        miniCtx.rotate(state.heading + Math.PI / 2);
+        miniCtx.scale(shipFace(), 1);
+        miniCtx.rotate(Math.PI / 2);
         miniCtx.fillStyle = "#ffffff";
         miniCtx.beginPath();
         miniCtx.moveTo(0, -8 * mark);
@@ -5653,6 +5664,7 @@
         state.shipX = center;
         state.shipY = center;
         state.heading = -Math.PI / 2;
+        state.face = 1;
         state.speed = 0;
         state.boostFuel = 1;
         state.balls = [];
@@ -6601,6 +6613,8 @@
         state.shipX = Math.min(max, Math.max(min, play.shipX));
         state.shipY = Math.min(max, Math.max(min, play.shipY));
         state.heading = play.heading;
+        const side = Math.cos(play.heading);
+        if (Math.abs(side) > 0.01) state.face = side < 0 ? -1 : 1;
         state.balls = play.balls;
         state.found = play.found;
         state.score = play.score;

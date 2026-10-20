@@ -48,7 +48,7 @@
         { r: 255, g: 206, b: 140 },
         { r: 200, g: 130, b: 220 },
     ];
-    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1", "papa", "jj", "firefly", "firefly-2", "solar-system"];
+    const SHIP_IDS = ["classic", "ship-1", "cat", "wolf", "cube", "hello-kitty", "ufo", "harlie", "selah", "guitar", "selah-harlie", "harlie-ship-1", "papa", "jj", "firefly", "firefly-2", "solar-system", "harlie-ship-2"];
     const SHIP_SRC = {
         "ship-1": "public/images/ships/ship-1.webp",
         cat: "public/images/ships/cat.webp",
@@ -66,6 +66,7 @@
         firefly: "public/images/ships/firefly.webp",
         "firefly-2": "public/images/ships/firefly-2.webp",
         "solar-system": "public/images/ships/solar-system-ship.png",
+        "harlie-ship-2": "public/images/ships/harlie-ship-2.png",
     };
     const CLASSIC_SHIP_SVG = `<svg viewBox="0 0 32 40" aria-hidden="true"><path fill="#dce7ff" d="M16 2 30 34 16 26 2 34Z"/><ellipse fill="#6aa2ff" cx="16" cy="18" rx="4" ry="5.5"/></svg>`;
     const SHIP_COST_START = 5000;

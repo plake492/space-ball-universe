@@ -170,6 +170,16 @@
         "harlie-ship-2": "public/images/ships/harlie-ship-2.png",
     };
     const SHIP_PIXEL = new Set(["cat", "wolf", "ufo"]);
+    const SHIP_AIM_X = "x";
+    const SHIP_AIM_CARDINAL = "cardinal";
+    const SHIP_AIM_HEADING = "heading";
+    // Per-ship facing. "x" flips left/right only. "cardinal" snaps to
+    // up/down/left/right. "heading" (default) rotates to travel direction.
+    const SHIP_AIM = {
+        ufo: SHIP_AIM_X,
+        "solar-system": SHIP_AIM_X,
+        "harlie-ship-2": SHIP_AIM_X,
+    };
     const SHIP_COST_START = 5000;
     const SHIP_COST_GROW = 1.5;
     const shipImages = {};
@@ -4169,9 +4179,33 @@
         return state.face < 0 ? -1 : 1;
     }
 
+    function shipAim(id) {
+        return SHIP_AIM[id || state.ship] || SHIP_AIM_HEADING;
+    }
+
+    function shipAimAngle() {
+        const mode = shipAim();
+        if (mode === SHIP_AIM_X) return 0;
+        const heading = Number.isFinite(state.heading) ? state.heading : -Math.PI / 2;
+        if (mode !== SHIP_AIM_CARDINAL) return heading;
+        const vx = Math.cos(heading);
+        const vy = Math.sin(heading);
+        if (Math.abs(vx) >= Math.abs(vy)) return vx < 0 ? Math.PI : 0;
+        return vy < 0 ? -Math.PI / 2 : Math.PI / 2;
+    }
+
+    function applyShipAim(artFacesUp) {
+        const mode = shipAim();
+        if (mode === SHIP_AIM_X) {
+            ctx.scale(shipFace(), 1);
+            if (artFacesUp) ctx.rotate(Math.PI / 2);
+            return;
+        }
+        ctx.rotate(shipAimAngle() + (artFacesUp ? Math.PI / 2 : 0));
+    }
+
     function drawClassicShip(moving) {
-        ctx.scale(shipFace(), 1);
-        ctx.rotate(Math.PI / 2);
+        applyShipAim(true);
         if (moving) {
             const flicker = 0.7 + Math.random() * 0.3;
             ctx.fillStyle = `rgba(120, 200, 255, ${flicker})`;
@@ -4198,7 +4232,7 @@
     }
 
     function drawImageShip(img, moving) {
-        ctx.scale(shipFace(), 1);
+        applyShipAim(false);
         const pixel = SHIP_PIXEL.has(state.ship);
         const width = pixel ? 64 : 88;
         const height = width * (img.naturalHeight / img.naturalWidth);
@@ -5370,8 +5404,12 @@
         const cy = size / 2;
         miniCtx.save();
         miniCtx.translate(cx, cy);
-        miniCtx.scale(shipFace(), 1);
-        miniCtx.rotate(Math.PI / 2);
+        if (shipAim() === SHIP_AIM_X) {
+            miniCtx.scale(shipFace(), 1);
+            miniCtx.rotate(Math.PI / 2);
+        } else {
+            miniCtx.rotate(shipAimAngle() + Math.PI / 2);
+        }
         miniCtx.fillStyle = "#ffffff";
         miniCtx.beginPath();
         miniCtx.moveTo(0, -8 * mark);

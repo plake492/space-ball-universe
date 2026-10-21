@@ -36,6 +36,7 @@
     const BONUS_MUL_MIN = 2;
     const BONUS_MUL_MAX = 126;
     const BONUS_MUL_START = 2;
+    const BONUS_COUNT_MAX = 1000;
     const SETTINGS_KEY = "harlie-space-settings";
     const PLAY_KEY = "harlie-space-play";
     const BOARD_KEY = "harlie-space-board";
@@ -152,6 +153,7 @@
         infiniteFuel: false,
         infiniteHunt: false,
         bonusMul: BONUS_MUL_START,
+        bonusBalls: 0,
         zoom: 1,
     };
 
@@ -558,6 +560,11 @@
         return Number.isFinite(n) ? Math.min(SPIKE_COUNT_MAX, Math.max(0, n)) : Math.round(START_BALLS * SPIKE_RATE);
     }
 
+    function clampBonusBalls(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(BONUS_COUNT_MAX, Math.max(0, n)) : 0;
+    }
+
     function defaultNeutronPairs(world) {
         if (world >= 20000) return 5;
         if (world >= 15000) return 4;
@@ -804,6 +811,7 @@
             ballCount: START_BALLS,
             goal: START_GOAL,
             spikeBalls: Math.round(START_BALLS * SPIKE_RATE),
+            bonusBalls: 0,
             spikes: true,
             meteorCount: 1,
             meteorOn: true,
@@ -960,6 +968,7 @@
             state.infiniteHunt = data.infiniteHunt === true;
             state.zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             state.bonusMul = data.bonusMul == null ? BONUS_MUL_START : clampBonusMul(data.bonusMul);
+            state.bonusBalls = data.bonusBalls == null ? 0 : clampBonusBalls(data.bonusBalls);
         } catch {
             // Keep defaults.
         }
@@ -998,6 +1007,7 @@
                 infiniteHunt: state.infiniteHunt === true,
                 zoom: state.zoom,
                 bonusMul: bonusMul(),
+                bonusBalls: clampBonusBalls(state.bonusBalls),
                 ...speedsFrom(state),
             }));
         } catch {

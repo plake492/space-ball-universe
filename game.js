@@ -23,6 +23,7 @@
     const BONUS_MUL_MIN = 2;
     const BONUS_MUL_MAX = 126;
     const BONUS_MUL_START = 2;
+    const BONUS_COUNT_MAX = 1000;
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
@@ -414,6 +415,11 @@
         return Number.isFinite(n) ? Math.min(SPIKE_COUNT_MAX, Math.max(0, n)) : Math.round(START_BALLS * SPIKE_RATE);
     }
 
+    function clampBonusBalls(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(BONUS_COUNT_MAX, Math.max(0, n)) : 0;
+    }
+
     function defaultNeutronPairs(world) {
         if (world >= 20000) return 5;
         if (world >= 15000) return 4;
@@ -555,6 +561,10 @@
         return state.difficulty === "bonus";
     }
 
+    function isBonusBall(ball) {
+        return isGiantGame() || Boolean(ball && ball.hasBonus);
+    }
+
     function isTunableGame() {
         return isCustomGame() || isGiantGame();
     }
@@ -682,6 +692,7 @@
             const infiniteHunt = data.infiniteHunt === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
             const bonusMulValue = data.bonusMul == null ? BONUS_MUL_START : clampBonusMul(data.bonusMul);
+            const bonusBallsValue = data.bonusBalls == null ? 0 : clampBonusBalls(data.bonusBalls);
             const speeds = speedsFrom(data);
             if (difficulty && difficulty !== "custom" && difficulty !== "bonus") {
                 const preset = DIFFICULTIES[difficulty];
@@ -716,6 +727,7 @@
                     infiniteHunt,
                     zoom,
                     bonusMul: bonusMulValue,
+                    bonusBalls: bonusBallsValue,
                     ...speeds,
                 };
             }
@@ -751,10 +763,11 @@
                 infiniteHunt,
                 zoom,
                 bonusMul: bonusMulValue,
+                bonusBalls: bonusBallsValue,
                 ...speeds,
             };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, infiniteHunt: false, zoom: 1, bonusMul: BONUS_MUL_START, ...speedsFrom({}) };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, infiniteHunt: false, zoom: 1, bonusMul: BONUS_MUL_START, bonusBalls: 0, ...speedsFrom({}) };
         }
     }
 
@@ -791,6 +804,7 @@
                 infiniteHunt: state.infiniteHunt === true,
                 zoom: state.zoom,
                 bonusMul: bonusMul(),
+                bonusBalls: clampBonusBalls(state.bonusBalls),
                 ...speedsFrom(state),
             }));
         } catch {
@@ -832,9 +846,10 @@
             litY: Number.isFinite(Number(ball.litY)) ? Math.max(-0.6, Math.min(0.6, Number(ball.litY))) : undefined,
             pulseMs: Number(ball.pulseMs) || rand(1000, 5000),
             pulseOffset: Number(ball.pulseOffset) || rand(0, Math.PI * 2),
-            hasRings: Boolean(ball.hasRings) && !ball.hasSpikes,
+            hasRings: Boolean(ball.hasRings) && !ball.hasSpikes && !ball.hasBonus && !isGiantGame(),
             ringTilt: Number.isFinite(Number(ball.ringTilt)) ? Number(ball.ringTilt) : 0,
-            hasSpikes: Boolean(ball.hasSpikes),
+            hasSpikes: Boolean(ball.hasSpikes) && !isGiantGame(),
+            hasBonus: Boolean(ball.hasBonus) || isGiantGame(),
             spikeCount: Math.max(8, Math.min(16, Math.round(Number(ball.spikeCount) || 12))),
             spikeSpin: Number.isFinite(Number(ball.spikeSpin)) ? Number(ball.spikeSpin) : 0,
         });
@@ -895,6 +910,7 @@
                     hasRings: ball.hasRings,
                     ringTilt: ball.ringTilt,
                     hasSpikes: ball.hasSpikes,
+                    hasBonus: Boolean(ball.hasBonus),
                     spikeCount: ball.spikeCount,
                     spikeSpin: ball.spikeSpin,
                 })),
@@ -925,6 +941,7 @@
                     hasRings: ball.hasRings,
                     ringTilt: ball.ringTilt,
                     hasSpikes: false,
+                    hasBonus: Boolean(ball.hasBonus),
                     spikeCount: ball.spikeCount,
                     spikeSpin: ball.spikeSpin,
                 })),
@@ -1171,6 +1188,7 @@
         infiniteHunt: saved.infiniteHunt === true,
         zoom: clampZoom(saved.zoom == null ? 1 : saved.zoom),
         bonusMul: saved.bonusMul == null ? BONUS_MUL_START : clampBonusMul(saved.bonusMul),
+        bonusBalls: saved.bonusBalls == null ? 0 : clampBonusBalls(saved.bonusBalls),
         speed: 0,
         boost: false,
         boostFuel: 1,
@@ -1900,8 +1918,10 @@
         spawnMeteors();
     }
 
-    function placeBall(spiked) {
-        if (isGiantGame()) spiked = false;
+    function placeBall(kind) {
+        let spiked = kind === "spike";
+        const bonus = kind === "bonus" || isGiantGame();
+        if (bonus) spiked = false;
         const type = spiked ? pick(SPIKE_TYPES) : pick(BALL_TYPES);
         const size = type.size * planetScale();
         const r = size / 2;
@@ -1927,22 +1947,25 @@
             ...planetLook(),
             pulseMs: rand(1000, 5000),
             pulseOffset: rand(0, Math.PI * 2),
-            hasRings: !spiked && !isGiantGame() && Math.random() < 0.28,
+            hasRings: !spiked && !bonus && Math.random() < 0.28,
             ringTilt: rand(-0.75, 0.75),
             hasSpikes: spiked,
+            hasBonus: bonus,
             spikeCount: 10 + Math.floor(Math.random() * 5),
             spikeSpin: rand(0, Math.PI * 2),
         });
     }
 
     function spawnBalls(count) {
-        for (let i = 0; i < count; i += 1) placeBall(false);
+        const bonusN = isGiantGame() ? count : Math.min(clampBonusBalls(state.bonusBalls), count);
+        for (let i = 0; i < count - bonusN; i += 1) placeBall("normal");
+        for (let i = 0; i < bonusN; i += 1) placeBall("bonus");
         const spikes = isGiantGame()
             ? 0
             : (isCustomGame()
                 ? state.spikeBalls
                 : (state.spikes ? Math.round(count * SPIKE_RATE) : 0));
-        for (let i = 0; i < spikes; i += 1) placeBall(true);
+        for (let i = 0; i < spikes; i += 1) placeBall("spike");
         spawnDrops();
     }
 
@@ -2146,6 +2169,7 @@
             ballCount: START_BALLS,
             goal: START_GOAL,
             spikeBalls: Math.round(START_BALLS * SPIKE_RATE),
+            bonusBalls: 0,
             spikes: true,
             meteorCount: 1,
             meteorOn: true,
@@ -2194,6 +2218,7 @@
         const restart = next.world !== state.world
             || next.ballCount !== state.ballCount
             || next.spikeBalls !== state.spikeBalls
+            || next.bonusBalls !== state.bonusBalls
             || next.neutronPairs !== state.neutronPairs
             || next.novaCount !== state.novaCount;
         Object.assign(state, next);
@@ -2401,6 +2426,7 @@
             else if (key === "neutrons") el.value = String(state.neutronPairs);
             else if (key === "novas") el.value = String(state.novaCount);
             else if (key === "bonusMul") el.value = String(bonusMul());
+            else if (key === "bonusBalls") el.value = String(clampBonusBalls(state.bonusBalls));
             else if (SPEED_KEYS.includes(key)) el.value = String(state[key]);
             const label = document.querySelector(`[data-pg-value="${key}"]`);
             if (!label) continue;
@@ -2414,6 +2440,7 @@
             else if (key === "neutrons") label.textContent = String(state.neutronPairs);
             else if (key === "novas") label.textContent = String(state.novaCount);
             else if (key === "bonusMul") label.textContent = `${bonusMul()}×`;
+            else if (key === "bonusBalls") label.textContent = String(clampBonusBalls(state.bonusBalls));
             else if (SPEED_KEYS.includes(key)) label.textContent = formatSpeedMul(state[key]);
         }
     }
@@ -2678,6 +2705,7 @@
             hasRings: ball.hasRings,
             ringTilt: ball.ringTilt,
             hasSpikes: false,
+            hasBonus: isBonusBall(ball),
             spikeCount: ball.spikeCount,
             spikeSpin: ball.spikeSpin,
         };
@@ -2687,7 +2715,7 @@
         state.taken.push(planetSnapshot(ball));
         state.found += 1;
         let points;
-        if (isGiantGame()) {
+        if (isBonusBall(ball)) {
             const next = nextBonusScore(state.score);
             points = next;
             const awarded = next > state.score ? next - state.score : 0;
@@ -2708,7 +2736,7 @@
                 x: ball.x,
                 y: ball.y,
                 r: ball.r,
-                color: isGiantGame() ? GIANT_MARK : ball.color,
+                color: isBonusBall(ball) ? GIANT_MARK : ball.color,
                 life: 1,
             });
         }
@@ -4044,19 +4072,19 @@
     }
 
     function drawBall(ball, cam, now) {
-        const giant = isGiantGame();
-        if (!giant && ball.hasRings == null) {
+        const bonus = isBonusBall(ball);
+        if (!bonus && ball.hasRings == null) {
             ball.hasRings = !ball.hasSpikes && Math.random() < 0.28;
             ball.ringTilt = rand(-0.75, 0.75);
         }
 
         const x = ball.x - cam.x;
         const y = ball.y - cam.y;
-        const reach = !giant && (ball.hasRings || ball.hasSpikes) ? ball.r * 2.1 : ball.r + 20;
+        const reach = !bonus && (ball.hasRings || ball.hasSpikes) ? ball.r * 2.1 : ball.r + 20;
         if (offView(x, y, reach, cam)) {
             return;
         }
-        if (giant) {
+        if (bonus) {
             drawGiantPlanet(ball, x, y, ballPulse(ball, now));
             return;
         }
@@ -4344,6 +4372,7 @@
         return {
             color: (src && src.color) || "#7ec8ff",
             paints: paints || ["#b8e0ff", "#7ec8ff", "#3d7ec8"],
+            hasBonus: Boolean(src && src.hasBonus),
             angle: 0,
             orbit: cargoOrbitRadius(index),
             x: 0,
@@ -4420,7 +4449,7 @@
             ctx.save();
             ctx.globalAlpha = moon.scatter ? moon.life : 1;
             ctx.translate(cx + moon.x, cy + moon.y);
-            if (isGiantGame()) {
+            if (isGiantGame() || moon.hasBonus) {
                 ctx.shadowColor = GIANT_MARK;
                 ctx.shadowBlur = 10;
                 ctx.fillStyle = GIANT_BODY;
@@ -5332,7 +5361,7 @@
             const reach = ball.hasSpikes ? r * 1.9 : r;
             if (p.x < -reach || p.y < -reach || p.x > size + reach || p.y > size + reach) continue;
             miniCtx.globalAlpha = ball.hasSpikes ? 1 : ballPulse(ball, now);
-            miniCtx.fillStyle = isGiantGame() ? GIANT_BODY : ball.color;
+            miniCtx.fillStyle = isBonusBall(ball) ? GIANT_BODY : ball.color;
             if (ball.hasSpikes) {
                 const spikes = 7;
                 const inner = r * 0.72;
@@ -5353,7 +5382,7 @@
                 miniCtx.beginPath();
                 miniCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 miniCtx.fill();
-                if (isGiantGame()) {
+                if (isBonusBall(ball)) {
                     miniCtx.strokeStyle = GIANT_MARK;
                     miniCtx.lineWidth = Math.max(1, r * 0.28);
                     miniCtx.stroke();
@@ -5985,6 +6014,7 @@
                     setBonusMul(el.value);
                     if (label) label.textContent = `${bonusMul()}×`;
                 }
+                if (key === "bonusBalls" && label) label.textContent = el.value;
                 if (SPEED_KEYS.includes(key) && label) label.textContent = formatSpeedMul(el.value);
                 if (key === "zoom") setZoomFromSlider(el.value);
                 if (key === "volume") {
@@ -6028,6 +6058,17 @@
                     setBonusMul(el.value);
                     saveSettings();
                     updateHud();
+                    return;
+                }
+                if (key === "bonusBalls") {
+                    const next = clampBonusBalls(el.value);
+                    if (next === clampBonusBalls(state.bonusBalls)) {
+                        syncPlaygroundRanges();
+                        return;
+                    }
+                    state.bonusBalls = next;
+                    saveSettings();
+                    restartGame();
                     return;
                 }
                 if (key === "volume") {

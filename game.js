@@ -2363,7 +2363,7 @@
         document.body.classList.toggle("giant-mode", isGiantGame() && !PLAYGROUND);
         for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !tune);
         for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", tune);
-        for (const el of document.querySelectorAll(".bonus-only")) el.classList.toggle("hidden", !isGiantGame());
+        for (const el of document.querySelectorAll(".bonus-only")) el.classList.toggle("hidden", !(isGiantGame() || PLAYGROUND));
         syncBonusMulControls();
         if (meteorSlider) meteorSlider.value = String(state.meteorCount);
         if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);

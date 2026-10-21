@@ -323,7 +323,8 @@ body.board-open {
 }
 
 .custom-only.hidden,
-.preset-only.hidden {
+.preset-only.hidden,
+.bonus-only.hidden {
     display: none;
 }
 
@@ -413,7 +414,8 @@ body.giant-mode .giant-hide {
     gap: 2px;
 }
 
-.zoom-input {
+.zoom-input,
+.bonus-mul-input {
     width: 4.8em;
     min-width: 0;
     min-height: 44px;
@@ -434,7 +436,8 @@ body.giant-mode .giant-hide {
     -webkit-user-select: text;
 }
 
-.zoom-input:focus {
+.zoom-input:focus,
+.bonus-mul-input:focus {
     outline: 2px solid rgba(79, 124, 255, 0.85);
     outline-offset: 1px;
 }
@@ -1536,7 +1539,8 @@ body.home {
         font-size: 20px;
     }
 
-    .zoom-input {
+    .zoom-input,
+    .bonus-mul-input {
         font-size: 20px;
         min-height: 40px;
         border-radius: 8px;

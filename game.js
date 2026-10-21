@@ -20,6 +20,9 @@
     const SCORE_MAX = Number.MAX_VALUE;
     const GIANT_BODY = "#ffffff";
     const GIANT_MARK = "#7ec8ff";
+    const BONUS_MUL_MIN = 2;
+    const BONUS_MUL_MAX = 126;
+    const BONUS_MUL_START = 2;
     const SETTINGS_KEY = "harlie-space-settings";
     const NAME_MAX = 20;
     const PLAY_KEY = "harlie-space-play";
@@ -207,6 +210,7 @@
     const volumeSlider = document.getElementById("volume-slider");
     const volumeSliderValue = document.getElementById("volume-slider-value");
     const zoomSlider = document.getElementById("zoom-slider");
+    const bonusMulSlider = document.getElementById("bonus-mul-slider");
     const meteorSlider = document.getElementById("meteor-slider");
     const meteorSliderValue = document.getElementById("meteor-slider-value");
     const spikesSlider = document.getElementById("spikes-slider");
@@ -364,6 +368,39 @@
         state.zoom = next;
         if (commit) el.value = formatZoom(next);
         syncZoomControls(el);
+        return true;
+    }
+
+    function syncBonusMulControls(except) {
+        const mul = bonusMul();
+        if (bonusMulSlider) bonusMulSlider.value = String(mul);
+        for (const el of document.querySelectorAll("[data-pg-range='bonusMul']")) el.value = String(mul);
+        for (const el of document.querySelectorAll("[data-pg-value='bonusMul']")) el.textContent = `${mul}×`;
+        for (const el of document.querySelectorAll(".bonus-mul-input")) {
+            if (el === except || document.activeElement === el) continue;
+            el.value = String(mul);
+        }
+    }
+
+    function setBonusMul(value, except) {
+        const next = clampBonusMul(value);
+        if (next === bonusMul()) {
+            syncBonusMulControls(except);
+            return false;
+        }
+        state.bonusMul = next;
+        syncBonusMulControls(except);
+        return true;
+    }
+
+    function setBonusMulFromInput(el, commit) {
+        const next = parseBonusMulInput(el.value);
+        if (next == null) {
+            if (commit) el.value = String(bonusMul());
+            return false;
+        }
+        setBonusMul(next, el);
+        if (commit) el.value = String(next);
         return true;
     }
 
@@ -542,9 +579,35 @@
         return Math.round(n).toLocaleString();
     }
 
-    function nextDoubleScore(current) {
-        if (!(current > 0)) return 2;
-        const next = current * 2;
+    function clampBonusMul(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(BONUS_MUL_MAX, Math.max(BONUS_MUL_MIN, n)) : BONUS_MUL_START;
+    }
+
+    function bonusMul() {
+        return clampBonusMul(state.bonusMul);
+    }
+
+    function bonusMulText() {
+        return `${bonusMul()}x`;
+    }
+
+    function bonusMulFont(r) {
+        const mul = bonusMul();
+        const scale = mul >= 100 ? 0.46 : mul >= 10 ? 0.58 : 0.78;
+        return `700 ${Math.max(10, Math.round(r * scale))}px "Supreme Spike", sans-serif`;
+    }
+
+    function parseBonusMulInput(value) {
+        const n = Math.round(Number(String(value).replace(/x$/i, "").replace(/,/g, "").trim()));
+        if (!Number.isFinite(n)) return null;
+        return clampBonusMul(n);
+    }
+
+    function nextBonusScore(current) {
+        const mul = bonusMul();
+        if (!(current > 0)) return mul;
+        const next = current * mul;
         if (!Number.isFinite(next) || next > SCORE_MAX) return SCORE_MAX;
         return next;
     }
@@ -618,6 +681,7 @@
             const infiniteFuel = data.infiniteFuel === true;
             const infiniteHunt = data.infiniteHunt === true;
             const zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
+            const bonusMulValue = data.bonusMul == null ? BONUS_MUL_START : clampBonusMul(data.bonusMul);
             const speeds = speedsFrom(data);
             if (difficulty && difficulty !== "custom" && difficulty !== "bonus") {
                 const preset = DIFFICULTIES[difficulty];
@@ -651,6 +715,7 @@
                     infiniteFuel,
                     infiniteHunt,
                     zoom,
+                    bonusMul: bonusMulValue,
                     ...speeds,
                 };
             }
@@ -685,10 +750,11 @@
                 infiniteFuel,
                 infiniteHunt,
                 zoom,
+                bonusMul: bonusMulValue,
                 ...speeds,
             };
         } catch {
-            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, infiniteHunt: false, zoom: 1, ...speedsFrom({}) };
+            return { world: START_WORLD, ballCount: START_BALLS, goal: START_GOAL, palette: "space", pulse: false, nebula: true, starDrift: true, sky: "stars", ship: "classic", name: "", lifetime: 0, ownedShips: ["classic"], reqShips: true, difficulty: "", trial: false, trialMs: 300000, audio: true, volume: 100, spikes: true, meteorOn: true, meteorCount: 1, spikeBalls: Math.round(START_BALLS * SPIKE_RATE), cometCount: 0, cometPoints: COMET_POINTS_START, neutronPairs: defaultNeutronPairs(START_WORLD), novaCount: defaultNovaCount(START_WORLD), infiniteFuel: false, infiniteHunt: false, zoom: 1, bonusMul: BONUS_MUL_START, ...speedsFrom({}) };
         }
     }
 
@@ -724,6 +790,7 @@
                 infiniteFuel: state.infiniteFuel,
                 infiniteHunt: state.infiniteHunt === true,
                 zoom: state.zoom,
+                bonusMul: bonusMul(),
                 ...speedsFrom(state),
             }));
         } catch {
@@ -1103,6 +1170,7 @@
         infiniteFuel: saved.infiniteFuel === true,
         infiniteHunt: saved.infiniteHunt === true,
         zoom: clampZoom(saved.zoom == null ? 1 : saved.zoom),
+        bonusMul: saved.bonusMul == null ? BONUS_MUL_START : clampBonusMul(saved.bonusMul),
         speed: 0,
         boost: false,
         boostFuel: 1,
@@ -2295,6 +2363,8 @@
         document.body.classList.toggle("giant-mode", isGiantGame() && !PLAYGROUND);
         for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !tune);
         for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", tune);
+        for (const el of document.querySelectorAll(".bonus-only")) el.classList.toggle("hidden", !isGiantGame());
+        syncBonusMulControls();
         if (meteorSlider) meteorSlider.value = String(state.meteorCount);
         if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);
         if (spikesSlider) spikesSlider.value = String(state.spikeBalls);
@@ -2330,6 +2400,7 @@
             else if (key === "cometPoints") el.value = String(state.cometPoints);
             else if (key === "neutrons") el.value = String(state.neutronPairs);
             else if (key === "novas") el.value = String(state.novaCount);
+            else if (key === "bonusMul") el.value = String(bonusMul());
             else if (SPEED_KEYS.includes(key)) el.value = String(state[key]);
             const label = document.querySelector(`[data-pg-value="${key}"]`);
             if (!label) continue;
@@ -2342,6 +2413,7 @@
             else if (key === "cometPoints") label.textContent = formatCometPoints(state.cometPoints);
             else if (key === "neutrons") label.textContent = String(state.neutronPairs);
             else if (key === "novas") label.textContent = String(state.novaCount);
+            else if (key === "bonusMul") label.textContent = `${bonusMul()}×`;
             else if (SPEED_KEYS.includes(key)) label.textContent = formatSpeedMul(state[key]);
         }
     }
@@ -2616,7 +2688,7 @@
         state.found += 1;
         let points;
         if (isGiantGame()) {
-            const next = nextDoubleScore(state.score);
+            const next = nextBonusScore(state.score);
             points = next;
             const awarded = next > state.score ? next - state.score : 0;
             state.score = next;
@@ -3964,10 +4036,10 @@
         ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
         ctx.clip();
         ctx.fillStyle = GIANT_MARK;
-        ctx.font = `700 ${Math.max(14, Math.round(ball.r * 0.78))}px "Supreme Spike", sans-serif`;
+        ctx.font = bonusMulFont(ball.r);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("2x", 0, ball.r * 0.04);
+        ctx.fillText(bonusMulText(), 0, ball.r * 0.04);
         ctx.restore();
     }
 
@@ -4361,10 +4433,10 @@
                 ctx.arc(0, 0, r, 0, Math.PI * 2);
                 ctx.clip();
                 ctx.fillStyle = GIANT_MARK;
-                ctx.font = `700 ${Math.max(8, Math.round(r * 1.15))}px "Supreme Spike", sans-serif`;
+                ctx.font = bonusMulFont(r);
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText("2x", 0, r * 0.08);
+                ctx.fillText(bonusMulText(), 0, r * 0.08);
                 ctx.restore();
             } else {
                 ctx.shadowColor = moon.color;
@@ -5909,6 +5981,10 @@
                 if (key === "cometPoints" && label) label.textContent = formatCometPoints(el.value);
                 if (key === "neutrons" && label) label.textContent = el.value;
                 if (key === "novas" && label) label.textContent = el.value;
+                if (key === "bonusMul") {
+                    setBonusMul(el.value);
+                    if (label) label.textContent = `${bonusMul()}×`;
+                }
                 if (SPEED_KEYS.includes(key) && label) label.textContent = formatSpeedMul(el.value);
                 if (key === "zoom") setZoomFromSlider(el.value);
                 if (key === "volume") {
@@ -5944,6 +6020,12 @@
                 }
                 if (key === "zoom") {
                     setZoomFromSlider(el.value);
+                    saveSettings();
+                    updateHud();
+                    return;
+                }
+                if (key === "bonusMul") {
+                    setBonusMul(el.value);
                     saveSettings();
                     updateHud();
                     return;
@@ -6266,6 +6348,40 @@
                 setZoomFromSlider(zoomSlider.value);
                 saveSettings();
                 updateHud();
+            });
+        }
+        if (bonusMulSlider) {
+            bonusMulSlider.addEventListener("input", () => {
+                setBonusMul(bonusMulSlider.value);
+            });
+            bonusMulSlider.addEventListener("change", () => {
+                setBonusMul(bonusMulSlider.value);
+                saveSettings();
+                updateHud();
+            });
+        }
+        for (const el of document.querySelectorAll(".bonus-mul-input")) {
+            el.addEventListener("focus", () => {
+                el.select();
+            });
+            el.addEventListener("input", () => {
+                setBonusMulFromInput(el, false);
+            });
+            el.addEventListener("change", () => {
+                setBonusMulFromInput(el, true);
+                saveSettings();
+                updateHud();
+            });
+            el.addEventListener("blur", () => {
+                setBonusMulFromInput(el, true);
+                saveSettings();
+                updateHud();
+            });
+            el.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    el.blur();
+                }
             });
         }
         for (const el of document.querySelectorAll(".zoom-input")) {

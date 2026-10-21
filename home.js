@@ -33,6 +33,9 @@
         bonus: { world: 20000, ballCount: 60, goal: 40 },
     };
     const SCORE_MAX = Number.MAX_VALUE;
+    const BONUS_MUL_MIN = 2;
+    const BONUS_MUL_MAX = 126;
+    const BONUS_MUL_START = 2;
     const SETTINGS_KEY = "harlie-space-settings";
     const PLAY_KEY = "harlie-space-play";
     const BOARD_KEY = "harlie-space-board";
@@ -82,6 +85,7 @@
     const volumeSlider = document.getElementById("volume-slider");
     const volumeSliderValue = document.getElementById("volume-slider-value");
     const zoomSlider = document.getElementById("zoom-slider");
+    const bonusMulSlider = document.getElementById("bonus-mul-slider");
     const meteorSlider = document.getElementById("meteor-slider");
     const meteorSliderValue = document.getElementById("meteor-slider-value");
     const spikesSlider = document.getElementById("spikes-slider");
@@ -147,6 +151,7 @@
         cargoSpeed: SPEED_MUL_START,
         infiniteFuel: false,
         infiniteHunt: false,
+        bonusMul: BONUS_MUL_START,
         zoom: 1,
     };
 
@@ -494,6 +499,52 @@
         state.zoom = next;
         if (commit) el.value = formatZoom(next);
         syncZoomControls(el);
+        return true;
+    }
+
+    function clampBonusMul(value) {
+        const n = Math.round(Number(value));
+        return Number.isFinite(n) ? Math.min(BONUS_MUL_MAX, Math.max(BONUS_MUL_MIN, n)) : BONUS_MUL_START;
+    }
+
+    function bonusMul() {
+        return clampBonusMul(state.bonusMul);
+    }
+
+    function parseBonusMulInput(value) {
+        const n = Math.round(Number(String(value).replace(/x$/i, "").replace(/,/g, "").trim()));
+        if (!Number.isFinite(n)) return null;
+        return clampBonusMul(n);
+    }
+
+    function syncBonusMulControls(except) {
+        const mul = bonusMul();
+        if (bonusMulSlider) bonusMulSlider.value = String(mul);
+        for (const el of document.querySelectorAll(".bonus-mul-input")) {
+            if (el === except || document.activeElement === el) continue;
+            el.value = String(mul);
+        }
+    }
+
+    function setBonusMul(value, except) {
+        const next = clampBonusMul(value);
+        if (next === bonusMul()) {
+            syncBonusMulControls(except);
+            return false;
+        }
+        state.bonusMul = next;
+        syncBonusMulControls(except);
+        return true;
+    }
+
+    function setBonusMulFromInput(el, commit) {
+        const next = parseBonusMulInput(el.value);
+        if (next == null) {
+            if (commit) el.value = String(bonusMul());
+            return false;
+        }
+        setBonusMul(next, el);
+        if (commit) el.value = String(next);
         return true;
     }
 
@@ -908,6 +959,7 @@
             state.infiniteFuel = data.infiniteFuel === true;
             state.infiniteHunt = data.infiniteHunt === true;
             state.zoom = clampZoom(data.zoom == null ? 1 : data.zoom);
+            state.bonusMul = data.bonusMul == null ? BONUS_MUL_START : clampBonusMul(data.bonusMul);
         } catch {
             // Keep defaults.
         }
@@ -945,6 +997,7 @@
                 infiniteFuel: state.infiniteFuel,
                 infiniteHunt: state.infiniteHunt === true,
                 zoom: state.zoom,
+                bonusMul: bonusMul(),
                 ...speedsFrom(state),
             }));
         } catch {
@@ -1165,6 +1218,8 @@
         document.body.classList.toggle("giant-mode", isGiantGame());
         for (const el of document.querySelectorAll(".custom-only")) el.classList.toggle("hidden", !tune);
         for (const el of document.querySelectorAll(".preset-only")) el.classList.toggle("hidden", tune);
+        for (const el of document.querySelectorAll(".bonus-only")) el.classList.toggle("hidden", !isGiantGame());
+        syncBonusMulControls();
         if (meteorSlider) meteorSlider.value = String(state.meteorCount);
         if (meteorSliderValue) meteorSliderValue.textContent = String(state.meteorCount);
         if (spikesSlider) spikesSlider.value = String(state.spikeBalls);
@@ -1540,6 +1595,40 @@
             state.volume = clampVolume(volumeSlider.value);
             saveSettings();
             updateHud();
+        });
+    }
+    if (bonusMulSlider) {
+        bonusMulSlider.addEventListener("input", () => {
+            setBonusMul(bonusMulSlider.value);
+        });
+        bonusMulSlider.addEventListener("change", () => {
+            setBonusMul(bonusMulSlider.value);
+            saveSettings();
+            updateHud();
+        });
+    }
+    for (const el of document.querySelectorAll(".bonus-mul-input")) {
+        el.addEventListener("focus", () => {
+            el.select();
+        });
+        el.addEventListener("input", () => {
+            setBonusMulFromInput(el, false);
+        });
+        el.addEventListener("change", () => {
+            setBonusMulFromInput(el, true);
+            saveSettings();
+            updateHud();
+        });
+        el.addEventListener("blur", () => {
+            setBonusMulFromInput(el, true);
+            saveSettings();
+            updateHud();
+        });
+        el.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                el.blur();
+            }
         });
     }
     if (zoomSlider) {
